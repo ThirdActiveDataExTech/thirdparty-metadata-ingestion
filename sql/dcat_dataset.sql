@@ -1,0 +1,102 @@
+-- ═══════════════════════════════════════════════════════════════
+-- dcat_dataset : 데이터셋 전반 기술 (dcat:Dataset)
+-- 모든 데이터 소스(YouTube, Naver, 뉴스 등)가 공통으로 사용
+-- 1회 수집 코드 실행 = 1행 생성
+-- ═══════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS dcat_dataset (
+
+    -- ── 식별 ──────────────────────────────────────────────────
+    dataset_id          TEXT PRIMARY KEY,
+    -- dct:identifier | 전체 시스템에서 유일한 데이터셋 식별자
+    -- 예) 'naver_shopping_insight', 'youtube_samsung_ch', 'naver_news_ai'
+
+    title               TEXT NOT NULL,
+    -- dct:title | 데이터셋 이름
+    -- 예) '네이버 쇼핑 인사이트 카테고리 수집'
+
+    description         TEXT,
+    -- dct:description | 수집 목적, 수집 방식, 특이사항 등 상세 설명
+
+    -- ── 출처 ──────────────────────────────────────────────────
+    publisher           TEXT,
+    -- dct:publisher | 데이터 원천 플랫폼명
+    -- 예) 'Naver', 'YouTube', '연합뉴스'
+
+    source_type         TEXT,
+    -- (확장) 출처 유형 분류
+    -- 예) 'shopping', 'video', 'news', 'sns', 'government'
+
+    landing_page        TEXT,
+    -- dcat:landingPage | 플랫폼 공식 소개 페이지 (사람이 읽는 페이지)
+    -- 예) 'https://datalab.naver.com/shopping/'
+
+    access_url          TEXT,
+    -- dcat:accessURL | API 엔드포인트 (기계가 호출하는 URL)
+    -- 예) 'https://openapi.naver.com/v1/datalab/shopping/categories'
+
+    subjects            JSONB,
+    -- dct:subject | 실제 수집 대상 목록 (JSON 배열)
+    -- 예) ["50001421","50000204"]          ← Naver 카테고리 ID
+    -- 예) ["UCQrLs7LGqlcfrKDM0MXWFCQ"]    ← YouTube 채널 ID
+    -- 예) ["인공지능","반도체"]             ← 뉴스 검색 키워드
+
+    -- ── 언어 / 지역 ───────────────────────────────────────────
+    language            TEXT DEFAULT 'ko',
+    -- dct:language | ISO 639-1 언어 코드
+    -- 예) 'ko', 'en'
+
+    spatial             TEXT DEFAULT 'KR',
+    -- dct:spatial | ISO 3166-1 국가 코드
+    -- 예) 'KR', 'US'
+
+    -- ── 시간 커버리지 ─────────────────────────────────────────
+    temporal_start      DATE,
+    -- dct:temporal 시작일 | 수집 후 자동 갱신
+    -- 예) '2025-06-17'
+
+    temporal_end        DATE,
+    -- dct:temporal 종료일 | NULL = 현재 진행 중(open-ended)
+    -- 예) '2026-06-16', NULL
+
+    temporal_resolution TEXT,
+    -- dcat:temporalResolution | 데이터 1건의 시간 단위 (ISO 8601)
+    -- 예) 'P1D'(일간), 'P7D'(주간), NULL(시점 없음 - 영상 메타 등)
+
+    accrual_periodicity TEXT,
+    -- dct:accrualPeriodicity | 수집(갱신) 주기 (ISO 8601)
+    -- 예) 'P1D'(매일), 'P7D'(매주), 'irregular'(비정기)
+
+    -- ── 태그 ──────────────────────────────────────────────────
+    keywords            JSONB,
+    -- dcat:keyword | 검색·분류용 키워드 (JSON 배열)
+    -- 예) ["쇼핑","검색량","카테고리","네이버"]
+
+    -- ── 이용 조건 ─────────────────────────────────────────────
+    license             TEXT,
+    -- dct:license | 데이터 이용 라이선스 식별자 또는 URI
+    -- 예) "https://developers.naver.com/notice/terms"          ← Naver API 이용약관
+    -- 예) "https://developers.google.com/youtube/terms/api-services-tos" ← YouTube API ToS
+    -- 예) "https://www.kogl.or.kr/info/license.do#01-tab"     ← 공공누리 제1유형
+    -- 예) "https://creativecommons.org/licenses/by/4.0/"      ← CC BY 4.0
+
+    rights              TEXT,
+    -- dct:rights | 라이선스 URI로 표현하기 어려운 세부 이용 조건 (자유 텍스트)
+    -- 예) "네이버 API 이용약관 준수. 외부 배포 및 상업적 재판매 금지."
+    -- 예) "YouTube API ToS 준수. 제3자 제공 시 Google 사전 승인 필요."
+    -- 예) "출처 표시 조건 하에 자유로운 이용 가능. 상업적 이용 및 변경 허용."
+
+    -- ── 관리 ──────────────────────────────────────────────────
+    version             TEXT NOT NULL DEFAULT '1.0',
+    -- owl:versionInfo | 수집 방식 변경 시 버전 올림
+
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    -- dct:issued | 데이터셋 최초 등록 일시
+
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+    -- dct:modified | 마지막 수집 또는 메타데이터 수정 일시
+);
+
+-- 검색용 인덱스
+CREATE INDEX IF NOT EXISTS idx_dcat_dataset_source_type ON dcat_dataset(source_type);
+CREATE INDEX IF NOT EXISTS idx_dcat_dataset_publisher   ON dcat_dataset(publisher);
+CREATE INDEX IF NOT EXISTS idx_dcat_dataset_updated     ON dcat_dataset(updated_at DESC);
