@@ -12,7 +12,7 @@
 | `dcat_dataset` | 운영 중 | [sql/dcat_dataset.sql](../../sql/dcat_dataset.sql) | 데이터셋 전반 기술 |
 | `dcat_provenance` | 운영 중 | [sql/dcat_provenance.sql](../../sql/dcat_provenance.sql) | 수집 실행 이력 |
 | `data_registry` | 운영 중 | [sql/data_registry.sql](../../sql/data_registry.sql) | 통합 운영정보 (저장소 위치, 운영 상태) |
-| `dcat_dataset_vec` | 예정 | — | 데이터셋 description 임베딩 (pgvector) |
+| `dcat_dataset_vec` | DDL 작성 완료 | [sql/dcat_dataset_vec.sql](../../sql/dcat_dataset_vec.sql) | 데이터셋 description 임베딩 (pgvector 768차원) |
 | `meta_youtube_channel` | 예정 | — | YouTube 채널 메타 |
 | `meta_youtube_video` | 예정 | — | YouTube 영상 메타 |
 | `meta_naver_shopping` | 예정 | — | Naver 쇼핑 메타 |
