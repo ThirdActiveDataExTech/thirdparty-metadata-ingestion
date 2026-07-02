@@ -3,14 +3,18 @@
 -- 수집 스크립트 실행 1회 = 1행
 -- dcat_dataset 의 dataset_id 를 FK 로 참조
 -- ═══════════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS dcat_provenance (
+DROP TABLE IF EXISTS dcat_provenance;
+
+CREATE TABLE dcat_provenance (
 
     -- ── 식별 ──────────────────────────────────────────────────
     prov_id         BIGSERIAL PRIMARY KEY,
     -- 자동 증가 PK
 
-    dataset_id      TEXT NOT NULL REFERENCES dcat_dataset(dataset_id),
+    dataset_id      TEXT NOT NULL
+                    REFERENCES dcat_dataset(dataset_id) ON DELETE CASCADE,
     -- 어느 데이터셋의 수집 이력인지 (FK)
+    -- ON DELETE CASCADE: 데이터셋 삭제 시 수집 이력도 함께 삭제
     -- 예) 'naver_shopping_insight', 'youtube_samsung_official'
 
     -- ── 활동 유형 ─────────────────────────────────────────────
@@ -21,8 +25,9 @@ CREATE TABLE IF NOT EXISTS dcat_provenance (
     -- 'backfill'  : 과거 데이터 소급 수집 (누락 기간 보완)
     -- 'reprocess' : 재처리 (데이터 변경 없이 파이프라인 재실행)
 
-    agent           TEXT,
+    agent           TEXT NOT NULL,
     -- prov:wasAssociatedWith | 수집 로직 모듈명 (오케스트레이터와 무관하게 고정)
+    -- 수집 코드가 항상 설정해야 하는 값 — NOT NULL
     -- 예) 'naver_shopping_insight', 'youtube_collector', 'naver_news'
 
     triggered_by    TEXT,
@@ -66,6 +71,6 @@ CREATE TABLE IF NOT EXISTS dcat_provenance (
 );
 
 -- 검색용 인덱스
-CREATE INDEX IF NOT EXISTS idx_dcat_prov_dataset  ON dcat_provenance(dataset_id);
-CREATE INDEX IF NOT EXISTS idx_dcat_prov_started  ON dcat_provenance(started_at DESC);
-CREATE INDEX IF NOT EXISTS idx_dcat_prov_status   ON dcat_provenance(status);
+CREATE INDEX idx_dcat_prov_dataset  ON dcat_provenance(dataset_id);
+CREATE INDEX idx_dcat_prov_started  ON dcat_provenance(started_at DESC);
+CREATE INDEX idx_dcat_prov_status   ON dcat_provenance(status);

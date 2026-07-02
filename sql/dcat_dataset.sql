@@ -3,7 +3,12 @@
 -- 모든 데이터 소스(YouTube, Naver, 뉴스 등)가 공통으로 사용
 -- 1회 수집 코드 실행 = 1행 생성
 -- ═══════════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS dcat_dataset (
+
+-- 부모 테이블이므로 CASCADE 로 자식 테이블(dcat_provenance, data_registry,
+-- dcat_dataset_vec)까지 함께 삭제됨. 재구성 시 자식 DDL을 이후에 순서대로 실행.
+DROP TABLE IF EXISTS dcat_dataset CASCADE;
+
+CREATE TABLE dcat_dataset (
 
     -- ── 식별 ──────────────────────────────────────────────────
     dataset_id          TEXT PRIMARY KEY,
@@ -97,6 +102,6 @@ CREATE TABLE IF NOT EXISTS dcat_dataset (
 );
 
 -- 검색용 인덱스
-CREATE INDEX IF NOT EXISTS idx_dcat_dataset_source_type ON dcat_dataset(source_type);
-CREATE INDEX IF NOT EXISTS idx_dcat_dataset_publisher   ON dcat_dataset(publisher);
-CREATE INDEX IF NOT EXISTS idx_dcat_dataset_updated     ON dcat_dataset(updated_at DESC);
+CREATE INDEX idx_dcat_dataset_source_type ON dcat_dataset(source_type);
+CREATE INDEX idx_dcat_dataset_publisher   ON dcat_dataset(publisher);
+CREATE INDEX idx_dcat_dataset_updated     ON dcat_dataset(updated_at DESC);

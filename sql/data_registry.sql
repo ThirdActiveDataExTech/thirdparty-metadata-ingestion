@@ -6,11 +6,15 @@
 -- dcat_provenance : 수집 이력 (실행마다 INSERT)
 -- data_registry : 현재 운영 상태 (실행마다 UPDATE)
 -- ═══════════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS data_registry (
+DROP TABLE IF EXISTS data_registry;
+
+CREATE TABLE data_registry (
 
     -- ── 식별 ──────────────────────────────────────────────────
-    dataset_id          TEXT PRIMARY KEY REFERENCES dcat_dataset(dataset_id),
+    dataset_id          TEXT PRIMARY KEY
+                        REFERENCES dcat_dataset(dataset_id) ON DELETE CASCADE,
     -- dcat_dataset 의 dataset_id 를 PK 겸 FK 로 사용 (1:1 관계)
+    -- ON DELETE CASCADE: 데이터셋 삭제 시 레지스트리 항목도 함께 삭제
 
     -- ── 저장 위치 : MinIO ─────────────────────────────────────
     minio_raw_prefix    TEXT,
@@ -80,6 +84,6 @@ CREATE TABLE IF NOT EXISTS data_registry (
 );
 
 -- 운영 모니터링용 인덱스
-CREATE INDEX IF NOT EXISTS idx_data_registry_status   ON data_registry(status);
-CREATE INDEX IF NOT EXISTS idx_data_registry_next     ON data_registry(next_collect_at);
-CREATE INDEX IF NOT EXISTS idx_data_registry_updated  ON data_registry(updated_at DESC);
+CREATE INDEX idx_data_registry_status   ON data_registry(status);
+CREATE INDEX idx_data_registry_next     ON data_registry(next_collect_at);
+CREATE INDEX idx_data_registry_updated  ON data_registry(updated_at DESC);
