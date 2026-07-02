@@ -50,11 +50,19 @@ dcat_dataset (1)  ─── "무엇인가" (명세)
 전체 재구성 시 아래 순서로 실행 (`dcat_dataset.sql`이 CASCADE로 자식 테이블을 먼저 삭제함):
 
 ```bash
+# 1. 테이블 생성
 psql -h localhost -p 30433 -U admin -d datagokr \
   -f sql/dcat_dataset.sql \
   -f sql/dcat_provenance.sql \
   -f sql/data_registry.sql \
   -f sql/dcat_dataset_vec.sql
+
+# 2. 샘플 데이터 삽입 (개발용)
+psql -h localhost -p 30433 -U admin -d datagokr \
+  -f sql/seeds.sql
+
+# 3. 임베딩 생성 (dcat_dataset_vec)
+python scripts/embed_datasets.py
 ```
 
 ---
