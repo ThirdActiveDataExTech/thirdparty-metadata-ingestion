@@ -29,7 +29,7 @@ def get_conn():
 def search(query: str, top_k: int = 3):
     from sentence_transformers import SentenceTransformer
 
-    model = SentenceTransformer("paraphrase-multilingual-mpnet-base-v2")
+    model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-mpnet-base-v2")
     q_vec = model.encode(query).tolist()
 
     conn = get_conn()

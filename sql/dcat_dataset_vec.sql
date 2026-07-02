@@ -5,21 +5,26 @@
 -- ═══════════════════════════════════════════════════════════════
 CREATE EXTENSION IF NOT EXISTS vector;
 
-CREATE TABLE IF NOT EXISTS dcat_dataset_vec (
+DROP TABLE IF EXISTS dcat_dataset_vec;
 
-    dataset_id   TEXT PRIMARY KEY REFERENCES dcat_dataset(dataset_id),
+CREATE TABLE dcat_dataset_vec (
+
+    dataset_id   TEXT PRIMARY KEY
+                 REFERENCES dcat_dataset(dataset_id) ON DELETE CASCADE,
     -- dcat_dataset 과 1:1 대응
+    -- ON DELETE CASCADE: 데이터셋 삭제 시 임베딩도 자동 삭제
 
-    embedding    vector(768),
+    embedding    vector(768) NOT NULL,
     -- paraphrase-multilingual-mpnet-base-v2 기준 768차원
     -- 향후 Qdrant 전환 또는 모델 변경 시 재임베딩 필요
 
-    embed_text   TEXT,
+    embed_text   TEXT NOT NULL,
     -- 임베딩에 사용된 원본 텍스트 (재현 및 디버깅용)
     -- 형식: "{title}. {description}. 키워드: {keywords}"
 
-    model_name   TEXT NOT NULL DEFAULT 'paraphrase-multilingual-mpnet-base-v2',
-    -- 임베딩 생성에 사용된 모델명 (모델 교체 이력 추적)
+    model_name   TEXT NOT NULL
+                 DEFAULT 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2',
+    -- HuggingFace 전체 식별자로 저장 (재현성 보장)
 
     embedded_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     -- 임베딩 생성 일시

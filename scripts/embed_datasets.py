@@ -43,7 +43,7 @@ def build_embed_text(row: dict) -> str:
 def main():
     from sentence_transformers import SentenceTransformer
 
-    model_name = "paraphrase-multilingual-mpnet-base-v2"
+    model_name = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
     print(f"모델 로딩: {model_name}")
     model = SentenceTransformer(model_name)
 
