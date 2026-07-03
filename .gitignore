@@ -10,6 +10,10 @@ venv/
 # Environment Variables
 .env
 
+# K8s Secrets (실제 값이 채워진 파일 — 템플릿(.template)은 커밋 허용)
+k8s/secrets/*.yaml
+!k8s/secrets/*.yaml.template
+
 # macOS
 .DS_Store
 
