@@ -15,14 +15,14 @@ GitHub
 Server (Kubernetes)
     ├── Collector (CronJob)
     │       ↓
-    │   Raw Data → MinIO
+    │   Raw Data → SeaweedFS (S3 API)
     │       ↓
     │   Preprocess → Extractor
     │       ↓
     │   Metadata → PostgreSQL (datagokr)
     │
     ├── PostgreSQL 17.4 (datagokr)
-    ├── MinIO (오브젝트 스토리지)
+    ├── SeaweedFS (오브젝트 스토리지, Apache 2.0)
     └── (예정) Qdrant (벡터 DB)
 ```
 
@@ -35,7 +35,7 @@ Server (Kubernetes)
 | Collector | 외부 API 호출, Raw Data 수집 | Python |
 | Preprocess | 원본 데이터 정제 | Python |
 | Extractor | 메타데이터 추출 | Python |
-| Storage | MinIO / PostgreSQL 저장 | Python |
+| Storage | SeaweedFS (S3 API) / PostgreSQL 저장 | Python |
 | Scheduler | 수집 주기 관리 | K8s CronJob → 추후 Airflow |
 
 ---

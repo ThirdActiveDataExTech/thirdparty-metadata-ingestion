@@ -12,7 +12,7 @@ src/
 ├── collectors/     외부 API 호출, Raw Data 반환 (DB 직접 접근 금지)
 ├── preprocess/     Raw Data 정제 및 정규화
 ├── extractor/      메타데이터 추출 (DCAT, Schema.org)
-├── storage/        MinIO / PostgreSQL 저장
+├── storage/        SeaweedFS (S3 API) / PostgreSQL 저장
 ├── database/       DB 연결, 쿼리 유틸
 ├── common/         공통 유틸 (로깅, 설정, 예외)
 └── main.py         파이프라인 진입점

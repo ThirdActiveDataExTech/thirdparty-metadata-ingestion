@@ -16,7 +16,7 @@
 | 1.1 | [Current Infrastructure](infrastructure/01_Current_Infrastructure.md) | 현재 서버에 무엇이 있는가 | 완성 |
 | 1.2 | [Kubernetes](infrastructure/02_Kubernetes.md) | 클러스터 구조, 배포 방식 | 완성 |
 | 1.3 | [PostgreSQL](infrastructure/03_PostgreSQL.md) | DB 두 개 연결 정보 및 스키마 | 완성 |
-| 1.4 | [MinIO](infrastructure/04_MinIO.md) | 오브젝트 스토리지 구조 | 작성 중 |
+| 1.4 | [Object Storage (SeaweedFS)](infrastructure/04_ObjectStorage.md) | 오브젝트 스토리지 구조 (MinIO → SeaweedFS 전환) | 작성 중 |
 | 1.5 | [Secrets & ConfigMaps](infrastructure/05_Secrets_ConfigMaps.md) | 환경변수 및 인증 정보 관리 | 완성 |
 | 1.6 | [Vector DB](infrastructure/06_VectorDB.md) | pgvector 구성 및 Qdrant 전환 전략 | 작성 중 |
 
@@ -104,3 +104,4 @@ DB 스키마, 테이블 정의. **테이블이 추가되거나 컬럼이 변경�
 | ADR-001 | [DCAT을 메타데이터 표준으로 채택](adr/001_DCAT_as_metadata_standard.md) | Accepted |
 | ADR-002 | [Airflow 도입 전 K8s CronJob 사용](adr/002_KubernetesCronJob_before_Airflow.md) | Accepted |
 | ADR-003 | [Vector DB 전략 — pgvector 시작, Qdrant 전환 경로](adr/003_VectorDB_Strategy.md) | Accepted |
+| ADR-004 | [Object Storage 전략 — MinIO → SeaweedFS 전환](adr/004_ObjectStorage_Strategy.md) | Accepted |

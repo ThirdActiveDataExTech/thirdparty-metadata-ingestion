@@ -12,7 +12,7 @@
     ↓
 Collector       raw JSON / XML
     ↓
-MinIO           raw/{source_type}/{dataset_id}/YYYY/MM/DD/
+SeaweedFS       raw/{source_type}/{dataset_id}/YYYY/MM/DD/  (S3 API)
     ↓
 Preprocess      정제 / 정규화
     ↓

@@ -16,14 +16,14 @@ CREATE TABLE data_registry (
     -- dcat_dataset 의 dataset_id 를 PK 겸 FK 로 사용 (1:1 관계)
     -- ON DELETE CASCADE: 데이터셋 삭제 시 레지스트리 항목도 함께 삭제
 
-    -- ── 저장 위치 : MinIO ─────────────────────────────────────
-    minio_raw_prefix    TEXT,
-    -- MinIO raw 데이터 경로 prefix (버킷 루트 기준)
+    -- ── 저장 위치 : SeaweedFS (S3 API) ───────────────────────
+    s3_raw_prefix       TEXT,
+    -- S3 raw 데이터 경로 prefix (버킷 루트 기준)
     -- 예) 'raw/shopping/naver_shopping_insight/'
     -- 실제 오브젝트: {prefix}YYYY/MM/DD/{dataset_id}_{timestamp}.json
 
-    minio_jsonld_prefix TEXT,
-    -- MinIO JSON-LD 경로 prefix
+    s3_jsonld_prefix    TEXT,
+    -- S3 JSON-LD 경로 prefix
     -- 예) 'jsonld/shopping/naver_shopping_insight/'
 
     -- ── 저장 위치 : PostgreSQL ────────────────────────────────

@@ -135,7 +135,7 @@ INSERT INTO dcat_provenance (
 
 INSERT INTO data_registry (
     dataset_id,
-    minio_raw_prefix, minio_jsonld_prefix,
+    s3_raw_prefix, s3_jsonld_prefix,
     pg_meta_table, pg_active_table, vec_collection,
     status, last_collected_at, next_collect_at, last_error,
     row_count, temporal_start, temporal_end
