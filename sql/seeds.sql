@@ -1,7 +1,9 @@
 -- ═══════════════════════════════════════════════════════════════
 -- seeds.sql : 샘플 데이터 (개발/테스트용)
--- 실행 전 DDL 4개가 먼저 적용돼 있어야 함
--- 실행 순서: dcat_dataset → dcat_provenance → data_registry → dcat_dataset_vec
+-- 실행 전 DDL이 모두 적용돼 있어야 함
+-- 실행 순서:
+--   dcat_dataset → dcat_provenance → data_registry → dcat_dataset_vec
+--   → meta_youtube_video → active_meta_youtube → meta_youtube_video_vec
 -- ═══════════════════════════════════════════════════════════════
 
 -- ── dcat_dataset ──────────────────────────────────────────────
@@ -11,7 +13,8 @@ INSERT INTO dcat_dataset (
     publisher, source_type, landing_page, access_url, subjects,
     language, spatial, temporal_start, temporal_end,
     temporal_resolution, accrual_periodicity,
-    keywords, license, rights
+    keywords, license, rights,
+    dataset_origin
 ) VALUES
 (
     'naver_shopping_insight',
@@ -24,7 +27,8 @@ INSERT INTO dcat_dataset (
     'ko', 'KR', '2025-06-17', '2026-06-16', 'P1D', 'P1D',
     '["쇼핑","검색량","카테고리","성별","연령","네이버"]',
     'https://developers.naver.com/notice/terms',
-    '네이버 API 이용약관 준수. 수집 데이터의 외부 배포 및 상업적 재판매 금지.'
+    '네이버 API 이용약관 준수. 수집 데이터의 외부 배포 및 상업적 재판매 금지.',
+    'admin'
 ),
 (
     'naver_persona_insight',
@@ -37,7 +41,8 @@ INSERT INTO dcat_dataset (
     'ko', 'KR', '2025-06-18', '2026-06-17', 'P1D', 'P1D',
     '["쇼핑","페르소나","성별","연령","카테고리"]',
     'https://developers.naver.com/notice/terms',
-    '네이버 API 이용약관 준수. 수집 데이터의 외부 배포 및 상업적 재판매 금지.'
+    '네이버 API 이용약관 준수. 수집 데이터의 외부 배포 및 상업적 재판매 금지.',
+    'admin'
 ),
 (
     'youtube_samsung_official',
@@ -50,7 +55,8 @@ INSERT INTO dcat_dataset (
     'ko', 'KR', '2024-01-01', NULL, NULL, 'P7D',
     '["유튜브","삼성전자","테크","채널"]',
     'https://developers.google.com/youtube/terms/api-services-tos',
-    'YouTube API Services Terms of Service 준수. 수집 데이터의 제3자 제공 시 Google 사전 승인 필요.'
+    'YouTube API Services Terms of Service 준수. 수집 데이터의 제3자 제공 시 Google 사전 승인 필요.',
+    'admin'
 ),
 (
     'naver_news_ai',
@@ -63,7 +69,22 @@ INSERT INTO dcat_dataset (
     'ko', 'KR', '2026-01-01', NULL, NULL, 'P1D',
     '["뉴스","AI","인공지능","네이버"]',
     'https://developers.naver.com/notice/terms',
-    '네이버 API 이용약관 준수. 뉴스 본문 스크래핑은 각 언론사 저작권 정책 별도 확인 필요.'
+    '네이버 API 이용약관 준수. 뉴스 본문 스크래핑은 각 언론사 저작권 정책 별도 확인 필요.',
+    'admin'
+),
+-- user 생성 예시: YouTube 채널 2개에서 HBM 관련 영상만 직접 선택한 사용자 정의 데이터셋
+(
+    'user_hbm_video_collection',
+    'HBM 관련 영상 모음',
+    '삼성전자·SK하이닉스 채널에서 HBM(High Bandwidth Memory) 관련 영상을 직접 선택해 구성한 사용자 정의 데이터셋.',
+    'YouTube', 'video',
+    NULL, NULL,
+    '["UCWwgaK7x0_FR1goeSRDDOkg","UCclAMeNn0QFBv0JDgCWBqPg"]',
+    'ko', 'KR', NULL, NULL, NULL, NULL,
+    '["HBM","반도체","삼성전자","SK하이닉스"]',
+    'https://developers.google.com/youtube/terms/api-services-tos',
+    'YouTube API Services Terms of Service 준수.',
+    'user'
 );
 
 -- ── dcat_provenance ───────────────────────────────────────────
@@ -113,9 +134,9 @@ INSERT INTO dcat_provenance (
 ),
 (
     'youtube_samsung_official', 'initial', 'youtube_collector', 'manual',
-    '2026-06-30 04:00:00+09', '2026-06-30 04:03:21+09', 'success', 342,
+    '2026-06-30 04:00:00+09', '2026-06-30 04:03:21+09', 'success', 3,
     '{"channel_id":"UCWwgaK7x0_FR1goeSRDDOkg","max_results":500}',
-    NULL, '채널 전체 영상 최초 수집'
+    NULL, '채널 전체 영상 최초 수집 (샘플 3건)'
 ),
 (
     'naver_news_ai', 'initial', 'naver_news', 'manual',
@@ -143,34 +164,207 @@ INSERT INTO data_registry (
 (
     'naver_shopping_insight',
     'raw/shopping/naver_shopping_insight/', 'jsonld/shopping/naver_shopping_insight/',
-    'meta_naver_shopping', 'active_naver_shopping', 'dcat_dataset_vec',
+    'meta_naver_shopping', 'active_meta_naver_shopping', 'dcat_dataset_vec',
     'active', '2026-06-30 02:01:09+09', '2026-07-01 02:00:00+09', NULL,
     5278, '2025-06-17', '2026-06-16'
 ),
 (
     'naver_persona_insight',
     'raw/shopping/naver_persona_insight/', 'jsonld/shopping/naver_persona_insight/',
-    'meta_naver_persona', 'active_naver_persona', 'dcat_dataset_vec',
+    'meta_naver_persona', 'active_meta_naver_persona', 'dcat_dataset_vec',
     'active', '2026-06-30 03:02:31+09', '2026-07-01 03:00:00+09', NULL,
     57876, '2025-06-18', '2026-06-17'
 ),
 (
     'youtube_samsung_official',
     'raw/video/youtube_samsung_official/', 'jsonld/video/youtube_samsung_official/',
-    'meta_youtube_video', 'active_youtube_video', 'dcat_dataset_vec',
+    'meta_youtube_video', 'active_meta_youtube', 'dcat_dataset_vec',
     'active', '2026-06-30 04:03:21+09', '2026-07-07 04:00:00+09', NULL,
-    342, '2024-01-01', NULL
+    3, '2024-01-01', NULL
 ),
 (
     'naver_news_ai',
     'raw/news/naver_news_ai/', 'jsonld/news/naver_news_ai/',
-    'meta_naver_news', 'active_naver_news', 'dcat_dataset_vec',
+    'meta_naver_news', 'active_meta_naver_news', 'dcat_dataset_vec',
     'error', '2026-01-01 06:00:47+09', '2026-07-01 06:00:00+09',
     'HTTP 429 Too Many Requests: API 일일 호출 한도 초과',
     1200, '2026-01-01', NULL
+),
+(
+    'user_hbm_video_collection',
+    NULL, NULL,
+    'meta_youtube_video', 'active_meta_youtube', 'dcat_dataset_vec',
+    'pending', NULL, NULL, NULL,
+    0, NULL, NULL
 );
 
 -- ── dcat_dataset_vec ──────────────────────────────────────────
 -- 임베딩은 scripts/embed_datasets.py 로 생성
 -- seeds.sql 실행 후 아래 명령어로 임베딩 삽입:
 --   python scripts/embed_datasets.py
+
+-- ── meta_youtube_video ────────────────────────────────────────
+
+INSERT INTO meta_youtube_video (
+    dataset_id, video_id,
+    title, description, published_at,
+    channel_id, channel_title,
+    tags, category_id,
+    duration, duration_seconds,
+    definition, default_language, default_audio_language,
+    has_caption, thumbnail_url,
+    initial_view_count, initial_like_count, initial_comment_count
+) VALUES
+-- youtube_samsung_official 채널 영상 3건
+(
+    'youtube_samsung_official',
+    'yt_vid_001',
+    'Samsung Galaxy S25 Ultra | Official Introduction',
+    '삼성전자 갤럭시 S25 Ultra 공식 소개 영상. 새로운 AI 기능과 카메라 성능 업그레이드를 담았습니다.',
+    '2025-01-22 10:00:00+09',
+    'UCWwgaK7x0_FR1goeSRDDOkg', 'Samsung',
+    '["Galaxy","S25","Ultra","Samsung","갤럭시","스마트폰"]',
+    '28',
+    'PT3M42S', 222,
+    'hd', 'ko', 'ko',
+    TRUE, 'https://i.ytimg.com/vi/yt_vid_001/maxresdefault.jpg',
+    15230000, 98000, 4200
+),
+(
+    'youtube_samsung_official',
+    'yt_vid_002',
+    'Samsung HBM3E | 12단 적층 기술 소개',
+    '삼성전자 HBM3E 12단 적층 D램의 기술 개요. AI 서버용 고성능 메모리 솔루션.',
+    '2024-08-15 14:00:00+09',
+    'UCWwgaK7x0_FR1goeSRDDOkg', 'Samsung',
+    '["HBM","HBM3E","반도체","메모리","AI","데이터센터"]',
+    '28',
+    'PT5M17S', 317,
+    'hd', 'ko', 'ko',
+    TRUE, 'https://i.ytimg.com/vi/yt_vid_002/maxresdefault.jpg',
+    3820000, 41000, 890
+),
+(
+    'youtube_samsung_official',
+    'yt_vid_003',
+    'Galaxy AI | 2025 AI 기능 완벽 정리',
+    '갤럭시 AI의 2025년 주요 기능을 한눈에 정리. 실시간 통역, 서클 투 서치 등 핵심 AI 기능 시연.',
+    '2025-03-10 10:00:00+09',
+    'UCWwgaK7x0_FR1goeSRDDOkg', 'Samsung',
+    '["Galaxy AI","AI","갤럭시","인공지능","서클투서치"]',
+    '28',
+    'PT7M05S', 425,
+    'hd', 'ko', 'ko',
+    TRUE, 'https://i.ytimg.com/vi/yt_vid_003/maxresdefault.jpg',
+    8940000, 67000, 2100
+),
+-- user_hbm_video_collection: yt_vid_002는 위와 동일한 영상이지만 별도 데이터셋으로 추적
+(
+    'user_hbm_video_collection',
+    'yt_vid_002',
+    'Samsung HBM3E | 12단 적층 기술 소개',
+    '삼성전자 HBM3E 12단 적층 D램의 기술 개요. AI 서버용 고성능 메모리 솔루션.',
+    '2024-08-15 14:00:00+09',
+    'UCWwgaK7x0_FR1goeSRDDOkg', 'Samsung',
+    '["HBM","HBM3E","반도체","메모리","AI","데이터센터"]',
+    '28',
+    'PT5M17S', 317,
+    'hd', 'ko', 'ko',
+    TRUE, 'https://i.ytimg.com/vi/yt_vid_002/maxresdefault.jpg',
+    3820000, 41000, 890
+);
+
+-- ── active_meta_youtube ───────────────────────────────────────
+-- meta_youtube_video.id 는 BIGSERIAL이라 삽입 순서대로 1,2,3,4 가 됨
+-- 1 = youtube_samsung_official / yt_vid_001
+-- 2 = youtube_samsung_official / yt_vid_002
+-- 3 = youtube_samsung_official / yt_vid_003
+-- 4 = user_hbm_video_collection / yt_vid_002
+
+INSERT INTO active_meta_youtube (
+    meta_id, collected_at,
+    view_count, like_count, comment_count,
+    delta_views, delta_likes, delta_comments
+) VALUES
+-- meta_id=1 (samsung_official / yt_vid_001): 2회 수집
+(1, '2026-06-30 04:03:21+09',  15230000, 98000, 4200,   NULL,  NULL,  NULL),
+(1, '2026-07-07 04:01:44+09',  15410000, 99200, 4350,  180000,  1200,   150),
+-- meta_id=2 (samsung_official / yt_vid_002): 2회 수집
+(2, '2026-06-30 04:03:21+09',   3820000, 41000,  890,   NULL,  NULL,  NULL),
+(2, '2026-07-07 04:01:44+09',   3851000, 41300,  910,   31000,   300,    20),
+-- meta_id=3 (samsung_official / yt_vid_003): 2회 수집
+(3, '2026-06-30 04:03:21+09',   8940000, 67000, 2100,   NULL,  NULL,  NULL),
+(3, '2026-07-07 04:01:44+09',   9020000, 67800, 2180,   80000,   800,    80),
+-- meta_id=4 (user_hbm / yt_vid_002): 이 데이터셋은 07-06에 추가됨 → 수집 타임라인 독립
+(4, '2026-07-06 10:00:00+09',   3848000, 41280,  908,   NULL,  NULL,  NULL);
+
+-- ── meta_naver_news ───────────────────────────────────────────
+
+INSERT INTO meta_naver_news (
+    dataset_id, article_url,
+    title, description, content, has_content,
+    publisher, naver_url, published_at,
+    is_naver_hosted, naver_oid, naver_aid,
+    search_keyword
+) VALUES
+-- Naver 호스팅 기사 (댓글 수집 가능)
+(
+    'naver_news_ai',
+    'https://www.yna.co.kr/view/AKR20260704000000017',
+    '삼성전자, 차세대 AI 반도체 HBM4 개발 본격화',
+    '삼성전자가 엔비디아 차세대 AI 가속기에 탑재될 HBM4(High Bandwidth Memory 4) 개발을 본격화했다고 밝혔다.',
+    '삼성전자는 4일 차세대 AI 반도체 메모리인 HBM4 개발에 착수했다고 발표했다. HBM4는 기존 HBM3E 대비 대역폭이 2배 이상 향상되며 전력 효율도 크게 개선될 것으로 기대된다. 삼성전자 관계자는 "2027년 양산을 목표로 개발 중"이라고 밝혔다.',
+    TRUE,
+    '연합뉴스',
+    'https://news.naver.com/article/001/0015300001',
+    '2026-07-04 10:30:00+09',
+    TRUE, '001', '0015300001',
+    '인공지능'
+),
+-- Naver 호스팅 기사 (댓글 수집 가능)
+(
+    'naver_news_ai',
+    'https://biz.chosun.com/it-science/ict/2026/07/03/ai-data-center',
+    'AI 데이터센터 전력 수요 급증... 2030년 국내 전력 소비의 15% 차지',
+    'AI 데이터센터의 폭발적인 성장으로 전력 수요가 급증하고 있으며 2030년에는 국내 전체 전력 소비의 15%를 차지할 것으로 전망된다.',
+    '인공지능(AI) 기술이 급속도로 발전하면서 AI 데이터센터의 전력 소비가 급증하고 있다. 한국전력공사에 따르면 2030년 AI 데이터센터의 전력 소비량은 현재의 5배에 달할 것으로 예측된다. 이에 따라 신재생에너지 확충과 전력망 고도화가 시급한 과제로 떠올랐다.',
+    TRUE,
+    '조선비즈',
+    'https://news.naver.com/article/023/0003878001',
+    '2026-07-03 14:00:00+09',
+    TRUE, '023', '0003878001',
+    'AI'
+),
+-- 외부 기사 (댓글 수집 불가 — is_naver_hosted=FALSE)
+(
+    'naver_news_ai',
+    'https://www.sedaily.com/NewsView/2DABCDEF12',
+    '머신러닝 모델 경량화 기술 동향... 온디바이스 AI 시대 가속',
+    '온디바이스 AI 구현을 위한 머신러닝 모델 경량화 기술이 빠르게 발전하고 있다.',
+    '스마트폰·IoT 기기에서 AI를 직접 구동하는 온디바이스 AI 시대가 가속화되면서 모델 경량화 기술이 주목받고 있다. 양자화(Quantization), 지식 증류(Knowledge Distillation), 가지치기(Pruning) 등 다양한 기법이 발전하며 대형 AI 모델을 소형 기기에서도 구동할 수 있게 됐다.',
+    TRUE,
+    '서울경제',
+    NULL,
+    '2026-07-02 09:00:00+09',
+    FALSE, NULL, NULL,
+    '머신러닝'
+);
+
+-- ── active_meta_naver_news ────────────────────────────────────
+-- meta_naver_news.id 는 BIGSERIAL이라 삽입 순서대로 1,2,3 이 됨
+-- 1 = naver_news_ai / 연합뉴스 HBM4 기사 (Naver 호스팅)
+-- 2 = naver_news_ai / 조선비즈 데이터센터 기사 (Naver 호스팅)
+-- 3 = naver_news_ai / 서울경제 경량화 기사 (외부 기사 — 행 없음)
+
+INSERT INTO active_meta_naver_news (
+    meta_id, collected_at,
+    comment_count, expose_count, reply_count,
+    delta_comments
+) VALUES
+-- meta_id=1 (연합뉴스 HBM4): 2회 수집
+(1, '2026-07-04 11:00:00+09',  28,  25,  3,  NULL),
+(1, '2026-07-06 11:00:00+09',  42,  40,  8,    14),
+-- meta_id=2 (조선비즈 데이터센터): 2회 수집
+(2, '2026-07-03 15:00:00+09',   8,   8,  0,  NULL),
+(2, '2026-07-06 11:00:00+09',  15,  14,  2,     7);
+-- meta_id=3 (서울경제 외부 기사): is_naver_hosted=FALSE → 행 없음

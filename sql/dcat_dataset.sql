@@ -90,6 +90,14 @@ CREATE TABLE dcat_dataset (
     -- 예) "YouTube API ToS 준수. 제3자 제공 시 Google 사전 승인 필요."
     -- 예) "출처 표시 조건 하에 자유로운 이용 가능. 상업적 이용 및 변경 허용."
 
+    -- ── 생성 주체 ─────────────────────────────────────────────
+    dataset_origin      TEXT NOT NULL DEFAULT 'admin',
+    -- 데이터셋 생성 주체
+    -- 'admin' : 관리자가 생성 (채널 1개, 검색어 1개 등 단일 대상 자동 수집)
+    -- 'user'  : 사용자가 UI에서 직접 생성 (동일 소스 타입 내 복수 채널·영상·검색어 자유 조합)
+    --           예) YouTube 데이터셋: 채널 여러 개 + 개별 영상 선택
+    --           주의: source_type이 다른 항목(YouTube+뉴스 혼합 등)은 지원하지 않음
+
     -- ── 관리 ──────────────────────────────────────────────────
     version             TEXT NOT NULL DEFAULT '1.0',
     -- owl:versionInfo | 수집 방식 변경 시 버전 올림
