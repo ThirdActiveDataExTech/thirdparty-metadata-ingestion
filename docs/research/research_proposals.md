@@ -1229,6 +1229,432 @@ K값에 따른 정확도-속도 트레이드오프 곡선을 그린다.
 ---
 ---
 
+# P09. YouTube 썸네일+텍스트 멀티모달 임베딩을 이용한 영상 검색 성능 향상
+
+## 연구 필요성 (Research Gap)
+
+YouTube 영상 검색 시스템은 제목·설명·태그 등 텍스트 메타데이터에 의존한다. 그러나
+썸네일은 영상 내용을 압축한 시각 요약으로, 텍스트에서 드러나지 않는 정보(등장 제품,
+화면 구성, 감성 톤)를 담는다. **CLIP 모델 기반 썸네일 시각 임베딩을 텍스트 임베딩과
+결합해 한국어 YouTube 도메인 검색 성능을 향상시키는 연구**는 발표된 바 없다.
+
+특히 기술 설명형(다이어그램 중심)·인물형(얼굴 중심)·제품형 썸네일처럼 시각 정보의
+밀도가 카테고리마다 다른 환경에서 융합 가중치를 최적화하는 방법도 명확하지 않다.
+
+## 관련 연구 (Related Work)
+
+| 문헌 | 내용 | 한계 |
+|------|------|------|
+| Radford et al. (2021). "Learning Transferable Visual Models From Natural Language Supervision (CLIP)." *ICML*. | 이미지-텍스트 대조 학습으로 zero-shot 이미지 분류·텍스트-이미지 검색의 강력한 기반 모델 확립. | 한국어 도메인 YouTube 검색에의 직접 적용 및 평가 없음 |
+| Fang et al. (2021). "CLIP2Video: Mastering Video-Text Retrieval via Image CLIP." arXiv:2106.11097. | 프레임 단위 CLIP 임베딩을 시간 집계해 비디오-텍스트 검색에 적용. 영어 데이터셋(MSR-VTT) 중심. | 썸네일 단일 프레임 활용 및 한국어 메타데이터 텍스트 임베딩과의 융합 평가 없음 |
+| Reimers & Gurevych (2019). "Sentence-BERT." *EMNLP*, 3982–3992. | 다국어 텍스트 임베딩 모델. 한국어 포함 검색에 활용됨. | 시각 채널과의 융합 방법 및 최적 가중치 미제시 |
+| Li et al. (2022). "BLIP: Bootstrapping Language-Image Pre-training for Unified Vision-Language Understanding and Generation." *ICML*. | 이미지-텍스트 통합 모델로 검색·캡션 생성·VQA를 단일 아키텍처로 처리. | 한국어 도메인 적용 평가 없음; 카테고리별 시각 정보 기여도 분석 없음 |
+
+기존 멀티모달 검색 연구들은 영어 대규모 데이터셋에서의 성능을 중심으로 평가하며, 한국어 YouTube 도메인에서 썸네일 임베딩과 텍스트 임베딩의 최적 융합 비율 및 카테고리별 효과를 분석한 연구는 없다.
+
+## 기여점 (Contribution)
+
+- CLIP 썸네일 임베딩 + 다국어 텍스트 임베딩 late fusion 검색 파이프라인 구축
+- 텍스트 단독 vs. 시각 단독 vs. late fusion 3방향 비교 실험
+- 콘텐츠 카테고리(기술 설명형·인물형·제품형)별 최적 융합 가중치 분석
+- meta_youtube_video_vec 확장: 시각 임베딩 컬럼 추가 설계
+
+## 제목
+
+> *Multimodal Video Retrieval via Thumbnail-Text Fusion Embeddings for Korean YouTube Content*
+
+## 초록
+
+YouTube 영상 검색 시스템은 제목·설명·태그 등 텍스트 메타데이터에 의존하며 썸네일의 시각
+정보를 활용하지 못한다. 본 연구는 CLIP ViT-B/32로 추출한 썸네일 시각 임베딩과 다국어
+텍스트 임베딩을 late fusion 방식으로 결합해 검색 성능을 향상시키는 방법을 제안한다.
+한국어 AI·반도체 도메인 YouTube 영상 1,000개와 50개 테스트 쿼리로 MRR·NDCG@10 개선
+효과를 실증하고, 시각 정보가 도움이 되는 콘텐츠 유형을 카테고리별로 분석한다.
+
+## 연구 내용
+
+### 1단계: 임베딩 추출
+
+```
+썸네일 URL → 다운로드 → CLIP ViT-B/32 → 512-dim 시각 벡터 v_img
+제목 + 설명 → paraphrase-multilingual-mpnet-base-v2 → 768-dim → PCA 512-dim v_txt
+```
+
+### 2단계: Fusion 방법 비교
+
+```
+Late Fusion:   score = α × sim(q_img, d_img) + (1-α) × sim(q_txt, d_txt)
+               α ∈ {0.1, 0.3, 0.5, 0.7, 0.9}
+
+Concat Fusion: [v_img ; v_txt] → 1024-dim 벡터 (단순 concatenation)
+Learned Fusion: linear(α) 파라미터를 validation 쿼리 20개로 학습
+```
+
+### 3단계: 카테고리별 분석
+
+```
+기술 설명형 (다이어그램·슬라이드 썸네일) → 시각 정보 고밀도 → α 높을 것
+인물형 (얼굴 중심 썸네일)                → 텍스트 보완 필요 → α 낮을 것
+제품형 (제품·패키지 썸네일)              → 시각 정보 중간
+```
+
+---
+
+## 연구 방법
+
+### 핵심 연구 질문
+
+> "썸네일 시각 임베딩을 텍스트 임베딩과 결합했을 때 텍스트 단독 대비 검색 정확도가
+> 유의미하게 향상되는가? 향상 효과는 콘텐츠 카테고리에 따라 다른가?"
+
+### 실험 1: 쿼리셋 구축 및 Relevance 레이블링
+
+50개 한국어 테스트 쿼리를 작성하고 영상 1,000개에 대해 상위 20개 후보의 관련성을
+2인 독립 레이블로 수동 평가 (관련/부분관련/무관).
+
+### 실험 2: 가중치 탐색 (Validation)
+
+Validation 쿼리 20개로 α를 그리드 탐색해 MRR@10이 최대인 α를 선택한다.
+
+### 실험 3: 카테고리별 효과 분석
+
+썸네일 유형(기술 설명형·인물형·제품형)별로 그룹을 나눠
+각 그룹에서 최적 α와 MRR 향상 폭을 비교한다.
+
+---
+
+## 평가 방법
+
+### 비교 대상
+
+| 방법 | 설명 |
+|------|------|
+| Text-only | 텍스트 임베딩 단독 (paraphrase-multilingual-mpnet-base-v2) |
+| Visual-only | CLIP 썸네일 임베딩 단독 |
+| Late Fusion (최적 α) | 제안 방법 |
+| Concat Fusion | 벡터 단순 연결 |
+| Learned Fusion | Validation으로 학습된 가중치 |
+
+### 측정 지표와 연결 이유
+
+| 지표 | 측정 대상 | 연결 이유 |
+|------|----------|----------|
+| MRR@10 | 첫 관련 결과의 순위 역수 평균 | 사용자 첫 클릭 품질을 직접 측정 |
+| NDCG@10 | 상위 10개 순위 가중 품질 | 전반적 검색 목록 품질 평가 |
+| Recall@10 | 정답 중 상위 10개 안에 포함된 비율 | 시각 정보가 관련 결과를 더 많이 회수하는지 |
+| 카테고리별 MRR | 썸네일 유형 그룹별 성능 분해 | 시각 정보 기여도가 콘텐츠 유형에 따라 다른지 확인 |
+
+### 해석 기준
+
+- Late Fusion MRR@10 > Text-only + 0.05 → 시각 정보의 실질적 기여 입증
+- Wilcoxon signed-rank test p < 0.05 → 통계적 유의성 확보
+- 기술 설명형 MRR 향상 > 인물형 MRR 향상 → 카테고리 가설 검증
+
+## 구현 난이도: ★★★☆☆
+
+- CLIP CPU 추론 가능 (썸네일 1,000개 배치 약 30–40분)
+- 평가 쿼리 50개 + relevance 레이블 수동 작업이 주요 비용
+- meta_youtube_video_vec에 visual_embedding 컬럼 추가 필요
+
+## 향후 확장성
+
+- 썸네일 단일 프레임 → 영상 대표 프레임 3장 샘플링으로 확장
+- 썸네일 변경 감지: 리그랜트 후 A/B 썸네일 교체 탐지
+- CLIP fine-tuning으로 한국어 기술 도메인 특화
+
+---
+---
+
+# P10. 비전-언어 모델을 이용한 YouTube 썸네일 메타데이터 자동 생성
+
+## 연구 필요성 (Research Gap)
+
+P03(트랜스크립트 기반 LLM 메타데이터 생성)은 텍스트 채널만 활용한다. 그러나
+썸네일에는 **제품·인물·감성 톤처럼 트랜스크립트에 언급되지 않는 시각 정보**가
+존재한다. 비전-언어 모델(VLM)을 이용해 썸네일에서 구조화 메타데이터를 추출하고
+트랜스크립트 기반 메타데이터와의 보완 관계를 실증한 연구는 없다.
+
+특히 GPU 없는 환경에서 Groq 무료 Vision API를 통해 이 파이프라인을 실용적으로
+구현할 수 있는지의 검증도 연구 가치가 있다.
+
+## 관련 연구 (Related Work)
+
+| 문헌 | 내용 | 한계 |
+|------|------|------|
+| Liu et al. (2023). "Visual Instruction Tuning (LLaVA)." *NeurIPS*, 36. | 시각 인스트럭션 튜닝으로 이미지에 대한 자유형식 질문 응답 가능한 VLM 공개. 한국어 입력·출력 지원 가능. | 한국어 YouTube 도메인 구조화 메타데이터 추출 평가 없음 |
+| Zhu et al. (2023). "MiniGPT-4: Enhancing Vision-Language Understanding." arXiv:2304.10592. | 소형(7B) VLM으로 고품질 이미지 설명·추론 가능. | 제목·썸네일 보완 관계 분석 없음 |
+| Radford et al. (2021). "CLIP." *ICML*. | 이미지-텍스트 정렬 모델로 이미지 분류·검색 광범위 활용. | 구조화 메타데이터 생성(자유 형식 텍스트 출력) 불가 |
+| Zhang et al. (2023). "Video-LLaMA: An Instruction-tuned Audio-Visual Language Model for Video Understanding." *EMNLP (Demo)*. | 비디오 프레임+오디오를 LLM에 결합해 영상 내용 이해. | 썸네일 단일 이미지 → 구조화 메타 추출 실용성 평가 없음 |
+
+기존 VLM 연구들은 일반 이미지 이해 능력 향상에 집중하며, 한국어 YouTube 썸네일에서 트랜스크립트가 담지 못하는 신규 메타데이터를 추출하고 검색 성능 향상으로 연결하는 end-to-end 평가가 없다.
+
+## 기여점 (Contribution)
+
+- VLM 썸네일 메타데이터 4종 추출 파이프라인 (visual_summary·dominant_objects·visual_emotion·layout_type)
+- 트랜스크립트 LLM 메타 vs. VLM 썸네일 메타의 정보 보완성 정량화 (Jaccard 기반 신규 정보 비율)
+- 트랜스크립트 없는 영상(has_content=FALSE)에서 VLM 대체 활용 가능성 실증
+- Groq Vision API 무료 tier로의 실용적 파이프라인 구현 및 비용·품질 분석
+
+## 제목
+
+> *Vision-Language Models for Automated Thumbnail Metadata Generation in Korean YouTube Content*
+
+## 초록
+
+YouTube 영상 썸네일은 콘텐츠의 시각적 요약을 담고 있으나 기존 메타데이터 자동 생성 연구는
+트랜스크립트 텍스트에 편중되어 있다. 본 연구는 비전-언어 모델(LLaVA 계열, Groq Vision API)을
+통해 썸네일에서 시각적 메타데이터 4종(시각 요약·주요 객체·감성·레이아웃 유형)을 자동 추출하는
+파이프라인을 구축하고, 트랜스크립트 기반 LLM 메타데이터와의 보완성을 실험적으로 검증한다.
+특히 트랜스크립트가 없는 영상에서 VLM이 실용적 대체 수단이 될 수 있는지를 중점 평가한다.
+
+## 연구 내용
+
+### 1단계: VLM 추론 파이프라인
+
+```
+썸네일 URL 다운로드
+    ↓
+Groq Vision API (llava-v1.5-7b) 호출
+    ↓ 프롬프트:
+    "다음 YouTube 썸네일을 분석하여 JSON 형식으로 출력하라:
+     visual_summary (1문장), dominant_objects (최대 3개 배열),
+     visual_emotion (positive/neutral/dramatic/humorous 중 1개),
+     layout_type (face-centered/diagram/product/collage 중 1개)"
+    ↓
+JSON 파싱 → meta_youtube_video_ai 확장 컬럼에 저장
+```
+
+### 2단계: 정보 보완성 분석
+
+```
+LLM 트랜스크립트 키워드 집합: K_transcript
+VLM 썸네일 키워드 집합: K_visual
+
+Jaccard 유사도 = |K_transcript ∩ K_visual| / |K_transcript ∪ K_visual|
+신규 정보 비율 = |K_visual \ K_transcript| / |K_visual|
+```
+
+신규 정보 비율이 높을수록 두 채널이 상호 보완적임을 의미한다.
+
+### 3단계: Ablation 검색 실험
+
+```
+조건 A: API 메타만 (제목+설명+태그)
+조건 B: A + 트랜스크립트 LLM 메타
+조건 C: A + VLM 썸네일 메타
+조건 D: A + B + C (전체 결합)
+```
+
+---
+
+## 연구 방법
+
+### 핵심 연구 질문
+
+> "VLM이 썸네일에서 추출한 시각 메타데이터는 트랜스크립트가 포착하지 못하는 신규 정보를
+> 충분히 포함하며, 이를 추가했을 때 검색 성능이 유의미하게 향상되는가?"
+
+### 실험 1: VLM 메타데이터 품질 인간 평가
+
+100개 영상의 visual_summary를 3인이 1–5점으로 평가 (정확성·구체성·유용성).
+GPT-4V 생성 결과를 upper bound baseline으로 병행 평가한다.
+
+### 실험 2: 정보 보완성 분석
+
+has_content=TRUE 그룹 (트랜스크립트 있음) vs. has_content=FALSE 그룹에서 각각
+신규 정보 비율을 측정해 트랜스크립트 유무에 따른 VLM 기여도를 비교한다.
+
+### 실험 3: 4조건 Ablation 검색 실험
+
+50개 테스트 쿼리로 A·B·C·D 조건의 MRR@10·NDCG@10을 비교하고
+Friedman 검정으로 조건 간 유의 차이를 확인한다.
+
+---
+
+## 평가 방법
+
+### 비교 대상
+
+| 방법 | 설명 |
+|------|------|
+| 조건 A (Baseline) | API 메타데이터 텍스트 임베딩만 |
+| 조건 B | A + 트랜스크립트 LLM 메타 (P03 방법) |
+| 조건 C | A + VLM 썸네일 메타 (제안 방법) |
+| 조건 D | A + B + C (최대 결합) |
+
+### 측정 지표와 연결 이유
+
+| 지표 | 측정 대상 | 연결 이유 |
+|------|----------|----------|
+| Human Rating (1–5) | VLM 메타데이터 품질 | 자동 지표가 없는 생성 품질의 직접 측정 |
+| 신규 정보 비율 (%) | VLM 전용 키워드 비율 | 보완성의 정도를 정량화 |
+| MRR@10 | 검색 정확도 | 생성 메타가 실제 검색에 기여하는지 |
+| NDCG@10 | 검색 순위 품질 | 전반적 목록 향상 측정 |
+| Friedman p-value | 4조건 간 차이 유의성 | 조건별 성능 차이가 우연이 아님을 확인 |
+
+### 해석 기준
+
+- Human Rating 평균 ≥ 3.5 → 실용 수준의 VLM 메타데이터 품질
+- 신규 정보 비율 > 30% → 트랜스크립트와 충분히 독립적인 정보 제공
+- 조건 C가 조건 A 대비 MRR@10 > +0.03 → VLM 메타의 검색 기여 입증
+
+## 구현 난이도: ★★★★☆
+
+- Groq Vision API 무료 tier 가용 여부 및 한국어 JSON 출력 안정성 사전 확인 필요
+- 100개 영상 인간 레이블링이 주요 비용
+- VLM 프롬프트 엔지니어링 및 JSON 파싱 오류 처리 필요
+- meta_youtube_video_ai 테이블에 VLM 전용 컬럼 추가 설계 필요
+
+## 향후 확장성
+
+- 뉴스 기사 대표 이미지로 확장 (meta_naver_news 이미지 URL 수집)
+- 썸네일 A/B 변경 탐지: VLM 설명이 달라지면 썸네일 교체 감지
+- 제품 인식 결과를 Naver 쇼핑 카테고리에 자동 매핑
+
+---
+---
+
+# P11. 썸네일-제목 의미 정합성을 활용한 한국어 YouTube 클릭베이트 탐지
+
+## 연구 필요성 (Research Gap)
+
+한국어 YouTube에서 클릭베이트—썸네일과 제목이 실제 내용과 유리된 영상—는 사용자
+신뢰를 저해하는 주요 문제다. 기존 탐지 연구는 제목 텍스트의 감탄사·과장 표현 분석에
+집중하며, **썸네일과 제목 사이의 시각-언어 의미 정합성(semantic alignment)을
+탐지 신호로 활용한 한국어 연구**는 없다. CLIP 모델의 이미지-텍스트 정렬 능력을
+활용하면 텍스트 분석이 포착하지 못하는 "시각적 낚시"(정상 제목·이상 썸네일)도
+탐지할 수 있다는 가설이 있다.
+
+## 관련 연구 (Related Work)
+
+| 문헌 | 내용 | 한계 |
+|------|------|------|
+| Chakraborty et al. (2016). "Stop Clickbait: Detecting and Preventing Clickbaits in Online News Media." *IEEE/ACM ASONAM*. | 뉴스 제목의 텍스트 패턴(의문형·명사형 사용)으로 클릭베이트 탐지. 영어 뉴스 대상. | 시각 정보(썸네일) 미활용; 한국어 YouTube 클릭베이트 미분석 |
+| Anand et al. (2017). "We Used Neural Networks to Detect Clickbaits: You Won't Believe What Happened Next!" arXiv:1710.08347. | LSTM 기반 제목 텍스트 분류기로 클릭베이트 탐지. Clickbait Challenge 데이터셋(영어) 활용. | 시각 채널 없음; 한국어 환경 미적용 |
+| Chen & Chen (2022). "Detecting Clickbait in Online Social Media: You Won't Believe How We Did It." arXiv:2209.14898. | 다중 모달(텍스트+이미지 공동 임베딩)로 뉴스 클릭베이트 탐지 성능 향상 실증. | 영어 뉴스 대상; CLIP 기반 zero-shot alignment 신호 미사용 |
+| Radford et al. (2021). "CLIP." *ICML*. | 이미지-텍스트 의미 유사도를 zero-shot으로 계산 가능. | 클릭베이트 탐지에 직접 적용·평가한 연구 없음 |
+
+기존 클릭베이트 탐지 연구들은 영어 뉴스 텍스트 위주이며, CLIP 정합성 점수를 한국어 YouTube 클릭베이트의 zero-shot 탐지 신호로 활용하고 그 효과를 텍스트 단독 방법과 비교한 연구는 없다.
+
+## 기여점 (Contribution)
+
+- CLIP 썸네일-제목 코사인 유사도를 클릭베이트 탐지 신호로 활용하는 zero-shot 방법 제안
+- 한국어 YouTube 300건 클릭베이트 레이블 데이터셋 구축 (Cohen's Kappa 검증)
+- 텍스트 단독 vs. 시각 정합성 단독 vs. 멀티모달 결합 탐지 성능 비교
+- "시각적 낚시형"(정상 텍스트 + 이상 썸네일) 클릭베이트 유형 분류 체계 제안
+
+## 제목
+
+> *Multimodal Clickbait Detection via Thumbnail-Title Semantic Alignment Score in Korean YouTube*
+
+## 초록
+
+한국어 YouTube 클릭베이트 탐지 연구는 제목 텍스트 분석에 편중되어 있으며, 썸네일의 시각
+정보를 탐지에 활용한 연구는 없다. 본 연구는 CLIP 모델로 계산한 썸네일-제목 의미 정합성
+점수(alignment score)를 클릭베이트 탐지 신호로 활용하는 방법을 제안한다. 한국어 YouTube
+영상 300건에 대한 2인 독립 클릭베이트 레이블 데이터셋을 구축하고, 텍스트 단독·시각 단독·
+멀티모달 결합 탐지기의 Precision·Recall·F1을 비교한다.
+
+## 연구 내용
+
+### 1단계: CLIP 정합성 점수 산출
+
+```
+alignment_score(v) = cosine_similarity(
+    CLIP_image(thumbnail_v),
+    CLIP_text(title_v)
+)
+범위: [-1, 1] — 값이 낮을수록 시각-텍스트 불일치
+```
+
+### 2단계: 클릭베이트 레이블 체계
+
+```
+유형 A (시각적 낚시): 썸네일 내용이 영상 내용과 완전 무관 (예: 유명인 얼굴 삽입)
+유형 B (텍스트 낚시): 과장 표현·물음표 제목으로 호기심 유발
+유형 C (혼합):        A + B 동시
+비클릭베이트:         정상
+```
+
+### 3단계: 탐지 모델 비교
+
+```
+M1 — 텍스트 단독:       제목 내 감탄사·과장 표현·물음표 비율 → Logistic Regression
+M2 — 시각 단독:         alignment_score < τ → Threshold Classifier
+M3 — 멀티모달 결합:     [alignment_score, text_features] → Logistic Regression
+M4 — 유형 인식 결합:    유형 A/B/C 레이블로 multi-class 분류
+```
+
+---
+
+## 연구 방법
+
+### 핵심 연구 질문
+
+> "CLIP 썸네일-제목 정합성 점수가 텍스트 단독 특징 대비 한국어 클릭베이트 탐지에서
+> 추가적인 판별력을 제공하는가? 특히 '시각적 낚시형'은 텍스트 방법으로 탐지 불가능한가?"
+
+### 실험 1: 데이터셋 구축
+
+- 수집 영상 중 300건 샘플링 (클릭베이트 150건, 정상 150건 균형)
+- 2인 독립 레이블 후 Cohen's Kappa 측정 → Kappa > 0.7 목표
+- 불일치 케이스는 3인 합의로 결정
+
+### 실험 2: 정합성 점수 분포 분석
+
+클릭베이트 vs. 정상 그룹의 alignment_score 분포를 비교하고
+Mann-Whitney U-test로 두 그룹 차이의 통계적 유의성을 검정한다.
+
+### 실험 3: 탐지 성능 비교
+
+5-fold cross-validation으로 M1–M4의 Precision·Recall·F1을 비교한다.
+유형 A(시각적 낚시)는 M1이 탐지하기 어려우나 M2·M3는 가능할 것이라는 가설을 확인한다.
+
+---
+
+## 평가 방법
+
+### 비교 대상
+
+| 방법 | 설명 |
+|------|------|
+| Random Baseline | 무작위 50% 분류 |
+| M1 — Text-only | 제목 텍스트 패턴 → Logistic Regression |
+| M2 — Visual-only | alignment_score 임계값 분류 |
+| M3 — Multimodal | alignment_score + 텍스트 특징 결합 |
+
+### 측정 지표와 연결 이유
+
+| 지표 | 측정 대상 | 연결 이유 |
+|------|----------|----------|
+| Precision / Recall / F1 | 클릭베이트 탐지 정확도 | 오탐(Precision)과 미탐(Recall) 모두 중요 |
+| Cohen's Kappa | 레이블 일치율 | 데이터셋 신뢰성의 필수 검증 지표 |
+| ROC-AUC | 임계값 독립 전반 판별력 | 임계값 선택 없이 모델 자체 성능 비교 |
+| MWU p-value | 클릭베이트/정상 그룹 점수 분포 차이 | alignment_score가 신호로서 유효한지 사전 검증 |
+| 유형별 F1 | 유형 A/B/C 각각의 탐지 정확도 | 어떤 클릭베이트 유형에 시각 신호가 효과적인지 분석 |
+
+### 해석 기준
+
+- Cohen's Kappa > 0.7 → 레이블 신뢰 확보
+- M3 F1 > M1 F1 by ≥ 5%p → 시각 정합성 신호의 추가 기여 입증
+- ROC-AUC > 0.75 → 실용적 탐지기 수준
+- 유형 A에서 M2 Recall > M1 Recall by ≥ 20%p → "시각적 낚시" 가설 검증
+
+## 구현 난이도: ★★★☆☆
+
+- CLIP CPU 추론 가능 (썸네일 300건 처리 약 10분)
+- 300건 수동 레이블링이 주요 비용 (약 2–3인일)
+- 한국어 제목 → CLIP 텍스트 인코더의 처리 품질 사전 확인 필요 (영어 중심 학습)
+
+## 향후 확장성
+
+- 뉴스 기사 대표 이미지-헤드라인 정합성으로 확장 (뉴스 낚시 탐지)
+- 실시간 파이프라인 통합: data_registry에 clickbait_risk_score 컬럼 추가
+- 한국어 특화 CLIP fine-tuning으로 정합성 측정 정확도 향상
+
+---
+---
+
 ## 종합 비교
 
 | # | 주제 요약 | 독창성 | 데이터 준비 | 구현 | 기대 임팩트 | 단기 착수 |
@@ -1241,6 +1667,9 @@ K값에 따른 정확도-속도 트레이드오프 곡선을 그린다.
 | P06 | YouTube-쇼핑 Granger | ★★★★☆ | 즉시+ | ★★★ | 높음 | |
 | P07 | 한국어 도메인 RAG | ★★★☆☆ | 수집+평가셋 | ★★★★ | 높음 | |
 | P08 | 계층적 벡터 검색 | ★★★☆☆ | 즉시 | ★★★ | 중 | ✅ |
+| P09 | 썸네일+텍스트 멀티모달 검색 | ★★★★☆ | 즉시 | ★★★ | 높음 | ✅ |
+| P10 | VLM 썸네일 메타데이터 생성 | ★★★★☆ | 즉시+ | ★★★★ | 높음 | |
+| P11 | 썸네일-제목 클릭베이트 탐지 | ★★★★★ | 레이블링 | ★★★ | 중 | |
 
 > 구현 난이도: ★가 많을수록 어려움
 
@@ -1260,3 +1689,6 @@ K값에 따른 정확도-속도 트레이드오프 곡선을 그린다.
 | P06 | YouTube가 쇼핑을 선행하는가 | VAR 모델 + Granger 검정 | F-test p-value + 예측 RMSE 비교 |
 | P07 | 어떤 RAG 조합이 최선인가 | 12조합 × 100개 질문 전수 실험 | RAGAS 4지표 Kruskal-Wallis 검정 |
 | P08 | 계층 검색이 속도를 높이면서 정확도를 유지하는가 | K값 변화에 따른 tradeoff 측정 | MRR 차이 < 0.05 + 응답시간 50% 감소 |
+| P09 | 썸네일 시각 임베딩이 텍스트 검색을 보완하는가 | α 그리드 탐색 + 카테고리별 분석 | Late Fusion MRR > Text-only + 0.05 |
+| P10 | VLM 메타가 트랜스크립트 메타와 보완 관계인가 | 4조건 Ablation + 신규 정보 비율 측정 | 신규 정보 비율 > 30% + MRR 향상 > 0.03 |
+| P11 | 시각 정합성 점수가 클릭베이트 판별력을 높이는가 | M1–M3 모델 비교 + 유형별 분석 | Multimodal F1 > Text-only F1 by 5%p |
