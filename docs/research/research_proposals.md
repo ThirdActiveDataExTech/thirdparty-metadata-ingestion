@@ -45,6 +45,17 @@
 두 단계 Scale 보정(intra_scale × inter_scale)으로 장기 연속 시계열을 복원하는
 체계적 방법론**은 발표된 논문이 없다.
 
+## 관련 연구 (Related Work)
+
+| 문헌 | 내용 | 한계 |
+|------|------|------|
+| Choi & Varian (2012). "Predicting the Present with Google Trends." *The Economic Record*, 88(S1), 2–9. | Google Trends 상대 지수를 소비·고용 등 경제 지표 예측에 활용한 선구적 연구. 단일 수집 세션의 데이터만 사용해 배치 간 정규화 기준 차이 문제를 논의하지 않음. | 다수 배치·다수 수집 구간 간 보정 방법 미제시 |
+| Da, Engelberg & Gao (2011). "In Search of Attention." *Journal of Finance*, 66(5), 1461–1499. | 개인 투자자 관심도의 대리 지표로 Google SVI(Search Volume Index)를 활용. 상대값의 크로스 섹션 비교 한계를 언급하나 계량적 보정 방법을 제시하지 않음. | anchor 기반 연속 시계열 복원 없음 |
+| Preis, Moat & Stanley (2013). "Quantifying Trading Behavior Using Google Trends." *Scientific Reports*, 3, 1684. | 검색 트렌드를 금융 행동 지표로 사용. 단일 키워드 시계열 분석에 그치며, 카테고리 배치 구성 변경 시 발생하는 불연속 문제를 다루지 않음. | 단일 쿼리·단일 배치 가정 |
+| Lazer et al. (2014). "The Parable of Google Flu: Traps in Big Data Analysis." *Science*, 343(6176), 1203–1205. | 알고리즘 변화로 인한 Google Flu Trends 붕괴 사례를 통해 외부 요인이 상대 지수 신뢰성을 해친다는 점을 지적. 단, 체계적 재보정 방법 없이 데이터 자체의 한계를 논증하는 데 그침. | 보정 방법론 미제시, 경고성 사례 연구 수준 |
+
+기존 문헌들은 상대 지수를 **있는 그대로** 활용하거나 단일 세션 내 비교에 머무른다. 수집 배치 구성과 수집 시점이 달라져도 장기 연속 시계열을 복원하는 방법론은 제시된 바 없다.
+
 ## 기여점 (Contribution)
 
 - 상대 지수 비연속 문제의 수학적 정형화
@@ -187,6 +198,17 @@ DCAT(Data Catalog Vocabulary)은 공공 데이터 포털 중심으로 적용되�
 정적 파일 기반 데이터에 최적화되어 있어 실시간 수집·갱신되는 웹 데이터에 그대로
 적용하기 어렵다.
 
+## 관련 연구 (Related Work)
+
+| 문헌 | 내용 | 한계 |
+|------|------|------|
+| W3C (2020). "Data Catalog Vocabulary (DCAT) – Version 2." W3C Recommendation. | DCAT 2.0 공식 표준. `dcat:Dataset`, `dcat:Distribution`, `dcat:DataService` 클래스를 정의하고 공공 데이터 포털 중심의 적용 예시를 제공. | 웹 API 실시간 수집 데이터에 대한 구체적 적용 방법론 부재 |
+| Neumaier, Umbrich & Polleres (2016). "Automated Quality Assessment of Metadata across Open Data Portals." *JDIQ*, 8(1), 1–29. | CKAN·DKAN 등 공공 데이터 포털의 메타데이터 완전성·일관성을 자동 평가. 정적 파일 배포 모델에 최적화된 품질 지표를 사용. | 시계열 수집·갱신 패턴을 가진 웹 API 데이터에 대한 품질 지표 없음 |
+| Heath & Bizer (2011). *Linked Data: Evolving the Web into a Global Data Space*. Morgan & Claypool. | 연결 데이터 원칙(4 rules)을 기반으로 이종 데이터 소스 통합 이론 정립. 대규모 지식 그래프 구축에 초점. | 수집 주기·API 호출 이력 등 operational provenance 모델 없음 |
+| Maali, Erickson & Archer (2014). "Data Catalog Vocabulary (DCAT)." W3C Recommendation. | DCAT 1.0 원 표준. 정적 파일 배포(Distribution) 중심 설계. | 동적 스트리밍·반복 수집 패턴 미지원; 시계열 누적 통계 표현 불가 |
+
+기존 연구들은 공공 데이터 포털의 정적 파일 배포 모델을 전제로 하며, YouTube·Naver API처럼 반복 수집·증분 갱신이 기본인 웹 데이터에 대한 DCAT 확장 방법론은 제시된 바 없다.
+
 ## 기여점 (Contribution)
 
 - DCAT 2.0 클래스의 웹 API 데이터 매핑 규칙 제안 (확장 어휘 15개 이상)
@@ -305,6 +327,17 @@ YouTube API 메타데이터(제목·설명·태그)는 업로더 입력값으로
 콘텐츠 내용과의 불일치가 빈번하다. 자동 자막(STT) 기반 트랜스크립트가 있지만
 한국어 STT는 전문 용어 오인식이 심하다. **STT 노이즈가 심한 한국어 텍스트에서
 LLM으로 고품질 구조화 메타데이터를 뽑는 파이프라인**의 실증 평가가 부족하다.
+
+## 관련 연구 (Related Work)
+
+| 문헌 | 내용 | 한계 |
+|------|------|------|
+| Brown et al. (2020). "Language Models are Few-Shot Learners (GPT-3)." *NeurIPS*, 33, 1877–1901. | 175B 파라미터 LLM의 few-shot 능력을 실증. 정보 추출·요약 등 다양한 NLP 태스크에서 인간 수준에 근접. | 한국어 전문 도메인·STT 노이즈 환경에서의 소규모 오픈소스 모델 적용 미검증 |
+| Touvron et al. (2023). "Llama 2: Open Foundation and Fine-Tuned Chat Models." arXiv:2307.09288. | 7B–70B 오픈소스 LLM 공개. 상용 수준의 한국어 이해 가능성을 시사하나 성능 평가는 영어 벤치마크 중심. | 한국어 구조화 메타데이터 추출(요약+키워드+개체명 동시)의 실용성 평가 없음 |
+| Wei et al. (2022). "Emergent Abilities of Large Language Models." *TMLR*. | 모델 규모가 일정 임계를 넘으면 복잡한 추론·추출 능력이 창발함을 분석. 소규모(8B 이하) 모델의 창발 한계 지점 미제시. | 8B 급 오픈소스 모델의 구조화 추출 안정성 평가 없음 |
+| Raffel et al. (2020). "Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer (T5)." *JMLR*, 21(140), 1–67. | 정보 추출을 text-to-text 프레임워크로 통일. 한국어 전문 용어 STT 오류 패턴에 대한 로버스트성 평가 없음. | 교착어 한국어 STT 노이즈 대응 전략 없음 |
+
+기존 연구들은 대용량 영어 중심 벤치마크에서의 성능 평가에 집중하며, GPU 자원이 없는 환경에서 소규모 오픈소스 LLM으로 한국어 STT 노이즈 텍스트로부터 구조화 메타데이터를 추출하는 실용적 파이프라인을 평가한 연구는 없다.
 
 ## 기여점 (Contribution)
 
@@ -453,6 +486,17 @@ GPT-4o-mini    (유료, 품질 상한 기준)
 **동시에** 필터링한 실측값을 제공한다. 이 값은 진짜 joint distribution의 근사값이다.
 persona_index는 독립 가정 하의 추정값이다. 두 값을 비교하면 위반 정도를 직접 측정할 수 있다.
 
+## 관련 연구 (Related Work)
+
+| 문헌 | 내용 | 한계 |
+|------|------|------|
+| Agresti, A. (2002). *Categorical Data Analysis*, 2nd ed. Wiley. | 범주형 변수의 독립성 검정 이론(카이제곱, 오즈비, 로그선형 모델). 관측 빈도표(contingency table)가 주어진 경우의 독립성 평가 방법 체계화. | 실측 교차 빈도표 없이 API 상대 지수만으로 독립성을 검증하는 방법론 부재 |
+| Allenby & Rossi (1998). "Marketing Models of Consumer Heterogeneity." *Journal of Econometrics*, 89(1–2), 57–78. | 마케팅 맥락에서 소비자 이질성 모델링 시 인구통계 교호작용의 중요성을 강조. 계층적 베이즈 모델로 성별-연령 교호작용을 추정. | 관측 불가 교차 분포를 API 상대값으로 근사하는 방법 미제시 |
+| Choi & Kim (2019). "Effects of Consumer Characteristics on Online Shopping Behavior." *Journal of Distribution Science*, 17(9), 27–36. | 한국 온라인 쇼핑 맥락에서 성별·연령 세그먼트가 구매 행동에 미치는 영향 분석. 설문조사 기반 데이터 사용. | API 기반 상대 검색량 지수 활용 없음; 교호작용 위반 정도 정량화 없음 |
+| Manchanda, Ansari & Gupta (1999). "The 'Shopping Basket': An Analysis of Selection Decisions." *Marketing Science*, 18(2), 95–114. | 상품 카테고리 간 교차 구매 행동 분석. 성별-카테고리 교호작용이 카테고리 유형에 따라 달라짐을 실증. | 디지털 검색 트렌드 API 데이터 미적용 |
+
+기존 마케팅·통계 문헌은 실측 교차 빈도표가 있는 경우의 독립성 검정에 집중하며, 성별과 연령을 분리 수집하는 API 상대 지수로 독립 가정 위반 정도를 카테고리별로 정량화하고 같은 플랫폼의 joint 측정값을 Ground Truth로 활용하는 연구는 없다.
+
 ## 기여점 (Contribution)
 
 - shopping_insight 실측 joint 값을 Ground Truth로 사용하는 비교 방법 제안
@@ -589,6 +633,17 @@ VB(category) = mean_t { |violation_ratio - 1| }
 기사 임팩트를 유형화한 연구는 드물다. "언제까지 반응이 오는가", "얼마나 빠르게
 반응이 모이는가"가 기사 유형마다 다를 것이라는 가설이 검증되지 않았다.
 
+## 관련 연구 (Related Work)
+
+| 문헌 | 내용 | 한계 |
+|------|------|------|
+| Szabo & Huberman (2010). "Predicting the Popularity of Online Content." *CACM*, 53(8), 80–88. | Digg·YouTube 콘텐츠에서 초기 반응이 장기 인기를 예측한다는 선형 예측 모델 제시. 조회수·추천 수 기반. | 댓글 수 누적 곡선 자체의 수학적 모델화 없음; 뉴스 기사 맥락 미적용 |
+| Wu & Huberman (2007). "Novelty and Collective Attention." *PNAS*, 104(45), 17599–17601. | 집단 관심도(뉴스 사이트 방문 등)의 지수 감쇠 패턴을 모델화. 신선도가 떨어질수록 관심이 급감하는 보편적 패턴 실증. | 단일 감쇠 모델만 제시; 지속 확산형·단발 화제형 등 복수 패턴 유형화 없음 |
+| Tatar et al. (2014). "A Survey on Predicting the Popularity of Web Content." *JISA*, 5(1), 1–20. | 웹 콘텐츠 인기도 예측 기법(초기값 기반, 시계열 기반, 콘텐츠 기반) 서베이. 영어·유럽 미디어 중심. | 한국어 뉴스 환경(댓글 중심 반응 구조) 미분석; 누적 곡선 분류 없음 |
+| Cheng et al. (2014). "Can Cascades be Predicted?" *WWW 2014*, 925–936. | 소셜 미디어 정보 확산(reshare) 예측. 초기 K 단계 정보로 최종 크기 예측. | 댓글 시계열 패턴 유형 분류보다 총량 예측에 집중 |
+
+기존 연구들은 온라인 콘텐츠의 인기도를 단일 지표로 예측하는 데 초점을 맞추며, 한국어 뉴스 댓글의 누적 패턴을 Velocity·Duration·Volume 세 차원으로 분해해 기사 유형별 임팩트 궤적을 분류한 연구는 없다.
+
 ## 기여점 (Contribution)
 
 - 댓글 누적 곡선의 수학적 모델 제안 및 파라미터 해석
@@ -719,6 +774,17 @@ Target: C(1week)
 실증한 연구**는 거의 없다. "영상이 트렌드를 주도하는가(creator-led)" vs.
 "트렌드가 영상 소비를 유도하는가(trend-following)" 두 가설을 데이터로 구분하려면
 Granger 인과 검정이 적합하다.
+
+## 관련 연구 (Related Work)
+
+| 문헌 | 내용 | 한계 |
+|------|------|------|
+| Granger, C. W. J. (1969). "Investigating Causal Relations by Econometric Models and Cross-Spectral Methods." *Econometrica*, 37(3), 424–438. | Granger 인과성 개념 원논문. VAR 모델로 시계열 X가 Y를 예측하는 데 유용한가를 검정하는 방법론 확립. | 인과 방향 분류의 방법론적 토대만 제공; 미디어-쇼핑 도메인 적용 없음 |
+| Choi & Varian (2012). "Predicting the Present with Google Trends." *The Economic Record*, 88(S1), 2–9. | 검색 트렌드가 소비·고용·자동차 판매 등 현재 경제 지표의 선행 예측에 유용함을 실증. | YouTube 조회수와 쇼핑 검색량 사이의 인과 방향 분석 없음 |
+| Tirunillai & Tellis (2012). "Does Chatter Really Matter? Dynamics of UGC and Stock Performance." *Marketing Science*, 31(2), 198–215. | UGC(온라인 구전) 지표(볼륨, 감성)와 주가 간 그랜저 인과 분석. UGC → 주가 방향이 더 일반적임을 실증. | YouTube 조회수 특이성 미분석; 쇼핑 검색량과의 연계 없음 |
+| Jun et al. (2018). "Ten Years of Research Change Using Google Trends." *Technological Forecasting and Social Change*, 130, 69–87. | 2006–2016년 Google Trends 활용 연구 리뷰. 선행 지표 활용이 주류임을 확인. | YouTube 조회수-쇼핑 트렌드 상호작용 연구 부재를 간접 확인 |
+
+기존 문헌들은 Google Trends나 SNS 구전 지표를 한 방향(검색→소비)으로 활용하는 데 집중하며, YouTube 조회수와 네이버 쇼핑 검색량 사이의 양방향 인과 관계를 카테고리별로 분류한 연구는 없다.
 
 ## 기여점 (Contribution)
 
@@ -856,6 +922,18 @@ RAG(Retrieval-Augmented Generation)는 LLM 환각을 줄이고 최신 정보를 
 방법으로 주목받는다. 그러나 **한국어 기술 도메인(AI·반도체) 뉴스 기사를 지식베이스로
 사용한 RAG 시스템의 체계적 평가 연구**는 드물다. 특히 청킹 전략과 검색 방법 조합이
 성능에 미치는 영향을 한국어 특성(교착어, 전문 용어)과 연결해 분석한 연구가 없다.
+
+## 관련 연구 (Related Work)
+
+| 문헌 | 내용 | 한계 |
+|------|------|------|
+| Lewis et al. (2020). "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks." *NeurIPS*, 33, 9459–9474. | RAG 원논문. DPR 검색기와 BART 생성기를 결합해 오픈 도메인 QA에서 파인튜닝 없이 지식 주입. | 영어 Wikipedia 기반; 한국어 기술 도메인 뉴스 지식베이스 적용 미검증 |
+| Karpukhin et al. (2020). "Dense Passage Retrieval for Open-Domain QA." *EMNLP*, 6769–6781. | DPR 제안. 이중 인코더(bi-encoder) 구조로 dense 검색 성능을 BM25 대비 크게 향상. | 한국어 교착어 특성·도메인 전문 용어 환경에서의 성능 평가 없음 |
+| Robertson & Zaragoza (2009). "The Probabilistic Relevance Framework: BM25 and Beyond." *Foundations and Trends in IR*, 3(4), 333–389. | BM25 알고리즘 이론 및 확장. 한국어 형태소 처리(Mecab·Kiwi)와 결합 시 성능 변화 미분석. | 교착어 특성 고려 없음 |
+| Es et al. (2023). "RAGAS: Automated Evaluation of Retrieval Augmented Generation." arXiv:2309.15217. | RAG 자동 평가 프레임워크 RAGAS 제안. Faithfulness·Answer Relevancy·Context Precision 등 4가지 지표로 구성. | 영어 도메인 중심 설계; 한국어 평가 데이터셋 없음 |
+| Reimers & Gurevych (2019). "Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks." *EMNLP*, 3982–3992. | Siamese 네트워크 기반 문장 임베딩으로 의미 검색 성능 대폭 향상. 다국어 확장판(paraphrase-multilingual-mpnet-base-v2) 포함. | 한국어 기술 뉴스 도메인 검색 성능 평가 없음 |
+
+기존 RAG 연구들은 영어 오픈 도메인 QA를 중심으로 평가하며, 한국어 교착어 특성·기술 전문 용어·뉴스 기사 특화 청킹 전략이 RAG 성능에 미치는 영향을 체계적으로 분석한 연구는 없다.
 
 ## 기여점 (Contribution)
 
@@ -1008,6 +1086,17 @@ YouTube 영상과 뉴스 기사가 혼재하는 환경에서 "어떤 데이터�
 의미 기반으로 탐색하는 **계층적 데이터셋 탐색** 연구는 없다. 특히 데이터셋 레벨
 벡터 검색과 아이템 레벨 벡터 검색을 결합해 효율성과 정확도를 동시에 달성하는
 아키텍처 연구가 부재하다.
+
+## 관련 연구 (Related Work)
+
+| 문헌 | 내용 | 한계 |
+|------|------|------|
+| Malkov & Yashunin (2018). "Efficient and Robust ANN Search Using HNSW." *IEEE TPAMI*, 42(4), 824–836. | HNSW 알고리즘 제안. 계층적 그래프 구조로 대규모 단일 컬렉션 내 ANN 검색을 높은 정밀도·속도로 수행. | 이종 미디어 다중 컬렉션 계층 탐색 미지원; 데이터셋 레벨 필터링 개념 없음 |
+| Johnson, Douze & Jégou (2019). "Billion-Scale Similarity Search with GPUs (FAISS)." *IEEE Trans. Big Data*, 7(3), 535–547. | FAISS 라이브러리로 GPU 기반 수십억 벡터 인덱싱·검색 최적화. IVF, PQ 양자화 등 다양한 인덱스 전략 제공. | 단일 플랫 인덱스 최적화; 데이터셋→아이템 drill-down 계층 구조 없음 |
+| Reimers & Gurevych (2019). "Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks." *EMNLP*, 3982–3992. | 다국어 임베딩 모델(paraphrase-multilingual-mpnet-base-v2). 텍스트 의미 유사도 기반 검색의 기반 모델 역할. | YouTube 영상 텍스트 메타데이터와 뉴스 기사의 cross-modal 혼합 검색 평가 없음 |
+| Yao et al. (2021). "FILIP: Fine-grained Interactive Language-Image Pre-Training." arXiv:2111.07783. | 이종 미디어(텍스트-이미지) 간 fine-grained 상호작용으로 cross-modal 검색 성능 향상. | 영상 텍스트 메타+뉴스 기사 텍스트 혼합 검색을 계층 구조로 제공하는 방법 미제시 |
+
+기존 벡터 검색 연구들은 단일 대규모 컬렉션 내 ANN 최적화에 집중하며, 데이터셋 레벨 coarse 검색과 아이템 레벨 fine 검색을 결합해 이종 미디어 데이터셋을 계층적으로 탐색하는 아키텍처를 제안한 연구는 없다.
 
 ## 기여점 (Contribution)
 
