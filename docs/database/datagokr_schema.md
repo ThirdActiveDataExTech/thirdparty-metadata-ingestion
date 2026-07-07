@@ -21,7 +21,10 @@
 | `meta_naver_news_vec` | ✅ 생성 완료 | [sql/meta_naver_news_vec.sql](../../sql/meta_naver_news_vec.sql) | Naver 뉴스 기사 임베딩 (pgvector 768차원) |
 | `active_meta_naver_news` | ✅ 생성 완료 | [sql/active_meta_naver_news.sql](../../sql/active_meta_naver_news.sql) | Naver 뉴스 기사 시계열 통계 (댓글 수만 수집, [결정 배경](news_metrics_decision.md)) |
 | `meta_naver_news_ai` | ⏳ 미설계 | — | Naver 뉴스 기사 AI 생성 메타 |
-| `meta_naver_trend` | ⏳ 미설계 | — | Naver 쇼핑/검색 트렌드 지표 메타 |
+| `meta_naver_shopping` | ✅ 생성 완료 | [sql/meta_naver_shopping.sql](../../sql/meta_naver_shopping.sql) | 쇼핑인사이트 카테고리 정적 정보 (source_type=shopping_insight) |
+| `active_meta_naver_shopping` | ✅ 생성 완료 | [sql/active_meta_naver_shopping.sql](../../sql/active_meta_naver_shopping.sql) | 일별 검색량 지수 (raw/normalized/pseudo_volume, 성별×연령) |
+| `meta_naver_persona` | ✅ 생성 완료 | [sql/meta_naver_persona.sql](../../sql/meta_naver_persona.sql) | Persona 카테고리 정적 정보 (source_type=persona_insight) |
+| `active_meta_naver_persona` | ✅ 생성 완료 | [sql/active_meta_naver_persona.sql](../../sql/active_meta_naver_persona.sql) | 일별 Persona Index (gender_pv × age_pv, 독립 가정 추정치) |
 | `meta_naver_blog` | ⏳ 미설계 | — | Naver 블로그 게시물 메타 |
 
 ---
@@ -37,6 +40,15 @@
 
 > **소스 타입 경계:** `dcat_dataset` 1개는 항상 단일 소스 타입(`source_type`)만 담는다.
 > YouTube 영상 + 뉴스 기사를 하나의 데이터셋으로 혼합하는 것은 지원하지 않는다.
+
+### source_type 목록
+
+| `source_type` | 설명 | 관련 meta 테이블 |
+|--------------|------|----------------|
+| `video` | YouTube 영상 | meta_youtube_video |
+| `news` | Naver 뉴스 기사 | meta_naver_news |
+| `shopping_insight` | Naver 쇼핑인사이트 (카테고리별 검색량, anchor+batch 호출) | meta_naver_shopping |
+| `persona_insight` | Naver 쇼핑 Persona (성별/연령 독립 API 2종 호출 → persona_index) | meta_naver_persona |
 
 ---
 
@@ -64,6 +76,20 @@ dcat_dataset (1)  ─── "무엇인가" (명세)
     │        │                                    ON DELETE CASCADE
     │        └──  meta_youtube_video_ai (1)  ─── "AI 생성 메타" (요약·키워드·개체명)
     │                                             ON DELETE CASCADE  [예정]
+    │
+    ├──< meta_naver_shopping (N)      ─── "쇼핑인사이트 카테고리" (source_type=shopping_insight)
+    │        UNIQUE(dataset_id, category_id)   ON DELETE CASCADE
+    │        │
+    │        └──< active_meta_naver_shopping (N) ─── "일별 검색량 지수"
+    │                                               raw/normalized/pseudo_volume × 성별×연령
+    │                                               ON DELETE CASCADE
+    │
+    ├──< meta_naver_persona (N)       ─── "Persona 카테고리" (source_type=persona_insight)
+    │        UNIQUE(dataset_id, category_id)   ON DELETE CASCADE
+    │        │
+    │        └──< active_meta_naver_persona (N) ─── "일별 Persona Index"
+    │                                              gender_pv × age_pv (독립 가정 추정치)
+    │                                              ON DELETE CASCADE
     │
     └──< meta_naver_news (N)         ─── "Naver 뉴스 기사 단위 메타" (Schema.org NewsArticle)
              UNIQUE(dataset_id, article_url)   ON DELETE CASCADE
@@ -174,15 +200,22 @@ psql -h localhost -p 30433 -U admin -d datagokr \
   -f sql/meta_naver_news_vec.sql \
   -f sql/active_meta_naver_news.sql
 
-# 4. 샘플 데이터 삽입 (개발용)
+# 4. Naver 쇼핑·Persona 메타 테이블 생성
+psql -h localhost -p 30433 -U admin -d datagokr \
+  -f sql/meta_naver_shopping.sql \
+  -f sql/active_meta_naver_shopping.sql \
+  -f sql/meta_naver_persona.sql \
+  -f sql/active_meta_naver_persona.sql
+
+# 5. 샘플 데이터 삽입 (개발용)
 psql -h localhost -p 30433 -U admin -d datagokr \
   -f sql/seeds.sql
 
-# 5. 뷰 생성
+# 6. 뷰 생성
 psql -h localhost -p 30433 -U admin -d datagokr \
   -f sql/views.sql
 
-# 6. 임베딩 생성
+# 7. 임베딩 생성
 python scripts/embed_datasets.py       # dcat_dataset_vec
 python scripts/embed_videos.py         # meta_youtube_video_vec (미작성)
 ```

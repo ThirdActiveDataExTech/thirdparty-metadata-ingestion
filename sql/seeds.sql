@@ -4,6 +4,9 @@
 -- 실행 순서:
 --   dcat_dataset → dcat_provenance → data_registry → dcat_dataset_vec
 --   → meta_youtube_video → active_meta_youtube → meta_youtube_video_vec
+--   → meta_naver_news → active_meta_naver_news
+--   → meta_naver_shopping → active_meta_naver_shopping
+--   → meta_naver_persona → active_meta_naver_persona
 -- ═══════════════════════════════════════════════════════════════
 
 -- ── dcat_dataset ──────────────────────────────────────────────
@@ -20,7 +23,7 @@ INSERT INTO dcat_dataset (
     'naver_shopping_insight',
     '네이버 쇼핑 인사이트 카테고리 수집',
     '성별×연령(12조합) 필터로 수집한 카테고리별 일간 검색량 지수. anchor 보정(intra_scale) 및 inter_scale 적용.',
-    'Naver', 'shopping',
+    'Naver', 'shopping_insight',
     'https://datalab.naver.com/shopping/',
     'https://openapi.naver.com/v1/datalab/shopping/categories',
     '["50000148","50001828","50001421","50000204","50000167"]',
@@ -34,7 +37,7 @@ INSERT INTO dcat_dataset (
     'naver_persona_insight',
     '네이버 쇼핑 인사이트 페르소나 분석',
     '카테고리별 성별·연령 독립 가정 기반 persona_index 산출. gender_pv × age_pv 교차 추정.',
-    'Naver', 'shopping',
+    'Naver', 'persona_insight',
     'https://datalab.naver.com/shopping/',
     'https://openapi.naver.com/v1/datalab/shopping/category/gender,age',
     '["50000148","50001828","50001421","50000204"]',
@@ -368,3 +371,76 @@ INSERT INTO active_meta_naver_news (
 (2, '2026-07-03 15:00:00+09',   8,   8,  0,  NULL),
 (2, '2026-07-06 11:00:00+09',  15,  14,  2,     7);
 -- meta_id=3 (서울경제 외부 기사): is_naver_hosted=FALSE → 행 없음
+
+-- ── meta_naver_shopping ───────────────────────────────────────
+-- naver_shopping_insight 데이터셋의 카테고리 정보
+-- anchor: 패션의류 (50000148) — 모든 배치에 포함되는 기준 카테고리
+
+INSERT INTO meta_naver_shopping (
+    dataset_id, category_id, category_name,
+    cat_level1, cat_level2, cat_level3, cat_level4,
+    is_anchor
+) VALUES
+('naver_shopping_insight', '50000148', '패션의류',           '패션의류', NULL,     NULL,    NULL,  TRUE),
+('naver_shopping_insight', '50001828', '패션의류>남성의류',   '패션의류', '남성의류', NULL,   NULL,  FALSE),
+('naver_shopping_insight', '50001421', '패션의류>여성의류',   '패션의류', '여성의류', NULL,   NULL,  FALSE),
+('naver_shopping_insight', '50000204', '패션잡화',           '패션잡화', NULL,     NULL,    NULL,  FALSE),
+('naver_shopping_insight', '50000167', '스포츠/레저',        '스포츠/레저', NULL,   NULL,    NULL,  FALSE);
+
+-- ── active_meta_naver_shopping ────────────────────────────────
+-- meta_naver_shopping.id 삽입 순서: 1=패션의류(anchor), 2=남성의류, 3=여성의류, 4=패션잡화, 5=스포츠/레저
+-- 성별·연령 조합 샘플: 전체('') × 전체('') 1조합만 예시로 삽입
+
+INSERT INTO active_meta_naver_shopping (
+    meta_id, period, gender, age,
+    raw_ratio, anchor_raw_ratio, normalized_ratio,
+    scale_factor, pseudo_volume,
+    batch_index, collected_at
+) VALUES
+-- 2026-06-30 수집 (첫 수집 → scale_factor=1.0, delta 없음)
+-- anchor(패션의류): normalized=100.0 고정
+(1, '2026-06-30', '', '', 100.0, 100.0, 100.0, 1.0, 100.0, 0, '2026-06-30 02:01:09+09'),
+(2, '2026-06-30', '', '',  38.2, 100.0,  38.2, 1.0,  38.2, 0, '2026-06-30 02:01:09+09'),
+(3, '2026-06-30', '', '',  52.7, 100.0,  52.7, 1.0,  52.7, 0, '2026-06-30 02:01:09+09'),
+(4, '2026-06-30', '', '',  21.4, 100.0,  21.4, 1.0,  21.4, 1, '2026-06-30 02:01:09+09'),
+(5, '2026-06-30', '', '',  15.9, 100.0,  15.9, 1.0,  15.9, 1, '2026-06-30 02:01:09+09'),
+-- 2026-07-07 수집 (두 번째 → inter_scale 적용)
+(1, '2026-07-07', '', '', 100.0, 100.0, 100.0, 1.0123, 101.23, 0, '2026-07-07 02:00:51+09'),
+(2, '2026-07-07', '', '',  39.8, 100.0,  39.8, 1.0123,  40.29, 0, '2026-07-07 02:00:51+09'),
+(3, '2026-07-07', '', '',  51.1, 100.0,  51.1, 1.0123,  51.73, 0, '2026-07-07 02:00:51+09'),
+(4, '2026-07-07', '', '',  22.0, 100.0,  22.0, 1.0123,  22.27, 1, '2026-07-07 02:00:51+09'),
+(5, '2026-07-07', '', '',  16.3, 100.0,  16.3, 1.0123,  16.50, 1, '2026-07-07 02:00:51+09');
+
+-- ── meta_naver_persona ────────────────────────────────────────
+-- naver_persona_insight 데이터셋의 카테고리 정보 (anchor 개념 없음)
+
+INSERT INTO meta_naver_persona (
+    dataset_id, category_id, category_name,
+    cat_level1, cat_level2, cat_level3, cat_level4
+) VALUES
+('naver_persona_insight', '50000148', '패션의류',         '패션의류', NULL,     NULL, NULL),
+('naver_persona_insight', '50001828', '패션의류>남성의류', '패션의류', '남성의류', NULL, NULL),
+('naver_persona_insight', '50001421', '패션의류>여성의류', '패션의류', '여성의류', NULL, NULL),
+('naver_persona_insight', '50000204', '패션잡화',         '패션잡화', NULL,     NULL, NULL);
+
+-- ── active_meta_naver_persona ─────────────────────────────────
+-- meta_naver_persona.id 삽입 순서: 1=패션의류, 2=남성의류, 3=여성의류, 4=패션잡화
+-- 샘플: meta_id=1(패션의류) × 2일 × 2성별 × 2연령(20대·30대) = 8행
+
+INSERT INTO active_meta_naver_persona (
+    meta_id, period, gender, age,
+    gender_ratio, age_ratio,
+    gender_scale, age_scale,
+    gender_pv, age_pv, persona_index,
+    collected_at
+) VALUES
+-- 2026-06-30 수집 (첫 수집 → scale=1.0)
+(1, '2026-06-30', 'm', '20', 42.1, 28.3, 1.0, 1.0, 42.1, 28.3, 1191.43, '2026-06-30 03:02:31+09'),
+(1, '2026-06-30', 'm', '30', 42.1, 35.7, 1.0, 1.0, 42.1, 35.7, 1502.97, '2026-06-30 03:02:31+09'),
+(1, '2026-06-30', 'f', '20', 58.3, 28.3, 1.0, 1.0, 58.3, 28.3, 1649.89, '2026-06-30 03:02:31+09'),
+(1, '2026-06-30', 'f', '30', 58.3, 35.7, 1.0, 1.0, 58.3, 35.7, 2081.31, '2026-06-30 03:02:31+09'),
+-- 2026-07-07 수집 (두 번째 → scale 적용)
+(1, '2026-07-07', 'm', '20', 43.5, 29.1, 1.0089, 1.0042, 43.89, 29.22, 1281.86, '2026-07-07 03:01:14+09'),
+(1, '2026-07-07', 'm', '30', 43.5, 36.2, 1.0089, 1.0042, 43.89, 36.35, 1595.39, '2026-07-07 03:01:14+09'),
+(1, '2026-07-07', 'f', '20', 57.8, 29.1, 1.0089, 1.0042, 58.31, 29.22, 1703.81, '2026-07-07 03:01:14+09'),
+(1, '2026-07-07', 'f', '30', 57.8, 36.2, 1.0089, 1.0042, 58.31, 36.35, 2119.57, '2026-07-07 03:01:14+09');
