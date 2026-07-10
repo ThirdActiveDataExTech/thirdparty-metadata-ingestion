@@ -1,6 +1,7 @@
-# Naver 뉴스 수집 가능 지표 결정
+# ADR-005: Naver 뉴스 수집 가능 지표 결정
 
-> **결정일:** 2026-07-06
+> **Date:** 2026-07-06
+> **Status:** Accepted
 > **결론:** `active_meta_naver_news` 에 **댓글 수(comment_count, expose_count, reply_count)만** 수집
 
 ---
