@@ -73,6 +73,7 @@ CREATE TABLE dcat_dataset (
 
     -- ── 데이터 규모 ───────────────────────────────────────────
     item_count          BIGINT,
+    -- (확장) DCAT/DCT에 대응 표준 용어 없음 — source_type과 같은 자체 확장 필드
     -- 이 데이터셋을 구성하는 고유 아이템 수 | temporal_start/end와 동일하게
     -- 수집 후 자동 갱신되며 data_registry.item_count와 동기화된다
     -- 예) YouTube 영상 수, 뉴스 기사 수, 블로그 게시물 수, 쇼핑/Persona 카테고리 수
