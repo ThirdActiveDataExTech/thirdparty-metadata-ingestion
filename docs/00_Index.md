@@ -1,6 +1,6 @@
 # Metadata Ingestion — Documentation
 
-> **Last Updated:** 2026-07-01
+> **Last Updated:** 2026-07-10
 > **Project:** metadata-ingestion
 > **Purpose:** 다양한 공공데이터 및 외부 API를 수집하여 메타데이터를 정제·저장하는 플랫폼
 
@@ -16,9 +16,9 @@
 | 1.1 | [Current Infrastructure](infrastructure/01_Current_Infrastructure.md) | 현재 서버에 무엇이 있는가 | 완성 |
 | 1.2 | [Kubernetes](infrastructure/02_Kubernetes.md) | 클러스터 구조, 배포 방식 | 완성 |
 | 1.3 | [PostgreSQL](infrastructure/03_PostgreSQL.md) | DB 두 개 연결 정보 및 스키마 | 완성 |
-| 1.4 | [Object Storage (SeaweedFS)](infrastructure/04_ObjectStorage.md) | 오브젝트 스토리지 구조 (MinIO → SeaweedFS 전환) | 작성 중 |
+| 1.4 | [Object Storage (SeaweedFS)](infrastructure/04_ObjectStorage.md) | 오브젝트 스토리지 구조 (MinIO → SeaweedFS 전환) | 완성 (배포·연결 완료) |
 | 1.5 | [Secrets & ConfigMaps](infrastructure/05_Secrets_ConfigMaps.md) | 환경변수 및 인증 정보 관리 | 완성 |
-| 1.6 | [Vector DB](infrastructure/06_VectorDB.md) | pgvector 구성 및 Qdrant 전환 전략 | 작성 중 |
+| 1.6 | [Vector DB](infrastructure/06_VectorDB.md) | pgvector 구성 및 Qdrant 전환 전략 | 완성 (임베딩 파이프라인 운영 중) |
 
 ---
 
@@ -79,7 +79,7 @@ DB 스키마, 테이블 정의. **테이블이 추가되거나 컬럼이 변경�
 
 | 문서 | 설명 | 상태 |
 |------|------|------|
-| [datagokr Schema](database/datagokr_schema.md) | metadata-ingestion 메인 DB | 작성 중 |
+| [datagokr Schema](database/datagokr_schema.md) | metadata-ingestion 메인 DB | 완성 (테이블 대부분 생성 완료) |
 | [thirdparty Schema](database/thirdparty_schema.md) | 기존 thirdparty DB | 미작성 |
 
 ---
@@ -105,3 +105,19 @@ DB 스키마, 테이블 정의. **테이블이 추가되거나 컬럼이 변경�
 | ADR-002 | [Airflow 도입 전 K8s CronJob 사용](adr/002_KubernetesCronJob_before_Airflow.md) | Accepted |
 | ADR-003 | [Vector DB 전략 — pgvector 시작, Qdrant 전환 경로](adr/003_VectorDB_Strategy.md) | Accepted |
 | ADR-004 | [Object Storage 전략 — MinIO → SeaweedFS 전환](adr/004_ObjectStorage_Strategy.md) | Accepted |
+
+---
+
+## 9. Research
+
+이 플랫폼의 데이터·인프라를 활용한 논문 주제 기획 및 초안. 프로젝트 개발 문서와는
+별도 트랙이며, 인프라/스키마가 바뀌어도 자동 동기화되지 않으니 참고 시 주의.
+
+| 문서 | 설명 |
+|------|------|
+| [연구 주제 후보 요약](research/paper_topics.md) | 주제 7개 개요 + 우선순위 |
+| [연구 기획서 모음](research/research_proposals.md) | P01–P07 상세 기획서 (연구질문·방법·평가·해석기준) |
+
+각 주제(P01–P07)마다 논문 형식 초안이 2개씩 있다 (`research/` 폴더, `paper_draft_P0X_*.md` /
+`paper_P0X_*_mock_draft.md`): `[DATA: ...]` 자리만 채우면 되는 템플릿과, 그 자리를 가상
+수치로 채운 예시본. 가상 수치본은 파일 상단에 경고 배너가 있다.
