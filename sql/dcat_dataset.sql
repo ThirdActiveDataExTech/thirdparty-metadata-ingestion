@@ -29,7 +29,7 @@ CREATE TABLE dcat_dataset (
 
     source_type         TEXT,
     -- (확장) 출처 유형 분류
-    -- 예) 'shopping', 'video', 'news', 'sns', 'government'
+    -- 예) 'shopping', 'video', 'news', 'blog', 'sns', 'government'
 
     landing_page        TEXT,
     -- dcat:landingPage | 플랫폼 공식 소개 페이지 (사람이 읽는 페이지)

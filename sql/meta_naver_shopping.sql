@@ -44,15 +44,24 @@ CREATE TABLE meta_naver_shopping (
     -- ── anchor 여부 ───────────────────────────────────────────
     is_anchor       BOOLEAN NOT NULL DEFAULT FALSE,
     -- TRUE: 이 카테고리가 배치 간 정규화 기준(anchor)
-    -- 데이터셋당 정확히 1개의 카테고리만 TRUE
+    -- 데이터셋당 정확히 1개의 카테고리만 TRUE (아래 partial unique index로 "최대 1개"는
+    -- DB가 보장하고, "최소 1개"는 수집 코드가 anchor_category 설정을 항상 포함시켜 보장한다)
     -- config.yaml anchor_category 설정값과 대응
 
     -- ── 관리 ──────────────────────────────────────────────────
-    registered_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    registered_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     -- 이 카테고리가 수집 대상으로 등록된 시각
+
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    -- category_name/cat_level* 갱신 시각 (네이버 카테고리 개편 시 대비)
 );
 
 CREATE INDEX idx_shopping_dataset  ON meta_naver_shopping(dataset_id);
 CREATE INDEX idx_shopping_cat_id   ON meta_naver_shopping(category_id);
 CREATE INDEX idx_shopping_anchor   ON meta_naver_shopping(is_anchor);
 CREATE INDEX idx_shopping_level1   ON meta_naver_shopping(cat_level1);
+
+-- 데이터셋당 anchor 카테고리는 최대 1개만 허용 (partial unique index)
+CREATE UNIQUE INDEX idx_shopping_one_anchor
+    ON meta_naver_shopping(dataset_id)
+    WHERE is_anchor = TRUE;

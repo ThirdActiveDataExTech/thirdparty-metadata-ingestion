@@ -1,6 +1,6 @@
 # datagokr DB Schema
 
-> **Last Updated:** 2026-07-06
+> **Last Updated:** 2026-07-10
 > PostgreSQL 17.4 (postgres-174) — NodePort 30433
 
 ---
@@ -25,7 +25,9 @@
 | `active_meta_naver_shopping` | ✅ 생성 완료 | [sql/active_meta_naver_shopping.sql](../../sql/active_meta_naver_shopping.sql) | 일별 검색량 지수 (raw/normalized/pseudo_volume, 성별×연령) |
 | `meta_naver_persona` | ✅ 생성 완료 | [sql/meta_naver_persona.sql](../../sql/meta_naver_persona.sql) | Persona 카테고리 정적 정보 (source_type=persona_insight) |
 | `active_meta_naver_persona` | ✅ 생성 완료 | [sql/active_meta_naver_persona.sql](../../sql/active_meta_naver_persona.sql) | 일별 Persona Index (gender_pv × age_pv, 독립 가정 추정치) |
-| `meta_naver_blog` | ⏳ 미설계 | — | Naver 블로그 게시물 메타 |
+| `meta_naver_blog` | ✅ 생성 완료 | [sql/meta_naver_blog.sql](../../sql/meta_naver_blog.sql) | Naver 블로그 게시물 단위 메타 (Schema.org BlogPosting) |
+| `meta_naver_blog_vec` | ✅ 생성 완료 | [sql/meta_naver_blog_vec.sql](../../sql/meta_naver_blog_vec.sql) | Naver 블로그 게시물 임베딩 (pgvector 768차원) |
+| `active_meta_naver_blog` | ⚠️ 잠정 (미검증) | [sql/active_meta_naver_blog.sql](../../sql/active_meta_naver_blog.sql) | 댓글/공감 수집 가능 여부 미검증 — ADR-006 필요, 확정 전까지 수집 코드에서 미사용 |
 
 ---
 
@@ -47,6 +49,7 @@
 |--------------|------|----------------|
 | `video` | YouTube 영상 | meta_youtube_video |
 | `news` | Naver 뉴스 기사 | meta_naver_news |
+| `blog` | Naver 블로그 게시물 | meta_naver_blog |
 | `shopping_insight` | Naver 쇼핑인사이트 (카테고리별 검색량, anchor+batch 호출) | meta_naver_shopping |
 | `persona_insight` | Naver 쇼핑 Persona (성별/연령 독립 API 2종 호출 → persona_index) | meta_naver_persona |
 
@@ -91,13 +94,21 @@ dcat_dataset (1)  ─── "무엇인가" (명세)
     │                                              gender_pv × age_pv (독립 가정 추정치)
     │                                              ON DELETE CASCADE
     │
-    └──< meta_naver_news (N)         ─── "Naver 뉴스 기사 단위 메타" (Schema.org NewsArticle)
-             UNIQUE(dataset_id, article_url)   ON DELETE CASCADE
+    ├──< meta_naver_news (N)         ─── "Naver 뉴스 기사 단위 메타" (Schema.org NewsArticle)
+    │        UNIQUE(dataset_id, article_url)   ON DELETE CASCADE
+    │        │
+    │        ├──< active_meta_naver_news (N)  ─── "댓글 시계열 스냅샷"
+    │        │                                     is_naver_hosted=TRUE 기사만 행 존재
+    │        │                                     ON DELETE CASCADE
+    │        └──  meta_naver_news_vec (1)      ─── "기사 임베딩" (기사 레벨 검색)
+    │                                               ON DELETE CASCADE
+    │
+    └──< meta_naver_blog (N)         ─── "Naver 블로그 게시물 단위 메타" (Schema.org BlogPosting)
+             UNIQUE(dataset_id, post_url)   ON DELETE CASCADE
              │
-             ├──< active_meta_naver_news (N)  ─── "댓글 시계열 스냅샷"
-             │                                     is_naver_hosted=TRUE 기사만 행 존재
+             ├──< active_meta_naver_blog (N)  ─── "댓글/공감 시계열 스냅샷" [⚠️ 잠정, ADR-006 필요]
              │                                     ON DELETE CASCADE
-             └──  meta_naver_news_vec (1)      ─── "기사 임베딩" (기사 레벨 검색)
+             └──  meta_naver_blog_vec (1)      ─── "게시물 임베딩" (게시물 레벨 검색)
                                                     ON DELETE CASCADE
 ```
 
@@ -108,6 +119,7 @@ dcat_dataset (1)  ─── "무엇인가" (명세)
 | 데이터셋 레벨 | `dcat_dataset_vec` | "반도체 관련 데이터셋 찾기" (소스 타입 무관) |
 | 영상 레벨 | `meta_youtube_video_vec` | "HBM 공정 설명하는 영상 찾기" |
 | 기사 레벨 | `meta_naver_news_vec` | "HBM4 관련 최신 기사 찾기" |
+| 게시물 레벨 | `meta_naver_blog_vec` | "HBM 반도체 후기 블로그 찾기" |
 
 ### active_meta 설계 포인트
 
@@ -207,18 +219,63 @@ psql -h localhost -p 30433 -U admin -d datagokr \
   -f sql/meta_naver_persona.sql \
   -f sql/active_meta_naver_persona.sql
 
-# 5. 샘플 데이터 삽입 (개발용)
+# 5. Naver 블로그 메타 테이블 생성 (active_meta_naver_blog는 ADR-006 확정 전까지 미사용)
+psql -h localhost -p 30433 -U admin -d datagokr \
+  -f sql/meta_naver_blog.sql \
+  -f sql/meta_naver_blog_vec.sql \
+  -f sql/active_meta_naver_blog.sql
+
+# 6. 샘플 데이터 삽입 (개발용)
 psql -h localhost -p 30433 -U admin -d datagokr \
   -f sql/seeds.sql
 
-# 6. 뷰 생성
+# 7. 뷰 생성
 psql -h localhost -p 30433 -U admin -d datagokr \
   -f sql/views.sql
 
-# 7. 임베딩 생성
-python scripts/embed_datasets.py       # dcat_dataset_vec
-python scripts/embed_videos.py         # meta_youtube_video_vec (미작성)
+# 8. 임베딩 생성
+python scripts/embed_datasets.py         # dcat_dataset_vec
+python scripts/embed_youtube_videos.py   # meta_youtube_video_vec
+python scripts/embed_naver_news.py       # meta_naver_news_vec
+# meta_naver_blog_vec용 임베딩 스크립트는 아직 미작성 (embed_naver_news.py 참고해 추가 필요)
 ```
+
+---
+
+## 미결정 사항 (2026-07-10 기준)
+
+기본 데이터 설계(dcat_dataset → meta → active_meta → _vec, YouTube/뉴스/쇼핑/Persona/블로그)는
+오늘 검토·수정으로 큰 틀이 완성됐다. 남은 것은 아래 항목들이다.
+
+### 스키마·API 확정 필요
+
+| 항목 | 상태 | 내용 |
+|------|------|------|
+| `active_meta_naver_blog` 컬럼 확정 | ⚠️ 잠정 | 댓글/공감/조회수 수집 가능 여부 미검증. ADR-005(뉴스)와 동일한 방식의 실제 API 테스트 필요 → ADR-006 |
+| `meta_youtube_video_ai` | ⏳ 예정 | 필드는 초안 있음(§AI 메타데이터 파이프라인), DDL 미작성. P03 연구 주제와 직결 |
+| `meta_naver_news_ai` | ⏳ 미설계 | 필드 초안조차 없음 |
+| `meta_naver_blog_ai` | ⏳ 미설계 | 오늘 범위에 없었음. news_ai와 함께 나중에 설계 |
+| `meta_naver_blog` 소스 구분 | ⚠️ 확인 필요 | Naver 블로그 검색 API가 blog.naver.com 외 티스토리 등 타 플랫폼도 반환하는지 확인 후, 필요 시 news의 `is_naver_hosted`처럼 플랫폼 구분 컬럼 추가 여부 결정 |
+
+### 수집 코드 (전부 미작성 — `src/` 비어있음)
+
+`meta_naver_shopping`/`meta_naver_persona`/`meta_naver_blog`도 다른 소스와 마찬가지로
+스키마만 있고 실제 API 호출 수집 코드는 없다. 레거시 코드(`3amd/naver_shopping_insight.py`,
+`3amd/naver_persona.py`)를 `src/collectors/`로 이식하는 작업이 필요하다.
+
+### 임베딩 파이프라인 격차
+
+- `meta_naver_blog_vec`용 `embed_naver_blog.py` 스크립트 없음 (다른 3개는 완성·검증됨)
+- `meta_naver_blog` 시드 데이터 없음 — `sql/seeds.sql`에 샘플 미추가
+
+### 실제 DB 반영 여부
+
+오늘 수정한 DDL(`meta_naver_shopping.sql`, `meta_naver_persona.sql`,
+`active_meta_naver_shopping.sql`, 신규 블로그 테이블 3개)은 문법·제약조건만 트랜잭션
+롤백으로 검증했고, 실제 서버 DB에는 아직 반영하지 않았다. `meta_naver_shopping`/
+`meta_naver_persona`는 `DROP TABLE ... CASCADE`라서 실제 적용 시 기존 시드
+데이터(각 5건/4건 + 연결된 active_meta 10건/8건)가 날아가므로, 재적용 후
+`seeds.sql` 해당 부분 재실행이 필요하다.
 
 ---
 

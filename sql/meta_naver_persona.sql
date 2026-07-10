@@ -35,7 +35,11 @@ CREATE TABLE meta_naver_persona (
     cat_level4      TEXT,
 
     -- ── 관리 ──────────────────────────────────────────────────
-    registered_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    registered_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    -- 이 카테고리가 수집 대상으로 등록된 시각
+
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    -- category_name/cat_level* 갱신 시각 (네이버 카테고리 개편 시 대비)
 );
 
 CREATE INDEX idx_persona_dataset ON meta_naver_persona(dataset_id);

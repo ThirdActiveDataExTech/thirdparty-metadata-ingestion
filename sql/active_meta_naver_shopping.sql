@@ -41,7 +41,8 @@ CREATE TABLE active_meta_naver_shopping (
 
     age             TEXT NOT NULL,
     -- 연령 필터 값
-    -- '10'/'20'/'30'/'40'/'50' = 해당 연령대, '' = 전체(필터 없음)
+    -- '10'/'20'/'30'/'40'/'50'/'60' = 해당 연령대, '' = 전체(필터 없음)
+    -- (config.yaml 기준 6개 연령대 — 성별 2 × 연령 6 = 12조합/카테고리)
 
     UNIQUE (meta_id, period, gender, age),
     -- 같은 카테고리+날짜+성별+연령 조합은 최신 수집값으로 UPSERT

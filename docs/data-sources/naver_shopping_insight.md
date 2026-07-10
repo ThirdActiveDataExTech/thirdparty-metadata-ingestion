@@ -1,6 +1,6 @@
 # Naver Shopping Insight
 
-> **Last Updated:** 2026-07-01
+> **Last Updated:** 2026-07-10
 > **dataset_id:** `naver_shopping_insight`
 > **source_type:** `shopping`
 
@@ -21,7 +21,7 @@
 | 인증 | Client ID / Client Secret (헤더) |
 | 응답 | 상대 지수 (최대 100) |
 | 기간 제한 | 1회 최대 90일 |
-| 필터 | 성별(female/male) × 연령(10s~50s) = 12조합 |
+| 필터 | 성별(female/male) × 연령(10s~60s, 6개) = 12조합 |
 
 ---
 
