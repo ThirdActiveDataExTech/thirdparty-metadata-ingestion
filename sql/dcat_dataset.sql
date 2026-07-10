@@ -19,16 +19,18 @@ CREATE TABLE dcat_dataset (
     -- dct:title | 데이터셋 이름
     -- 예) '네이버 쇼핑 인사이트 카테고리 수집'
 
-    description         TEXT,
+    description         TEXT NOT NULL,
     -- dct:description | 수집 목적, 수집 방식, 특이사항 등 상세 설명
+    -- title과 함께 핵심 속성으로 취급 (P02 DCAT 커버리지 목표: 핵심 속성 95%+)
 
     -- ── 출처 ──────────────────────────────────────────────────
     publisher           TEXT,
     -- dct:publisher | 데이터 원천 플랫폼명
     -- 예) 'Naver', 'YouTube', '연합뉴스'
 
-    source_type         TEXT,
-    -- (확장) 출처 유형 분류
+    source_type         TEXT NOT NULL,
+    -- (확장) 출처 유형 분류 — data_registry.pg_meta_table 라우팅과
+    -- "1 dataset = 1 source_type" 불변 규칙이 이 값의 존재를 전제로 함
     -- 예) 'shopping', 'video', 'news', 'blog', 'sns', 'government'
 
     landing_page        TEXT,
