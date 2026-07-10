@@ -7,6 +7,7 @@
 --   → meta_naver_news → active_meta_naver_news
 --   → meta_naver_shopping → active_meta_naver_shopping
 --   → meta_naver_persona → active_meta_naver_persona
+--   → meta_naver_blog → active_meta_naver_blog (⚠️ 잠정 스키마, ADR-006 참조)
 -- ═══════════════════════════════════════════════════════════════
 
 -- ── dcat_dataset ──────────────────────────────────────────────
@@ -15,7 +16,7 @@ INSERT INTO dcat_dataset (
     dataset_id, title, description,
     publisher, source_type, landing_page, access_url, subjects,
     language, spatial, temporal_start, temporal_end,
-    temporal_resolution, accrual_periodicity,
+    temporal_resolution, accrual_periodicity, item_count,
     keywords, license, rights,
     dataset_origin
 ) VALUES
@@ -27,7 +28,7 @@ INSERT INTO dcat_dataset (
     'https://datalab.naver.com/shopping/',
     'https://openapi.naver.com/v1/datalab/shopping/categories',
     '["50000148","50001828","50001421","50000204","50000167"]',
-    'ko', 'KR', '2025-06-17', '2026-06-16', 'P1D', 'P1D',
+    'ko', 'KR', '2025-06-17', '2026-06-16', 'P1D', 'P1D', 5,
     '["쇼핑","검색량","카테고리","성별","연령","네이버"]',
     'https://developers.naver.com/notice/terms',
     '네이버 API 이용약관 준수. 수집 데이터의 외부 배포 및 상업적 재판매 금지.',
@@ -41,7 +42,7 @@ INSERT INTO dcat_dataset (
     'https://datalab.naver.com/shopping/',
     'https://openapi.naver.com/v1/datalab/shopping/category/gender,age',
     '["50000148","50001828","50001421","50000204"]',
-    'ko', 'KR', '2025-06-18', '2026-06-17', 'P1D', 'P1D',
+    'ko', 'KR', '2025-06-18', '2026-06-17', 'P1D', 'P1D', 4,
     '["쇼핑","페르소나","성별","연령","카테고리"]',
     'https://developers.naver.com/notice/terms',
     '네이버 API 이용약관 준수. 수집 데이터의 외부 배포 및 상업적 재판매 금지.',
@@ -55,7 +56,7 @@ INSERT INTO dcat_dataset (
     'https://www.youtube.com/@Samsung',
     'https://www.googleapis.com/youtube/v3/videos',
     '["UCWwgaK7x0_FR1goeSRDDOkg"]',
-    'ko', 'KR', '2024-01-01', NULL, NULL, 'P7D',
+    'ko', 'KR', '2024-01-01', NULL, NULL, 'P7D', 3,
     '["유튜브","삼성전자","테크","채널"]',
     'https://developers.google.com/youtube/terms/api-services-tos',
     'YouTube API Services Terms of Service 준수. 수집 데이터의 제3자 제공 시 Google 사전 승인 필요.',
@@ -69,7 +70,7 @@ INSERT INTO dcat_dataset (
     'https://news.naver.com',
     'https://openapi.naver.com/v1/search/news.json',
     '["인공지능","AI","머신러닝","딥러닝"]',
-    'ko', 'KR', '2026-01-01', NULL, NULL, 'P1D',
+    'ko', 'KR', '2026-01-01', NULL, NULL, 'P1D', 3,
     '["뉴스","AI","인공지능","네이버"]',
     'https://developers.naver.com/notice/terms',
     '네이버 API 이용약관 준수. 뉴스 본문 스크래핑은 각 언론사 저작권 정책 별도 확인 필요.',
@@ -83,11 +84,25 @@ INSERT INTO dcat_dataset (
     'YouTube', 'video',
     NULL, NULL,
     '["UCWwgaK7x0_FR1goeSRDDOkg","UCclAMeNn0QFBv0JDgCWBqPg"]',
-    'ko', 'KR', NULL, NULL, NULL, NULL,
+    'ko', 'KR', NULL, NULL, NULL, NULL, 1,
     '["HBM","반도체","삼성전자","SK하이닉스"]',
     'https://developers.google.com/youtube/terms/api-services-tos',
     'YouTube API Services Terms of Service 준수.',
     'user'
+),
+(
+    'naver_blog_ai',
+    '네이버 블로그 AI·반도체 관련 게시물 수집',
+    '네이버 블로그 검색 API를 통해 AI/반도체 관련 키워드로 수집한 블로그 게시물. 본문 스크래핑 포함.',
+    'Naver', 'blog',
+    'https://section.blog.naver.com/',
+    'https://openapi.naver.com/v1/search/blog.json',
+    '["인공지능","AI","반도체","HBM"]',
+    'ko', 'KR', '2026-06-20', NULL, NULL, 'P1D', 3,
+    '["블로그","AI","반도체","네이버"]',
+    'https://developers.naver.com/notice/terms',
+    '네이버 API 이용약관 준수. 블로그 본문 스크래핑은 저작권 정책 별도 확인 필요. active_meta_naver_blog는 잠정 설계(ADR-006 확정 전)로 실사용 안 함.',
+    'admin'
 );
 
 -- ── dcat_provenance ───────────────────────────────────────────
@@ -153,6 +168,12 @@ INSERT INTO dcat_provenance (
     '2026-06-30 06:00:00+09', '2026-06-30 06:00:12+09', 'failure', 0,
     '{"keywords":["인공지능","AI"],"display":100}',
     'HTTP 429 Too Many Requests: API 일일 호출 한도 초과', NULL
+),
+(
+    'naver_blog_ai', 'initial', 'naver_blog', 'manual',
+    '2026-06-28 07:00:00+09', '2026-06-28 07:00:33+09', 'success', 3,
+    '{"keywords":["인공지능","AI","반도체"],"display":30}',
+    NULL, '최초 수집 (샘플 3건, active_meta 파이프라인은 ADR-006 확정 전까지 미가동)'
 );
 
 -- ── data_registry ─────────────────────────────────────────────
@@ -162,28 +183,32 @@ INSERT INTO data_registry (
     s3_raw_prefix, s3_jsonld_prefix,
     pg_meta_table, pg_active_table, vec_collection,
     status, last_collected_at, next_collect_at, last_error,
-    row_count, temporal_start, temporal_end
+    item_count, row_count, temporal_start, temporal_end
 ) VALUES
 (
     'naver_shopping_insight',
     'raw/shopping/naver_shopping_insight/', 'jsonld/shopping/naver_shopping_insight/',
     'meta_naver_shopping', 'active_meta_naver_shopping', 'dcat_dataset_vec',
     'active', '2026-06-30 02:01:09+09', '2026-07-01 02:00:00+09', NULL,
-    5278, '2025-06-17', '2026-06-16'
+    5, 5278, '2025-06-17', '2026-06-16'
+    -- item_count=5: 이 데이터셋이 추적하는 카테고리 수 (anchor 포함, meta_naver_shopping 행 수)
 ),
 (
     'naver_persona_insight',
     'raw/shopping/naver_persona_insight/', 'jsonld/shopping/naver_persona_insight/',
     'meta_naver_persona', 'active_meta_naver_persona', 'dcat_dataset_vec',
     'active', '2026-06-30 03:02:31+09', '2026-07-01 03:00:00+09', NULL,
-    57876, '2025-06-18', '2026-06-17'
+    4, 57876, '2025-06-18', '2026-06-17'
 ),
 (
     'youtube_samsung_official',
     'raw/video/youtube_samsung_official/', 'jsonld/video/youtube_samsung_official/',
     'meta_youtube_video', 'active_meta_youtube', 'dcat_dataset_vec',
     'active', '2026-06-30 04:03:21+09', '2026-07-07 04:00:00+09', NULL,
-    3, '2024-01-01', NULL
+    3, 3, '2024-01-01', NULL
+    -- item_count=3: 채널 영상 3편. row_count는 최초 수집 시점(3건) 기준 —
+    -- 07-07 2차 수집 이후 active_meta_youtube는 6행이지만 대응하는
+    -- dcat_provenance 'update' 기록이 없어 아직 갱신 전 (기존 시드 데이터의 기존 격차, 오늘 범위 아님)
 ),
 (
     'naver_news_ai',
@@ -191,14 +216,25 @@ INSERT INTO data_registry (
     'meta_naver_news', 'active_meta_naver_news', 'dcat_dataset_vec',
     'error', '2026-01-01 06:00:47+09', '2026-07-01 06:00:00+09',
     'HTTP 429 Too Many Requests: API 일일 호출 한도 초과',
-    1200, '2026-01-01', NULL
+    3, 1200, '2026-01-01', NULL
+    -- item_count=3: 수집된 기사 3건 (meta_naver_news 행 수)
 ),
 (
     'user_hbm_video_collection',
     NULL, NULL,
     'meta_youtube_video', 'active_meta_youtube', 'dcat_dataset_vec',
     'pending', NULL, NULL, NULL,
-    0, NULL, NULL
+    1, 0, NULL, NULL
+    -- item_count=1: yt_vid_002 1편만 직접 선택
+),
+(
+    'naver_blog_ai',
+    'raw/blog/naver_blog_ai/', 'jsonld/blog/naver_blog_ai/',
+    'meta_naver_blog', 'active_meta_naver_blog', 'dcat_dataset_vec',
+    'active', '2026-06-28 07:00:33+09', '2026-07-01 07:00:00+09', NULL,
+    3, 3, '2026-06-20', NULL
+    -- item_count=3: 게시물 3건. active_meta_naver_blog는 잠정(ADR-006 미확정) 상태라
+    -- row_count도 아직 item_count와 동일 (실사용 집계 전)
 );
 
 -- ── dcat_dataset_vec ──────────────────────────────────────────
@@ -444,3 +480,67 @@ INSERT INTO active_meta_naver_persona (
 (1, '2026-07-07', 'm', '30', 43.5, 36.2, 1.0089, 1.0042, 43.89, 36.35, 1595.39, '2026-07-07 03:01:14+09'),
 (1, '2026-07-07', 'f', '20', 57.8, 29.1, 1.0089, 1.0042, 58.31, 29.22, 1703.81, '2026-07-07 03:01:14+09'),
 (1, '2026-07-07', 'f', '30', 57.8, 36.2, 1.0089, 1.0042, 58.31, 36.35, 2119.57, '2026-07-07 03:01:14+09');
+
+-- ── meta_naver_blog ───────────────────────────────────────────
+-- naver_blog_ai 데이터셋의 게시물 3건 (본문 스크래핑 실패 1건 포함)
+
+INSERT INTO meta_naver_blog (
+    dataset_id, post_url,
+    title, description, content, has_content,
+    blogger_name, blogger_link,
+    blog_id, log_no,
+    published_at, search_keyword
+) VALUES
+-- 본문 스크래핑 성공
+(
+    'naver_blog_ai',
+    'https://blog.naver.com/techinsight_kr/223456781',
+    'HBM4 이란 무엇인가 - 차세대 메모리 완벽 정리',
+    '삼성전자와 SK하이닉스가 개발 중인 HBM4에 대해 알기 쉽게 정리해봤습니다. HBM3E와의 차이점부터 양산 일정까지.',
+    'HBM(High Bandwidth Memory)은 여러 D램을 수직으로 적층해 대역폭을 크게 늘린 메모리입니다. HBM4는 기존 HBM3E 대비 대역폭이 2배 이상 향상될 것으로 예상되며, 삼성전자와 SK하이닉스 모두 2027년 양산을 목표로 개발 중입니다. 이번 글에서는 HBM4가 왜 AI 반도체에 필수적인지, 그리고 각 제조사의 기술 경쟁 구도를 정리합니다.',
+    TRUE,
+    '테크인사이트', 'https://blog.naver.com/techinsight_kr',
+    'techinsight_kr', '223456781',
+    '2026-06-20 14:30:00+09', 'HBM4'
+),
+-- 본문 스크래핑 성공
+(
+    'naver_blog_ai',
+    'https://blog.naver.com/galaxy_review/223456912',
+    '갤럭시 S25 울트라 AI 기능 3주 사용 후기',
+    '갤럭시 S25 울트라를 3주간 사용하면서 느낀 AI 기능들을 솔직하게 리뷰합니다.',
+    '실시간 통역 기능은 해외여행에서 특히 유용했습니다. 서클 투 서치는 검색 편의성을 크게 높여줬고요. 다만 배터리 소모가 AI 기능을 켰을 때 눈에 띄게 늘어나는 점은 아쉬웠습니다. 종합적으로는 만족스러운 업그레이드였습니다.',
+    TRUE,
+    '갤럭시리뷰어', 'https://blog.naver.com/galaxy_review',
+    'galaxy_review', '223456912',
+    '2026-06-25 09:15:00+09', 'Galaxy AI'
+),
+-- 본문 스크래핑 실패 (has_content=FALSE)
+(
+    'naver_blog_ai',
+    'https://blog.naver.com/semicon_daily/223457033',
+    '2026년 반도체 업계 하반기 전망',
+    'AI 반도체 수요 증가와 함께 메모리 업계가 어떻게 움직이고 있는지 정리했습니다.',
+    NULL,
+    FALSE,
+    '반도체데일리', 'https://blog.naver.com/semicon_daily',
+    'semicon_daily', '223457033',
+    '2026-06-28 18:00:00+09', '반도체 전망'
+);
+
+-- ── active_meta_naver_blog ────────────────────────────────────
+-- ⚠️ 잠정 데이터 — ADR-006 확정 전까지 실제 수집 코드에서 사용하지 않는 테이블의
+-- 스키마 검증용 샘플. comment_count/sympathy_count 등 실제 API로 수집 가능한지
+-- 미검증 상태이므로 아래 값은 전부 예시(placeholder)이다.
+-- meta_naver_blog.id 삽입 순서: 1=HBM4, 2=Galaxy AI, 3=반도체 전망(본문 없음, 행 없음)
+
+INSERT INTO active_meta_naver_blog (
+    meta_id, collected_at,
+    comment_count, expose_count, reply_count, sympathy_count,
+    delta_comments
+) VALUES
+-- meta_id=1 (HBM4): 2회 수집
+(1, '2026-06-30 07:00:33+09',  12,  11,  1,  34,  NULL),
+(1, '2026-07-07 07:00:18+09',  19,  18,  2,  51,     7),
+-- meta_id=2 (Galaxy AI): 1회 수집
+(2, '2026-06-30 07:00:33+09',   6,   6,  0,  22,  NULL);

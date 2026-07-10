@@ -71,6 +71,14 @@ CREATE TABLE dcat_dataset (
     -- dct:accrualPeriodicity | 수집(갱신) 주기 (ISO 8601)
     -- 예) 'P1D'(매일), 'P7D'(매주), 'irregular'(비정기)
 
+    -- ── 데이터 규모 ───────────────────────────────────────────
+    item_count          BIGINT,
+    -- 이 데이터셋을 구성하는 고유 아이템 수 | temporal_start/end와 동일하게
+    -- 수집 후 자동 갱신되며 data_registry.item_count와 동기화된다
+    -- 예) YouTube 영상 수, 뉴스 기사 수, 블로그 게시물 수, 쇼핑/Persona 카테고리 수
+    -- (data_registry.item_count가 운영 중 실시간으로 갱신되는 원본이고,
+    --  여기 값은 dcat_dataset 조회만으로 데이터셋 규모를 바로 알 수 있도록 둔 미러)
+
     -- ── 태그 ──────────────────────────────────────────────────
     keywords            JSONB,
     -- dcat:keyword | 검색·분류용 키워드 (JSON 배열)

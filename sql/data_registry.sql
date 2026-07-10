@@ -64,8 +64,20 @@ CREATE TABLE data_registry (
     -- 성공 시 NULL 로 초기화
 
     -- ── 데이터 현황 ───────────────────────────────────────────
+    item_count           BIGINT,
+    -- 이 데이터셋을 구성하는 고유 아이템(raw) 수 = pg_meta_table 행 수
+    -- 예) YouTube 영상 수, 뉴스 기사 수, 블로그 게시물 수, 쇼핑/Persona 카테고리 수
+    -- row_count와 달리 시간이 지나도 "새 아이템이 추가되지 않는 한" 잘 바뀌지 않는다
+    -- (반면 쇼핑/Persona/뉴스 등 시계열 소스는 같은 아이템이라도 매 수집마다
+    --  row_count만 증가하고 item_count는 그대로인 경우가 많다)
+    -- temporal_start/end와 동일한 패턴으로 dcat_dataset.item_count와 동기화한다
+    -- (여기가 운영 중 실시간 갱신되는 원본, dcat_dataset 쪽은 조회 편의를 위한 미러)
+
     row_count           BIGINT,
-    -- 현재 수집된 총 행 수 (수집 완료 후 자동 갱신)
+    -- 이 데이터셋의 시계열 누적 총 행 수 = pg_active_table 행 수 (수집 완료 후 자동 갱신)
+    -- dcat_provenance.rows_affected 누적 합과 일치해야 한다
+    -- item_count와의 차이: item_count는 "몇 개를 추적하는가", row_count는
+    -- "그 추적 결과가 지금까지 몇 행 쌓였는가" — 수집 회차가 늘수록 row_count만 증가한다
 
     temporal_start      DATE,
     -- 수집 데이터 실제 시작일 (수집 후 자동 갱신)
