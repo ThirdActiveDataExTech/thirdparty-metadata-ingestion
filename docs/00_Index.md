@@ -1,8 +1,13 @@
 # Metadata Ingestion — Documentation
 
-> **Last Updated:** 2026-07-10
+> **Last Updated:** 2026-07-22
 > **Project:** metadata-ingestion
 > **Purpose:** 다양한 공공데이터 및 외부 API를 수집하여 메타데이터를 정제·저장하는 플랫폼
+
+---
+
+> 🚧 **지금 뭘 해야 하는지 모르겠다면** → [NEXT_STEPS.md](NEXT_STEPS.md) 먼저 확인.
+> 남은 작업이 순서대로 정리되어 있다.
 
 ---
 
