@@ -242,20 +242,26 @@ python scripts/embed_naver_news.py       # meta_naver_news_vec
 
 ---
 
-## 미결정 사항 (2026-07-10 기준)
+## 미결정 사항 (2026-07-22 기준)
 
-기본 데이터 설계(dcat_dataset → meta → active_meta → _vec, YouTube/뉴스/쇼핑/Persona/블로그)는
-오늘 검토·수정으로 큰 틀이 완성됐다. 남은 것은 아래 항목들이다.
+기본 데이터 설계(dcat_dataset → meta → active_meta → _vec, YouTube/뉴스/쇼핑/Persona/블로그)의
+스키마 레벨은 완성됐다 (item_count 도입, source_type/description NOT NULL 포함). 남은 것은
+아래 항목들이다.
 
 ### 스키마·API 확정 필요
 
 | 항목 | 상태 | 내용 |
 |------|------|------|
-| `active_meta_naver_blog` 컬럼 확정 | ⚠️ 잠정 | 댓글/공감/조회수 수집 가능 여부 미검증. ADR-005(뉴스)와 동일한 방식의 실제 API 테스트 필요 → ADR-006 |
+| `active_meta_naver_blog` 컬럼 확정 | ⚠️ 잠정 | 댓글/공감/조회수 수집 가능 여부 미검증. ADR-005(뉴스)와 동일한 방식의 실제 API 테스트 필요 → ADR-006 (아직 미작성) |
+| `meta_naver_blog` 소스 구분 | ⚠️ 확인 필요 | Naver 블로그 검색 API가 blog.naver.com 외 타 플랫폼도 반환하는지 확인 후, 필요 시 news의 `is_naver_hosted`처럼 플랫폼 구분 컬럼 추가 여부 결정 |
+| `dcat_dataset.publisher` NOT NULL 여부 | ⚠️ 보류 중 | description/source_type NOT NULL 결정 시 같이 검토하다가 범위 밖이라 보류. title/description과 같은 급의 핵심 속성이라 후보임 |
 | `meta_youtube_video_ai` | ⏳ 예정 | 필드는 초안 있음(§AI 메타데이터 파이프라인), DDL 미작성. P03 연구 주제와 직결 |
-| `meta_naver_news_ai` | ⏳ 미설계 | 필드 초안조차 없음 |
-| `meta_naver_blog_ai` | ⏳ 미설계 | 오늘 범위에 없었음. news_ai와 함께 나중에 설계 |
-| `meta_naver_blog` 소스 구분 | ⚠️ 확인 필요 | Naver 블로그 검색 API가 blog.naver.com 외 티스토리 등 타 플랫폼도 반환하는지 확인 후, 필요 시 news의 `is_naver_hosted`처럼 플랫폼 구분 컬럼 추가 여부 결정 |
+| `meta_naver_news_ai` / `meta_naver_blog_ai` | ⏳ 미설계 | 필드 초안조차 없음 |
+
+### 임베딩 파이프라인 격차
+
+- `meta_naver_blog_vec`용 `embed_naver_blog.py` 스크립트 없음 (dcat_dataset/youtube/news 3개는 완성·검증됨) — `embed_naver_news.py` 패턴 그대로 이식하면 됨
+- `meta_naver_blog` 시드 데이터는 있지만(3건), 실제 서버에 반영 전이라 아직 임베딩 생성 대상이 없음
 
 ### 수집 코드 (전부 미작성 — `src/` 비어있음)
 
@@ -263,19 +269,20 @@ python scripts/embed_naver_news.py       # meta_naver_news_vec
 스키마만 있고 실제 API 호출 수집 코드는 없다. 레거시 코드(`3amd/naver_shopping_insight.py`,
 `3amd/naver_persona.py`)를 `src/collectors/`로 이식하는 작업이 필요하다.
 
-### 임베딩 파이프라인 격차
+### 실제 DB 반영 여부 — 아직 미반영
 
-- `meta_naver_blog_vec`용 `embed_naver_blog.py` 스크립트 없음 (다른 3개는 완성·검증됨)
-- `meta_naver_blog` 시드 데이터 없음 — `sql/seeds.sql`에 샘플 미추가
+`meta_naver_shopping.sql`/`meta_naver_persona.sql`/블로그 3개 테이블/`dcat_dataset.sql`/
+`data_registry.sql` 전부 문법·제약조건은 롤백 트랜잭션으로 여러 차례 검증했지만, 실제
+서버 DB에는 한 번도 반영하지 않았다. `dcat_dataset.sql`은 `DROP TABLE ... CASCADE`로
+전체 자식 테이블(dcat_provenance, data_registry, dcat_dataset_vec, meta_*, active_meta_*
+전부)이 함께 삭제되므로, 재적용 시 순서는:
 
-### 실제 DB 반영 여부
-
-오늘 수정한 DDL(`meta_naver_shopping.sql`, `meta_naver_persona.sql`,
-`active_meta_naver_shopping.sql`, 신규 블로그 테이블 3개)은 문법·제약조건만 트랜잭션
-롤백으로 검증했고, 실제 서버 DB에는 아직 반영하지 않았다. `meta_naver_shopping`/
-`meta_naver_persona`는 `DROP TABLE ... CASCADE`라서 실제 적용 시 기존 시드
-데이터(각 5건/4건 + 연결된 active_meta 10건/8건)가 날아가므로, 재적용 후
-`seeds.sql` 해당 부분 재실행이 필요하다.
+```
+1. DDL 17개 파일 순서대로 재실행 (docs/database/datagokr_schema.md "DDL 적용 순서" 참조)
+2. sql/seeds.sql 재실행
+3. 임베딩 스크립트 재실행: embed_datasets.py, embed_youtube_videos.py, embed_naver_news.py
+   (embed_naver_blog.py는 아직 없음 — 있으면 같이 실행)
+```
 
 ---
 
