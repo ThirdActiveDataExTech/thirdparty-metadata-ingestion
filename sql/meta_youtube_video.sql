@@ -83,8 +83,15 @@ CREATE TABLE meta_youtube_video (
     collected_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
     -- 이 행이 DB에 처음 삽입된 시각
 
-    updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
     -- 필드 갱신 시각 (일반적으로 변경 없음 — 영상 메타는 거의 불변)
+
+    is_removed               BOOLEAN NOT NULL DEFAULT FALSE,
+    -- 정기 수집 시 채널에서 더 이상 발견되지 않는 영상(비공개 전환·삭제 등)에 TRUE.
+    -- 행 자체는 지우지 않고 마지막 known 상태로 보존 (architecture/04_Collection_Pipeline_Operations.md 참조)
+
+    removed_at                TIMESTAMPTZ
+    -- is_removed가 TRUE로 바뀐 시각. is_removed=FALSE면 NULL
 );
 
 -- 조회용 인덱스
@@ -92,3 +99,4 @@ CREATE INDEX idx_meta_yt_dataset    ON meta_youtube_video(dataset_id);
 CREATE INDEX idx_meta_yt_video      ON meta_youtube_video(video_id);
 CREATE INDEX idx_meta_yt_published  ON meta_youtube_video(published_at DESC);
 CREATE INDEX idx_meta_yt_channel    ON meta_youtube_video(channel_id);
+CREATE INDEX idx_meta_yt_removed    ON meta_youtube_video(is_removed);

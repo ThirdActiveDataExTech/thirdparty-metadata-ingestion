@@ -4,6 +4,9 @@
 > **목적:** 세션이 끊겨도 여기서부터 바로 이어갈 수 있도록, 남은 작업을 순서대로 기록한다.
 > 완료된 작업의 상세 이력은 `git log` 참조 — 이 문서는 "지금 무엇을 해야 하는가"만 담는다.
 > 항목을 끝내면 체크하고, 새로 발견한 항목은 해당 순서 구간에 추가한다.
+>
+> 수집 파이프라인 운영 설계(§가 자주 인용됨) 전체는
+> [architecture/04_Collection_Pipeline_Operations.md](architecture/04_Collection_Pipeline_Operations.md) 참조.
 
 ---
 
@@ -27,9 +30,9 @@
 
 ## 1. 실제 DB 반영
 
-지금까지(오늘 세션 이전 포함) 만든 DDL 변경사항은 전부 롤백 트랜잭션으로만 검증했고
-실제 서버에는 한 번도 반영하지 않았다. `dcat_dataset.sql`이 `DROP TABLE ... CASCADE`라
-전체 자식 테이블이 함께 재생성된다.
+지금까지 만든 DDL 변경사항은 전부 롤백 트랜잭션으로만 검증했고 실제 서버에는 한 번도
+반영하지 않았다. `dcat_dataset.sql`이 `DROP TABLE ... CASCADE`라 전체 자식 테이블이
+함께 재생성된다.
 
 - [ ] 0번 스키마 리뷰가 먼저 끝나야 함 (한 번에 반영하는 게 효율적)
 - [ ] DDL 18개 파일 순서대로 서버에 재실행 (`docs/database/datagokr_schema.md`의 "DDL 적용 순서" 참조,
@@ -38,10 +41,11 @@
 - [ ] 임베딩 스크립트 재실행: `embed_datasets.py`, `embed_youtube_videos.py`, `embed_naver_news.py`
       (`embed_naver_blog.py`는 3번 항목에서 먼저 작성해야 같이 실행 가능)
 - [ ] 검색 스크립트로 sanity check: `search_datasets.py`, `search_youtube_videos.py`, `search_naver_news.py`
+- [ ] `dataset-credentials-encryption-key` K8s Secret 실제 생성 (§9 참조)
 
 ---
 
-## 2. 남은 스키마·API 결정 3가지
+## 2. 남은 스키마·API 결정
 
 - [ ] **2-1. `active_meta_naver_blog` 실제 API 조사 → ADR-006**
       댓글/공감/조회수를 실제로 수집할 수 있는지 미검증 (ADR-005가 뉴스에 대해 했던 것과 동일한 수준의
@@ -52,35 +56,68 @@
 - [ ] **2-3. `dcat_dataset.publisher` NOT NULL 여부**
       `description`/`source_type`을 NOT NULL로 바꿀 때 같이 후보에 올랐다가 범위 밖이라 보류한 항목.
 - [ ] **2-4. ADR-002("Airflow 도입 전 K8s CronJob") 갱신 여부**
-      [architecture/04_Collection_Pipeline_Operations.md](architecture/04_Collection_Pipeline_Operations.md)
-      설계상 프론트엔드발 동적 데이터셋 등록은 정적 CronJob YAML로 구조적으로 안 됨 →
-      사실상 Airflow 도입 조건 충족으로 판단. 동의하면 ADR-002를 Superseded 처리하고
-      새 ADR로 "Airflow 도입 확정" 기록 필요.
+      프론트엔드발 동적 데이터셋 등록은 정적 CronJob YAML로 구조적으로 안 됨 → 사실상 Airflow
+      도입 조건 충족으로 판단(04_Collection_Pipeline_Operations.md 서두). 동의하면 ADR-002를
+      Superseded 처리하고 새 ADR로 "Airflow 도입 확정" 기록 필요.
 - [x] ~~2-5. API Key 저장 모델~~ — **결정: 데이터셋별 저장.** `sql/dataset_credentials.sql`
       작성 완료(pgcrypto 암호화, 롤백 트랜잭션으로 암복호화 라운드트립 검증 완료).
-      `04_Collection_Pipeline_Operations.md §6`, `05_Secrets_ConfigMaps.md` 반영 완료.
-      남은 후속 작업:
-      - [ ] `dataset-credentials-encryption-key` K8s Secret 실제 생성 (1번 "실제 DB 반영"과 함께)
-      - [ ] `dataset_credentials.sql`을 DDL 적용 순서에 포함 (dcat_dataset 다음, FK 의존)
-      - [ ] 데이터셋 등록 API(§5.3)에서 암호화 저장/폴백 조회 로직 구현
-      - [ ] Collector 공통 유틸에 "dataset_credentials 우선 조회 → 없으면 플랫폼 공유 Secret" 폴백 로직 추가
+      04_Collection_Pipeline_Operations.md §9, `05_Secrets_ConfigMaps.md` 반영 완료.
+- [ ] **2-6. `dcat_dataset.owner_id` 모델 — 새로 발견된 스키마 갭, 우선순위 높음**
+      04_Collection_Pipeline_Operations.md §10 참조. 지금 스키마엔 "어떤 사용자가 이
+      데이터셋을 만들었는지" 저장할 곳이 없다. 이게 없으면 "내 데이터셋 목록", "이 사용자가
+      이미 등록했는지 중복 확인"이 구현 불가능. 결정할 것: 이 DB가 사용자 신원을 직접
+      관리해야 하는지(→ `users` 테이블 신설 필요), 아니면 외부 인증 서비스가 이미 있고
+      그 ID를 문자열로만 참조하면 되는지. **§3(필요 테이블/컬럼 리스트업)의 1번 항목.**
+- [x] ~~2-7. anchor 카테고리 UX~~ — **결정: 사용자가 고른 첫 번째 카테고리를 자동으로 anchor 지정.**
+      04_Collection_Pipeline_Operations.md §4.3 반영 완료.
+- [x] ~~2-8. admin 데이터셋 등록 경로~~ — **결정: YAML+git 동기화 방식 채택 안 함.** admin도
+      user와 동일한 등록 핸들러를 그대로 사용 (`dataset_origin`만 다름, 서버가 caller 권한으로
+      결정 — 클라이언트가 값을 보내면 안 됨). 04_Collection_Pipeline_Operations.md §5.7 반영 완료.
+- [x] ~~2-9. 발견형 소스의 영상/기사/게시물 삭제 감지~~ — **결정: `is_removed`/`removed_at`
+      컬럼으로 표시, 행은 보존.** `meta_youtube_video`/`meta_naver_news`/`meta_naver_blog`
+      DDL에 반영 완료(오늘), 롤백 트랜잭션으로 검증 완료. 04_Collection_Pipeline_Operations.md
+      §6.1 반영 완료.
+- [ ] **2-10. `next_collect_at` 드리프트 허용 여부**
+      04_Collection_Pipeline_Operations.md §6.3. 지금 설계는 "수집 종료 시각 + 주기"로
+      재계산해서 매번 조금씩 밀릴 수 있다. "매일 정확히 새벽 2시" 같은 고정 스케줄이
+      필요하면 계산식을 바꿔야 한다.
+- [ ] **2-11. 즉시 수집 트리거 필요 여부**
+      04_Collection_Pipeline_Operations.md §5.4. MVP 범위에 Airflow REST API 트리거를
+      넣을지, 15분 지연을 감수할지.
 
 ---
 
-## 3. 임베딩 파이프라인 마무리
+## 3. 추가로 필요한 테이블/컬럼 — 검토용 리스트업
+
+이번 설계 논의(파이프라인 운영, 프론트엔드 연동)에서 드러난, 지금 스키마에 없는 것들이다.
+"새 테이블"보다는 대부분 기존 테이블에 컬럼을 추가하는 정도다.
+
+| # | 대상 | 종류 | 상태 | 설명 |
+|---|------|------|------|------|
+| 1 | `dcat_dataset.owner_id` (가칭) | 컬럼 추가 | ⚠️ **결정 필요 (2-6)** | 데이터셋을 만든 사용자 식별. 이 DB가 직접 관리(`users` 테이블 신설)할지, 외부 ID를 문자열로만 참조할지부터 결정. **가장 우선순위 높은 항목** — 이게 없으면 §5의 프론트엔드 연동 API 상당수가 구현 불가 |
+| 2 | `meta_youtube_video.is_removed` / `removed_at` | 컬럼 추가 | ✅ **완료** | 채널에서 사라진 영상 표시. 오늘 DDL 반영·검증 완료 |
+| 3 | `meta_naver_news.is_removed` / `removed_at` | 컬럼 추가 | ✅ **완료** | 위와 동일 (발견형 소스라 동일 패턴 적용) |
+| 4 | `meta_naver_blog.is_removed` / `removed_at` | 컬럼 추가 | ✅ **완료** | 위와 동일 |
+| 5 | `dataset_credentials` | 신규 테이블 | ✅ **완료** | 데이터셋별 API Key 암호화 저장 (pgcrypto). 유일하게 "새 테이블"이 필요했던 항목 |
+| 6 | `UNIQUE(owner_id, source_type, ...)` 형태의 중복 방지 제약 | 인덱스 추가 | ⏳ 보류 (owner_id 이후) | 04_Collection_Pipeline_Operations.md §7.2~7.3. JSONB `subjects` 배열 특성상 완벽한 DB 제약보다 애플리케이션 레벨 체크에 가까울 수 있음 — owner_id 확정 후 다시 설계 |
+| 7 | `meta_naver_news.updated_at` | 컬럼 추가 (미확정) | ⏳ 미결정 | 예전 세션에서 발견한 비대칭 — `meta_youtube_video`/`meta_naver_blog`는 `updated_at`이 있는데 `meta_naver_news`만 없음. 오늘 범위는 아니었어서 반영 안 함, 필요하면 0번 리뷰와 같이 처리 |
+| 8 | `users` 테이블 (owner_id를 이 DB가 직접 관리하기로 하면) | 신규 테이블 (조건부) | ⏳ 2-6 결정에 종속 | 이 프로젝트가 지금까지 순수 메타데이터 수집만 다뤄서 사용자 인증 관련 코드/문서가 전혀 없다 — 별도 인증 서비스가 있을 가능성이 높아 보이지만 확인 필요 |
+
+---
+
+## 4. 임베딩 파이프라인 마무리
 
 - [ ] `scripts/embed_naver_blog.py` 작성 — `scripts/embed_naver_news.py` 패턴 그대로 이식
       (`meta_naver_blog` → `meta_naver_blog_vec`, has_content 분기 동일)
 - [ ] `scripts/search_naver_blog.py` 작성 — `search_naver_news.py` 패턴
 - [ ] 1번(실제 DB 반영) 이후 실행해 검증
 - [ ] **증분 임베딩 방식으로 전환** — 지금 `embed_*.py`는 전체 DELETE→INSERT 재계산 방식이라
-      새 데이터셋이 동적으로 등록돼도 자동으로 임베딩되지 않음 (수동 재실행 필요). §5의
-      Airflow 파이프라인에 편입하려면 "새로 추가된 아이템만" 임베딩하는 방식으로 바꿔야
-      자동화가 완성됨 (runbooks/04_Add_New_Dataset_Existing_Source.md 검증 항목에서도 언급)
+      새 데이터셋이 동적으로 등록돼도 자동으로 임베딩되지 않음 (수동 재실행 필요). Airflow
+      파이프라인에 편입하려면 "새로 추가된 아이템만" 임베딩하는 방식으로 바꿔야 자동화가 완성됨
 
 ---
 
-## 4. AI 메타데이터 테이블
+## 5. AI 메타데이터 테이블
 
 - [ ] `meta_youtube_video_ai` DDL 작성 (필드 초안은 `datagokr_schema.md`의
       "AI 메타데이터 파이프라인" 절에 이미 있음: ai_summary/ai_keywords/ai_entities/
@@ -90,47 +127,59 @@
 
 ---
 
-## 5. 수집 코드 작성 (가장 큰 작업)
+## 6. 수집 코드 작성 (가장 큰 작업)
 
 `src/collectors/` 등이 전부 비어있음 (`.gitkeep`만 존재). `03_Component_Architecture.md`에
 설계된 구조(`collectors/ → preprocess/ → extractor/ → storage/`)를 실제로 채워야 한다.
-운영 방식(스케줄링·신규 데이터셋 온보딩) 상세 설계는
-[architecture/04_Collection_Pipeline_Operations.md](architecture/04_Collection_Pipeline_Operations.md) 참조 —
-착수 전 그 문서 §8의 미결정 사항(2-4, 2-5와 동일)부터 확정할 것.
+운영 방식 상세 설계는 [architecture/04_Collection_Pipeline_Operations.md](architecture/04_Collection_Pipeline_Operations.md)
+전체 참조 — 착수 전 §12(결정 사항 요약)부터 확정할 것, 특히 owner_id(2-6)가 §6.3의
+프론트엔드 API 구현을 막고 있다.
 
-### 5.1 Collector 코드
+### 6.1 Collector 코드
 
 - [ ] 레거시 코드(`3amd/naver_shopping_insight.py`, `3amd/naver_persona.py`)를
       `src/collectors/`로 이식 (config.yaml → 환경변수/설정 체계 전환 포함)
-- [ ] YouTube 수집 코드 신규 작성
-- [ ] Naver 뉴스 수집 코드 신규 작성 (본문 스크래핑 포함)
-- [ ] Naver 블로그 수집 코드 신규 작성 (2-1, 2-2 결정 이후)
+- [ ] YouTube 수집 코드 신규 작성 — 발견형 로직 (04_Collection_Pipeline_Operations.md §6.1:
+      신규/기존 분기 + `is_removed` 삭제 감지)
+- [ ] Naver 뉴스 수집 코드 신규 작성 (본문 스크래핑 포함, 발견형 로직 동일 적용)
+- [ ] Naver 블로그 수집 코드 신규 작성 (2-1, 2-2 결정 이후, 발견형 로직 동일 적용)
+- [ ] 쇼핑/Persona 수집 코드는 선언형 로직 (§6.2: 신규/기존 분기·삭제 감지 불필요,
+      카테고리 목록 고정 + 일별 지수만 갱신)
 - [ ] 각 Collector: `run(dataset_id=...)` 함수 노출, 성공/실패 시
       `dcat_provenance` INSERT + `data_registry` UPDATE(status/next_collect_at/item_count)
-      공통 로직 적용 (04_Collection_Pipeline_Operations.md §3.4)
+      공통 로직 적용 (§6.3 next_collect_at 재계산 포함)
 
-### 5.2 오케스트레이션 (Airflow)
+### 6.2 오케스트레이션 (Airflow)
 
 - [ ] 2-4 결정(ADR-002 갱신) 먼저 확정
 - [ ] Airflow 자체 K8s 배포 (Helm chart 등 방식 결정 — 별도 인프라 문서 필요,
       `docs/infrastructure/07_Airflow.md` 후보)
-- [ ] `dags/` 폴더 신설, source_type당 DAG 작성 (04_Collection_Pipeline_Operations.md §3)
+- [ ] `dags/` 폴더 신설, source_type당 DAG 작성 (§3 — 3-레이어 구조: Scheduler/판단 태스크/실행 태스크)
 - [ ] `data_registry` 조회 공통 함수(`get_due_datasets` 등) 작성
 - [ ] `metadata-ingestion` K8s 네임스페이스 실제 생성
       (`kubectl apply -f k8s/namespaces/metadata-ingestion-ns.yaml`)
 
-### 5.3 프론트엔드 연동 API
+### 6.3 프론트엔드 연동 API
 
-- [ ] 2-5 결정(API Key 모델) 먼저 확정
-- [ ] `POST /api/datasets` 등 신규 데이터셋 등록 API 구현
-      (04_Collection_Pipeline_Operations.md §7 초안 계약 참조, `docs/api/`로 정식 문서화 필요)
-- [ ] runbooks/04_Add_New_Dataset_Existing_Source.md의 A/B 경로를 API가 내부적으로 구현
+**⚠️ 2-6(owner_id) 결정이 먼저 나야 아래 항목들을 제대로 구현할 수 있다.**
+
+- [ ] `POST /api/datasets` 신규 데이터셋 등록 API 구현 — **소스 타입별 핸들러로 분리**
+      (§4.4: video/news/blog는 발견형 핸들러, shopping/persona는 선언형 핸들러 — 등록
+      시점에 `meta_*`까지 바로 쓰는 게 다름, §5.3 예시 참조)
+- [ ] `PATCH /api/datasets/{id}/subjects` — 기존 데이터셋에 채널/키워드 추가 (§5.6,
+      runbooks/04_Add_New_Dataset_Existing_Source.md B 경로)
+- [ ] `GET /api/datasets/{id}/status` — 최초 수집 실패를 명확히 구분해서 반환 (§7.4,
+      "등록 중..." 무한 스피너 방지)
+- [ ] `GET /api/datasets?owner=...` — 내 데이터셋 목록 (owner_id 결정 후 구현 가능)
+- [ ] `dataset_id` 채번 로직 — slug + 랜덤 접미사, `unique_violation` 시 재시도 (§7.1)
+- [ ] `dataset_origin`은 요청 바디로 받지 않고 서버가 caller 권한으로 결정 (§5.7 보안 주의사항)
+- [ ] 위 전체가 `docs/api/`로 정식 문서화 필요 (지금 완전히 비어있음)
 
 ---
 
 ## 참고 문서
 
 - 데이터 설계 상세 및 다른 "미결정 사항": [datagokr_schema.md](database/datagokr_schema.md)
-- 수집 파이프라인 운영 설계(Airflow, 신규 데이터셋 온보딩): [architecture/04_Collection_Pipeline_Operations.md](architecture/04_Collection_Pipeline_Operations.md)
+- 수집 파이프라인 운영 설계 전체(Airflow, 신규 데이터셋 온보딩, owner_id 갭 등): [architecture/04_Collection_Pipeline_Operations.md](architecture/04_Collection_Pipeline_Operations.md)
 - 인프라 현황: [01_Current_Infrastructure.md](infrastructure/01_Current_Infrastructure.md)
 - 전체 문서 인덱스: [00_Index.md](00_Index.md)

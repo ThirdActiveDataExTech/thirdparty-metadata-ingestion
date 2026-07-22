@@ -66,11 +66,19 @@ CREATE TABLE meta_naver_blog (
     -- ── 관리 ──────────────────────────────────────────────────
     collected_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
 
-    updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
     -- 본문 재스크래핑 등으로 필드 갱신 시 시각
+
+    is_removed            BOOLEAN NOT NULL DEFAULT FALSE,
+    -- 정기 수집 시 검색 결과에서 더 이상 발견되지 않는 게시물(비공개·삭제 등)에 TRUE.
+    -- 행 자체는 지우지 않고 마지막 known 상태로 보존 (architecture/04_Collection_Pipeline_Operations.md 참조)
+
+    removed_at             TIMESTAMPTZ
+    -- is_removed가 TRUE로 바뀐 시각. is_removed=FALSE면 NULL
 );
 
 -- 조회용 인덱스
 CREATE INDEX idx_meta_blog_dataset    ON meta_naver_blog(dataset_id);
 CREATE INDEX idx_meta_blog_published  ON meta_naver_blog(published_at DESC);
 CREATE INDEX idx_meta_blog_blogger    ON meta_naver_blog(blog_id);
+CREATE INDEX idx_meta_blog_removed    ON meta_naver_blog(is_removed);

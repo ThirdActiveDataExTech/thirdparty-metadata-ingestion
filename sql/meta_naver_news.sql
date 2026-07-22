@@ -68,7 +68,14 @@ CREATE TABLE meta_naver_news (
     -- 예) '인공지능', 'AI', '반도체'
 
     -- ── 관리 ──────────────────────────────────────────────────
-    collected_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+    collected_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    is_removed           BOOLEAN NOT NULL DEFAULT FALSE,
+    -- 정기 수집 시 검색 결과에서 더 이상 발견되지 않는 기사(비공개·삭제 등)에 TRUE.
+    -- 행 자체는 지우지 않고 마지막 known 상태로 보존 (architecture/04_Collection_Pipeline_Operations.md 참조)
+
+    removed_at            TIMESTAMPTZ
+    -- is_removed가 TRUE로 바뀐 시각. is_removed=FALSE면 NULL
 );
 
 -- 조회용 인덱스
@@ -76,3 +83,4 @@ CREATE INDEX idx_meta_news_dataset    ON meta_naver_news(dataset_id);
 CREATE INDEX idx_meta_news_published  ON meta_naver_news(published_at DESC);
 CREATE INDEX idx_meta_news_publisher  ON meta_naver_news(publisher);
 CREATE INDEX idx_meta_news_hosted     ON meta_naver_news(is_naver_hosted);
+CREATE INDEX idx_meta_news_removed    ON meta_naver_news(is_removed);
