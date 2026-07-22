@@ -177,7 +177,8 @@ Collector가 동일하게 쓰도록 한다 (ADR-002가 이미 "각 Collector는 
       - next_collect_at: now() (즉시 수집 대상으로 등록)
       - pg_meta_table/pg_active_table/vec_collection: source_type='video'이므로
         'meta_youtube_video'/'active_meta_youtube'/'dcat_dataset_vec' 고정값
-   c. (API Key를 데이터셋별로 저장하기로 했다면) 자격증명 저장 — §6
+   c. `dataset_credentials` INSERT — 사용자가 입력한 API Key를 `pgp_sym_encrypt`로
+      암호화해 저장 (§6 결정 완료, 데이터셋별 저장으로 확정)
        ↓
 4. [Airflow] 아무것도 안 함 — 다음 15분 틱에서 collect_video DAG의
    get_due_dataset_ids()가 이 데이터셋을 자동으로 주워감 (status='pending'도
@@ -245,18 +246,43 @@ ID를 추가**하는 경우도 있다 (`dataset_origin='user'`는 원래 "동일
 
 ---
 
-## 6. 미결정: API Key를 플랫폼 공유로 할지, 데이터셋별로 받을지
+## 6. API Key 저장 모델 — 결정: 데이터셋별 저장 (옵션 B)
 
-`05_Secrets_ConfigMaps.md`의 현재 모델은 **플랫폼 전체가 K8s Secret 하나(`youtube-api-secret`,
-`naver-api-secret`)를 공유**하는 구조다. 그런데 이번 요청의 프론트엔드 입력 예시에는
-"API Key"가 데이터셋 등록 시점에 같이 들어오는 걸로 되어 있어, 두 가지 해석이 가능하다.
+`05_Secrets_ConfigMaps.md`의 기존 모델은 플랫폼 전체가 K8s Secret 하나(`youtube-api-secret`,
+`naver-api-secret`)를 공유하는 구조였다. 사용자가 데이터셋 등록 시 자신의 API Key를
+직접 입력하는 것으로 확정했다 — K8s Secret은 사용자 수만큼 동적으로 늘리기엔 부적합해서
+(K8s API 호출 필요, Secret 목록 관리 부담) 새 테이블 `sql/dataset_credentials.sql`을
+만들어 DB에 암호화 저장하는 방식을 택했다. 이 프로젝트가 기존에도 별도 인프라를
+새로 세우기보다 PostgreSQL로 해결해온 기조(ADR-003 pgvector, ADR-004 SeaweedFS 선정
+이유 참조)와 일치한다.
 
-| 옵션 | 설명 | 필요한 작업 |
-|---|---|---|
-| A. 플랫폼 공유 키만 사용 | 프론트엔드의 "API Key" 입력란은 사실 필요 없거나, 검증/확인용일 뿐 | 현재 구조 그대로. 프론트엔드 폼에서 이 필드를 뺄지 확인 필요 |
-| B. 데이터셋(혹은 사용자)별 커스텀 키 지원 | 사용자가 자기 쿼터를 쓰고 싶어하는 경우 등 | 암호화된 자격증명 저장소 신설 필요(예: `dataset_credentials` 테이블, pgcrypto 또는 애플리케이션 레벨 암호화) — K8s Secret은 사용자 수만큼 동적 생성하기엔 부적합 |
+### 6.1 저장 방식
 
-**이 결정이 나야 §4.2의 3-c 단계와 DDL 작업량이 확정된다.** 어느 쪽인지 확인 부탁드립니다.
+- **암호화**: PostgreSQL `pgcrypto` 확장의 `pgp_sym_encrypt`/`pgp_sym_decrypt` (대칭키)
+- **대칭키 위치**: DB가 아니라 K8s Secret(`dataset-credentials-encryption-key`)에 별도 보관
+  — DB 접근 권한만으로는 평문을 복호화할 수 없도록 계층을 분리
+- **테이블 분리 이유**: `dcat_dataset`은 일반 조회·조인이 잦은 테이블이라, 민감정보를
+  거기 컬럼으로 두면 API 응답에 실수로 섞여 나갈 위험이 있다. `dataset_credentials`를
+  물리적으로 분리하고 이 테이블에 대한 DB 권한을 Collector 실행 계정으로만 좁힌다.
+- **Fallback**: `dataset_credentials`에 해당 dataset_id 행이 없으면 Collector는 플랫폼
+  공유 키(`youtube-api-secret` 등)로 폴백한다 — 사용자가 키를 안 넣어도 데이터셋 등록
+  자체는 가능. (프론트엔드에서 입력을 필수로 강제할지는 별도 UX 결정 사항으로 남김)
+
+실제 서버 DB에서 `pgp_sym_encrypt`→`pgp_sym_decrypt` 라운드트립과, 틀린 키로 복호화 시
+정상적으로 실패하는지까지 롤백 트랜잭션으로 검증 완료.
+
+```sql
+-- 저장 (데이터셋 등록 API, 파라미터 바인딩 — 암호화 키를 SQL에 직접 쓰지 않음)
+INSERT INTO dataset_credentials (dataset_id, credential_type, encrypted_value)
+VALUES (%(dataset_id)s, 'youtube_api_key', pgp_sym_encrypt(%(api_key)s, %(enc_key)s));
+
+-- 조회 (Collector 실행 시, 행 없으면 플랫폼 공유 키로 폴백)
+SELECT pgp_sym_decrypt(encrypted_value, %(enc_key)s)
+FROM dataset_credentials
+WHERE dataset_id = %(dataset_id)s AND credential_type = 'youtube_api_key';
+```
+
+전체 컬럼 정의는 [sql/dataset_credentials.sql](../../sql/dataset_credentials.sql) 참조.
 
 ---
 
@@ -279,7 +305,7 @@ POST   /api/datasets/{id}/collect-now   즉시 수집 트리거 (§4.3, MVP 이�
 - [ ] **ADR-002 갱신 여부** — 이 문서의 §서두 판단(사실상 Airflow 도입 조건 충족)에
       동의하는지, 동의하면 ADR-002를 Superseded 처리하고 새 ADR(예: ADR-006 또는
       다음 번호)로 "Airflow 도입 확정"을 기록할지
-- [ ] **API Key 모델** — §6의 A/B 중 선택
+- [x] ~~API Key 모델~~ — §6 결정 완료 (데이터셋별 저장, `dataset_credentials` 테이블 + pgcrypto)
 - [ ] **즉시 수집 트리거 필요 여부** — §4.3, MVP 범위에 넣을지 15분 지연을 감수할지
 - [ ] Airflow 자체의 배포 방법 (K8s에 Airflow 설치 방식 — Helm chart, KubernetesExecutor
       여부 등) — 이 문서는 DAG/스케줄 설계만 다루고 Airflow 인프라 자체의 배포는

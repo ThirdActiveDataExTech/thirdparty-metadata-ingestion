@@ -32,7 +32,8 @@
 전체 자식 테이블이 함께 재생성된다.
 
 - [ ] 0번 스키마 리뷰가 먼저 끝나야 함 (한 번에 반영하는 게 효율적)
-- [ ] DDL 17개 파일 순서대로 서버에 재실행 (`docs/database/datagokr_schema.md`의 "DDL 적용 순서" 참조)
+- [ ] DDL 18개 파일 순서대로 서버에 재실행 (`docs/database/datagokr_schema.md`의 "DDL 적용 순서" 참조,
+      `sql/dataset_credentials.sql` 포함 — `dcat_dataset.sql` 다음 아무 때나 가능, FK만 있으면 됨)
 - [ ] `sql/seeds.sql` 재실행
 - [ ] 임베딩 스크립트 재실행: `embed_datasets.py`, `embed_youtube_videos.py`, `embed_naver_news.py`
       (`embed_naver_blog.py`는 3번 항목에서 먼저 작성해야 같이 실행 가능)
@@ -55,10 +56,14 @@
       설계상 프론트엔드발 동적 데이터셋 등록은 정적 CronJob YAML로 구조적으로 안 됨 →
       사실상 Airflow 도입 조건 충족으로 판단. 동의하면 ADR-002를 Superseded 처리하고
       새 ADR로 "Airflow 도입 확정" 기록 필요.
-- [ ] **2-5. API Key 저장 모델 (플랫폼 공유 vs 데이터셋별)**
-      04_Collection_Pipeline_Operations.md §6 참조. 프론트엔드가 데이터셋 등록 시
-      API Key를 받는 걸로 되어 있는데, 실제로 데이터셋별 커스텀 키를 지원할지 아니면
-      플랫폼 공유 키(`youtube-api-secret` 등)만 쓸지에 따라 필요한 저장소 설계가 크게 달라짐.
+- [x] ~~2-5. API Key 저장 모델~~ — **결정: 데이터셋별 저장.** `sql/dataset_credentials.sql`
+      작성 완료(pgcrypto 암호화, 롤백 트랜잭션으로 암복호화 라운드트립 검증 완료).
+      `04_Collection_Pipeline_Operations.md §6`, `05_Secrets_ConfigMaps.md` 반영 완료.
+      남은 후속 작업:
+      - [ ] `dataset-credentials-encryption-key` K8s Secret 실제 생성 (1번 "실제 DB 반영"과 함께)
+      - [ ] `dataset_credentials.sql`을 DDL 적용 순서에 포함 (dcat_dataset 다음, FK 의존)
+      - [ ] 데이터셋 등록 API(§5.3)에서 암호화 저장/폴백 조회 로직 구현
+      - [ ] Collector 공통 유틸에 "dataset_credentials 우선 조회 → 없으면 플랫폼 공유 Secret" 폴백 로직 추가
 
 ---
 

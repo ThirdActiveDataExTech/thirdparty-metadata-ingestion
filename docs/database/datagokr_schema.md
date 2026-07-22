@@ -28,6 +28,7 @@
 | `meta_naver_blog` | ✅ 생성 완료 | [sql/meta_naver_blog.sql](../../sql/meta_naver_blog.sql) | Naver 블로그 게시물 단위 메타 (Schema.org BlogPosting) |
 | `meta_naver_blog_vec` | ✅ 생성 완료 | [sql/meta_naver_blog_vec.sql](../../sql/meta_naver_blog_vec.sql) | Naver 블로그 게시물 임베딩 (pgvector 768차원) |
 | `active_meta_naver_blog` | ⚠️ 잠정 (미검증) | [sql/active_meta_naver_blog.sql](../../sql/active_meta_naver_blog.sql) | 댓글/공감 수집 가능 여부 미검증 — ADR-006 필요, 확정 전까지 수집 코드에서 미사용 |
+| `dataset_credentials` | ✅ DDL 작성 완료 | [sql/dataset_credentials.sql](../../sql/dataset_credentials.sql) | 데이터셋별 API Key 암호화 저장 (pgcrypto). [설계 배경](../architecture/04_Collection_Pipeline_Operations.md#6-api-key-저장-모델--결정-데이터셋별-저장-옵션-b) |
 
 ---
 
@@ -198,7 +199,8 @@ psql -h localhost -p 30433 -U admin -d datagokr \
   -f sql/dcat_dataset.sql \
   -f sql/dcat_provenance.sql \
   -f sql/data_registry.sql \
-  -f sql/dcat_dataset_vec.sql
+  -f sql/dcat_dataset_vec.sql \
+  -f sql/dataset_credentials.sql
 
 # 2. YouTube 메타 테이블 생성
 psql -h localhost -p 30433 -U admin -d datagokr \
@@ -278,7 +280,8 @@ python scripts/embed_naver_news.py       # meta_naver_news_vec
 전부)이 함께 삭제되므로, 재적용 시 순서는:
 
 ```
-1. DDL 17개 파일 순서대로 재실행 (docs/database/datagokr_schema.md "DDL 적용 순서" 참조)
+1. DDL 18개 파일 순서대로 재실행 (docs/database/datagokr_schema.md "DDL 적용 순서" 참조,
+   dataset_credentials.sql 포함)
 2. sql/seeds.sql 재실행
 3. 임베딩 스크립트 재실행: embed_datasets.py, embed_youtube_videos.py, embed_naver_news.py
    (embed_naver_blog.py는 아직 없음 — 있으면 같이 실행)
