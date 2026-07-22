@@ -37,6 +37,7 @@
 | 2.1 | [System Architecture](architecture/01_System_Architecture.md) | 전체 시스템 구조 | 작성 중 |
 | 2.2 | [Metadata Flow](architecture/02_Metadata_Flow.md) | 수집 → 전처리 → 저장 흐름 | 작성 중 |
 | 2.3 | [Component Architecture](architecture/03_Component_Architecture.md) | 컴포넌트 역할 및 관계 | 작성 중 |
+| 2.4 | [Collection Pipeline Operations](architecture/04_Collection_Pipeline_Operations.md) | Airflow 기반 동적 수집 스케줄링, 신규 데이터셋 온보딩 흐름 | 설계안 (구현 전) |
 
 ---
 
@@ -75,6 +76,7 @@
 | [새 데이터 소스 추가](runbooks/01_Add_New_DataSource.md) | 체크리스트 |
 | [수집 실패 대응](runbooks/02_Troubleshoot_Failed_Collection.md) | 원인별 대응 방법 |
 | [수동 수집 실행](runbooks/03_Manual_Collection.md) | 로컬/K8s 수동 실행 |
+| [기존 source_type 내 새 데이터셋 추가](runbooks/04_Add_New_Dataset_Existing_Source.md) | 신규 플랫폼 추가보다 가벼운 케이스 (채널/검색어만 추가) |
 
 ---
 

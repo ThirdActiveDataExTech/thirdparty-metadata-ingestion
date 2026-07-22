@@ -50,6 +50,15 @@
       news의 `is_naver_hosted`처럼 구분 컬럼 추가 여부 결정 (0번 리뷰와 함께 진행하면 좋음).
 - [ ] **2-3. `dcat_dataset.publisher` NOT NULL 여부**
       `description`/`source_type`을 NOT NULL로 바꿀 때 같이 후보에 올랐다가 범위 밖이라 보류한 항목.
+- [ ] **2-4. ADR-002("Airflow 도입 전 K8s CronJob") 갱신 여부**
+      [architecture/04_Collection_Pipeline_Operations.md](architecture/04_Collection_Pipeline_Operations.md)
+      설계상 프론트엔드발 동적 데이터셋 등록은 정적 CronJob YAML로 구조적으로 안 됨 →
+      사실상 Airflow 도입 조건 충족으로 판단. 동의하면 ADR-002를 Superseded 처리하고
+      새 ADR로 "Airflow 도입 확정" 기록 필요.
+- [ ] **2-5. API Key 저장 모델 (플랫폼 공유 vs 데이터셋별)**
+      04_Collection_Pipeline_Operations.md §6 참조. 프론트엔드가 데이터셋 등록 시
+      API Key를 받는 걸로 되어 있는데, 실제로 데이터셋별 커스텀 키를 지원할지 아니면
+      플랫폼 공유 키(`youtube-api-secret` 등)만 쓸지에 따라 필요한 저장소 설계가 크게 달라짐.
 
 ---
 
@@ -59,6 +68,10 @@
       (`meta_naver_blog` → `meta_naver_blog_vec`, has_content 분기 동일)
 - [ ] `scripts/search_naver_blog.py` 작성 — `search_naver_news.py` 패턴
 - [ ] 1번(실제 DB 반영) 이후 실행해 검증
+- [ ] **증분 임베딩 방식으로 전환** — 지금 `embed_*.py`는 전체 DELETE→INSERT 재계산 방식이라
+      새 데이터셋이 동적으로 등록돼도 자동으로 임베딩되지 않음 (수동 재실행 필요). §5의
+      Airflow 파이프라인에 편입하려면 "새로 추가된 아이템만" 임베딩하는 방식으로 바꿔야
+      자동화가 완성됨 (runbooks/04_Add_New_Dataset_Existing_Source.md 검증 항목에서도 언급)
 
 ---
 
@@ -76,19 +89,43 @@
 
 `src/collectors/` 등이 전부 비어있음 (`.gitkeep`만 존재). `03_Component_Architecture.md`에
 설계된 구조(`collectors/ → preprocess/ → extractor/ → storage/`)를 실제로 채워야 한다.
+운영 방식(스케줄링·신규 데이터셋 온보딩) 상세 설계는
+[architecture/04_Collection_Pipeline_Operations.md](architecture/04_Collection_Pipeline_Operations.md) 참조 —
+착수 전 그 문서 §8의 미결정 사항(2-4, 2-5와 동일)부터 확정할 것.
+
+### 5.1 Collector 코드
 
 - [ ] 레거시 코드(`3amd/naver_shopping_insight.py`, `3amd/naver_persona.py`)를
       `src/collectors/`로 이식 (config.yaml → 환경변수/설정 체계 전환 포함)
 - [ ] YouTube 수집 코드 신규 작성
 - [ ] Naver 뉴스 수집 코드 신규 작성 (본문 스크래핑 포함)
-- [ ] Naver 블로그 수집 코드 신규 작성 (2번 결정 이후)
-- [ ] 수집 코드 완성 후: `metadata-ingestion` K8s 네임스페이스 실제 생성
-      (`kubectl apply -f k8s/namespaces/metadata-ingestion-ns.yaml`) → CronJob/Airflow 배포
+- [ ] Naver 블로그 수집 코드 신규 작성 (2-1, 2-2 결정 이후)
+- [ ] 각 Collector: `run(dataset_id=...)` 함수 노출, 성공/실패 시
+      `dcat_provenance` INSERT + `data_registry` UPDATE(status/next_collect_at/item_count)
+      공통 로직 적용 (04_Collection_Pipeline_Operations.md §3.4)
+
+### 5.2 오케스트레이션 (Airflow)
+
+- [ ] 2-4 결정(ADR-002 갱신) 먼저 확정
+- [ ] Airflow 자체 K8s 배포 (Helm chart 등 방식 결정 — 별도 인프라 문서 필요,
+      `docs/infrastructure/07_Airflow.md` 후보)
+- [ ] `dags/` 폴더 신설, source_type당 DAG 작성 (04_Collection_Pipeline_Operations.md §3)
+- [ ] `data_registry` 조회 공통 함수(`get_due_datasets` 등) 작성
+- [ ] `metadata-ingestion` K8s 네임스페이스 실제 생성
+      (`kubectl apply -f k8s/namespaces/metadata-ingestion-ns.yaml`)
+
+### 5.3 프론트엔드 연동 API
+
+- [ ] 2-5 결정(API Key 모델) 먼저 확정
+- [ ] `POST /api/datasets` 등 신규 데이터셋 등록 API 구현
+      (04_Collection_Pipeline_Operations.md §7 초안 계약 참조, `docs/api/`로 정식 문서화 필요)
+- [ ] runbooks/04_Add_New_Dataset_Existing_Source.md의 A/B 경로를 API가 내부적으로 구현
 
 ---
 
 ## 참고 문서
 
 - 데이터 설계 상세 및 다른 "미결정 사항": [datagokr_schema.md](database/datagokr_schema.md)
+- 수집 파이프라인 운영 설계(Airflow, 신규 데이터셋 온보딩): [architecture/04_Collection_Pipeline_Operations.md](architecture/04_Collection_Pipeline_Operations.md)
 - 인프라 현황: [01_Current_Infrastructure.md](infrastructure/01_Current_Infrastructure.md)
 - 전체 문서 인덱스: [00_Index.md](00_Index.md)
