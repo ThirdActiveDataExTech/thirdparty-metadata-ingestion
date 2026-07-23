@@ -24,10 +24,12 @@
       때문에 단순 boolean보다 세분화가 필요하다고 판단). `blog_id`/`log_no`/ADR-006 댓글·공감
       수집 가능 여부는 `platform='naver'`일 때만 해당하도록 주석 갱신. `sql/meta_naver_blog.sql`,
       `sql/seeds.sql`(기존 3건 모두 `platform='naver'`) 반영·검증 완료.
-- [ ] **(신규 발견, 미해결)** `meta_naver_blog.updated_at`은 "본문 재스크래핑 시" 갱신되는데
-      `meta_naver_shopping`/`meta_naver_persona`의 `updated_at`은 "카테고리 메타 자체가
-      네이버 쪽에서 개편될 때"만 갱신됨 — 컬럼명은 같은데 갱신 계기(트리거)가 테이블마다
-      다르다. 문제는 아니지만 헷갈릴 수 있어 컬럼 주석에 갱신 계기를 명시할지 검토 필요.
+- [x] ~~`meta_naver_blog.updated_at`과 `meta_naver_shopping`/`meta_naver_persona`의
+      `updated_at`이 갱신 계기가 다른 문제~~ — **결정: 스키마 변경 불필요, 문서화로 해결.**
+      우연한 불일치가 아니라 §4의 발견형(아이템 자체가 재수집·변경 대상)/선언형(카테고리는
+      거의 불변, 실측값은 `active_meta_*` 자식 테이블) 구분의 직접적 결과. 각 컬럼 주석이
+      이미 정확히 설명하고 있어 스키마는 그대로 두고, §4 비교표에 이 차이를 명시하는 행 추가
+      완료 (04_Collection_Pipeline_Operations.md §4.2 아래 표).
 
 - [x] ~~세 테이블 컬럼 검토~~ — 위 3건 확인 완료 (2026-07-23)
 - [x] ~~확정된 변경사항을 DDL(`sql/*.sql`)에 반영~~ — 완료
