@@ -45,8 +45,16 @@ CREATE TABLE meta_naver_blog (
     blogger_link         TEXT,
     -- 블로그 홈 URL (API: bloggerlink)
 
-    -- ── Naver 블로그 ID 파싱값 ─────────────────────────────────
-    -- post_url이 'blog.naver.com/{blogId}/{logNo}' 형식일 때만 채움.
+    -- ── 호스팅 플랫폼 ─────────────────────────────────────────
+    platform             TEXT NOT NULL,
+    -- post_url의 host에서 파싱해 채움. Naver 블로그 검색 API(Blog Search)는
+    -- blog.naver.com 외에도 검색 결과에 노출되는 티스토리/브런치/워드프레스/Blogger 등
+    -- 다양한 플랫폼을 함께 반환하기 때문에 필요 (API 이름이 "Naver Blog Search"가 아님)
+    -- 값 예시: 'naver', 'tistory', 'brunch', 'wordpress', 'blogger', 'other'
+    -- 아래 blog_id/log_no, active_meta 댓글/공감 수집 가능 여부(ADR-006)는
+    -- platform='naver'일 때만 해당
+
+    -- ── Naver 블로그 ID 파싱값 (platform='naver'일 때만 채움) ────
     -- 댓글/공감 수 등 시계열 지표 수집 가능 여부를 결정하는 키가 될 예정
     -- (ADR-006 확정 전까지는 파싱만 해두고 active_meta 연동은 보류)
     blog_id              TEXT,
@@ -82,3 +90,4 @@ CREATE INDEX idx_meta_blog_dataset    ON meta_naver_blog(dataset_id);
 CREATE INDEX idx_meta_blog_published  ON meta_naver_blog(published_at DESC);
 CREATE INDEX idx_meta_blog_blogger    ON meta_naver_blog(blog_id);
 CREATE INDEX idx_meta_blog_removed    ON meta_naver_blog(is_removed);
+CREATE INDEX idx_meta_blog_platform   ON meta_naver_blog(platform);

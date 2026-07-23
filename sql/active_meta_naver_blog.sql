@@ -25,7 +25,7 @@ CREATE TABLE active_meta_naver_blog (
     meta_id         BIGINT NOT NULL
                     REFERENCES meta_naver_blog(id) ON DELETE CASCADE,
     -- meta_naver_blog.id FK (dataset+게시물 조합)
-    -- blog_id/log_no 파싱 성공한 게시물만 행 존재 예정 (news의 is_naver_hosted와 유사한 제약)
+    -- meta_naver_blog.platform='naver'인 게시물만 행 존재 예정 (news의 is_naver_hosted와 유사한 제약)
 
     collected_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
 

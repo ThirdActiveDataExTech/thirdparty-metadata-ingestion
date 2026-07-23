@@ -15,16 +15,26 @@
 **담당: 사용자 직접 검토 중.** 세 테이블의 컬럼 목록은 대화 중 정리해서 전달함 — 필요하면
 `sql/meta_naver_shopping.sql`, `sql/meta_naver_persona.sql`, `sql/meta_naver_blog.sql` 직접 참조.
 
-검토 중 이미 발견된 비대칭 (참고용):
-- `meta_naver_shopping`의 `cat_level1~4`는 컬럼마다 예시 주석이 있는데, `meta_naver_persona`의 동일 4개
-  컬럼은 주석이 하나도 없음 (구조는 동일). 의도적 생략인지 그냥 누락인지 확인 필요.
-- `meta_naver_blog`는 `blog_id`/`log_no`만 파싱해두고 `is_naver_hosted` 같은 플랫폼 구분 컬럼이 없음
-  (아래 2-2 항목과 연결).
+검토 중 발견된 비대칭:
+- [x] ~~`meta_naver_shopping`의 `cat_level1~4` 예시 주석이 `meta_naver_persona`엔 없던 문제~~
+      — `meta_naver_persona.sql`에 동일한 예시 주석 추가 완료, 롤백 트랜잭션 검증 완료.
+- [x] ~~`meta_naver_blog`에 플랫폼 구분 컬럼 없던 문제 (2-2)~~ — **결정: `platform TEXT NOT NULL`
+      컬럼 추가** (news의 `is_naver_hosted` boolean 패턴 대신 `platform` 문자열 채택 — Naver
+      블로그 검색 API가 blog.naver.com 외 티스토리/브런치/워드프레스/Blogger 등도 반환하기
+      때문에 단순 boolean보다 세분화가 필요하다고 판단). `blog_id`/`log_no`/ADR-006 댓글·공감
+      수집 가능 여부는 `platform='naver'`일 때만 해당하도록 주석 갱신. `sql/meta_naver_blog.sql`,
+      `sql/seeds.sql`(기존 3건 모두 `platform='naver'`) 반영·검증 완료.
+- [ ] **(신규 발견, 미해결)** `meta_naver_blog.updated_at`은 "본문 재스크래핑 시" 갱신되는데
+      `meta_naver_shopping`/`meta_naver_persona`의 `updated_at`은 "카테고리 메타 자체가
+      네이버 쪽에서 개편될 때"만 갱신됨 — 컬럼명은 같은데 갱신 계기(트리거)가 테이블마다
+      다르다. 문제는 아니지만 헷갈릴 수 있어 컬럼 주석에 갱신 계기를 명시할지 검토 필요.
 
-- [ ] 세 테이블 컬럼 검토 완료, 추가/변경 사항 확정
-- [ ] 확정된 변경사항을 DDL(`sql/*.sql`)에 반영
-- [ ] 컬럼이 추가/변경되면 `sql/seeds.sql`의 해당 INSERT도 같이 갱신
-- [ ] `docs/database/datagokr_schema.md` 테이블 목록·ERD도 갱신
+- [x] ~~세 테이블 컬럼 검토~~ — 위 3건 확인 완료 (2026-07-23)
+- [x] ~~확정된 변경사항을 DDL(`sql/*.sql`)에 반영~~ — 완료
+- [x] ~~컬럼 추가/변경 시 `sql/seeds.sql`의 해당 INSERT도 갱신~~ — 완료 (blog 3건)
+- [x] ~~`docs/database/datagokr_schema.md` 테이블 목록·ERD 갱신 필요 여부 확인~~ — 그 문서의
+      테이블 목록/ERD는 컬럼 단위가 아니라 한 줄 요약 수준이라 이번 변경(persona 주석,
+      blog platform 컬럼)으로 갱신할 내용 없음 확인 완료
 
 ---
 
@@ -50,9 +60,10 @@
 - [ ] **2-1. `active_meta_naver_blog` 실제 API 조사 → ADR-006**
       댓글/공감/조회수를 실제로 수집할 수 있는지 미검증 (ADR-005가 뉴스에 대해 했던 것과 동일한 수준의
       실제 API 호출 테스트 필요). 확정 전까지 이 테이블은 수집 코드에서 미사용.
-- [ ] **2-2. `meta_naver_blog` 플랫폼 구분 확인**
-      Naver 블로그 검색 API가 blog.naver.com 외 다른 플랫폼도 반환하는지 확인. 섞여 있다면
-      news의 `is_naver_hosted`처럼 구분 컬럼 추가 여부 결정 (0번 리뷰와 함께 진행하면 좋음).
+- [x] ~~2-2. `meta_naver_blog` 플랫폼 구분 확인~~ — **결정: `platform TEXT` 컬럼 추가**
+      (0번 리뷰에서 완료. Naver 블로그 검색 API가 blog.naver.com 외 티스토리/브런치/
+      워드프레스/Blogger 등도 반환한다고 판단 — 실제 라이브 API 호출로 재검증은 아직
+      안 함, 2-1의 ADR-006 실측 작업 때 같이 확인 권장).
 - [ ] **2-3. `dcat_dataset.publisher` NOT NULL 여부**
       `description`/`source_type`을 NOT NULL로 바꿀 때 같이 후보에 올랐다가 범위 밖이라 보류한 항목.
 - [ ] **2-4. ADR-002("Airflow 도입 전 K8s CronJob") 갱신 여부**

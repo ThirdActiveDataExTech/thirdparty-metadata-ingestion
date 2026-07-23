@@ -488,7 +488,7 @@ INSERT INTO meta_naver_blog (
     dataset_id, post_url,
     title, description, content, has_content,
     blogger_name, blogger_link,
-    blog_id, log_no,
+    platform, blog_id, log_no,
     published_at, search_keyword
 ) VALUES
 -- 본문 스크래핑 성공
@@ -500,7 +500,7 @@ INSERT INTO meta_naver_blog (
     'HBM(High Bandwidth Memory)은 여러 D램을 수직으로 적층해 대역폭을 크게 늘린 메모리입니다. HBM4는 기존 HBM3E 대비 대역폭이 2배 이상 향상될 것으로 예상되며, 삼성전자와 SK하이닉스 모두 2027년 양산을 목표로 개발 중입니다. 이번 글에서는 HBM4가 왜 AI 반도체에 필수적인지, 그리고 각 제조사의 기술 경쟁 구도를 정리합니다.',
     TRUE,
     '테크인사이트', 'https://blog.naver.com/techinsight_kr',
-    'techinsight_kr', '223456781',
+    'naver', 'techinsight_kr', '223456781',
     '2026-06-20 14:30:00+09', 'HBM4'
 ),
 -- 본문 스크래핑 성공
@@ -512,7 +512,7 @@ INSERT INTO meta_naver_blog (
     '실시간 통역 기능은 해외여행에서 특히 유용했습니다. 서클 투 서치는 검색 편의성을 크게 높여줬고요. 다만 배터리 소모가 AI 기능을 켰을 때 눈에 띄게 늘어나는 점은 아쉬웠습니다. 종합적으로는 만족스러운 업그레이드였습니다.',
     TRUE,
     '갤럭시리뷰어', 'https://blog.naver.com/galaxy_review',
-    'galaxy_review', '223456912',
+    'naver', 'galaxy_review', '223456912',
     '2026-06-25 09:15:00+09', 'Galaxy AI'
 ),
 -- 본문 스크래핑 실패 (has_content=FALSE)
@@ -524,7 +524,7 @@ INSERT INTO meta_naver_blog (
     NULL,
     FALSE,
     '반도체데일리', 'https://blog.naver.com/semicon_daily',
-    'semicon_daily', '223457033',
+    'naver', 'semicon_daily', '223457033',
     '2026-06-28 18:00:00+09', '반도체 전망'
 );
 

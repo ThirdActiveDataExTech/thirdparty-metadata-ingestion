@@ -30,9 +30,13 @@ CREATE TABLE meta_naver_persona (
     -- 전체 경로명 (예: '패션의류>남성의류>정장')
 
     cat_level1      TEXT,
+    -- 1차 분류 (예: '패션의류')
     cat_level2      TEXT,
+    -- 2차 분류 (예: '남성의류')
     cat_level3      TEXT,
+    -- 3차 분류 (예: '정장')
     cat_level4      TEXT,
+    -- 4차 분류 (대부분 NULL)
 
     -- ── 관리 ──────────────────────────────────────────────────
     registered_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
