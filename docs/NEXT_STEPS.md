@@ -12,8 +12,8 @@
 
 남은 작업을 성격별로 분류해 아래 순서로 진행하기로 합의:
 
-1. **A. 결정만 필요한 것** — 2-3, 2-4, 2-10, 2-11, §3의 7번(`meta_naver_news.updated_at`)
-2. **B. 조사해야 결정 가능** — 2-1(blog API 실측 → ADR-006), §5 AI 필드 실측 검증
+1. ~~**A. 결정만 필요한 것** — 2-3, 2-4, 2-10, 2-11, §3의 7번~~ **완료 (2026-07-23)**
+2. **B. 조사해야 결정 가능** — 2-1(blog API 실측 → ADR-006), §5 AI 필드 실측 검증 ← 다음 단계
 3. **C. 외부 의존 (대기)** — §3의 8번(계정테이블 FK), K8s Secret 생성
 4. **D. 구현 작업** — 순서는 §6.1(Collector 코드) → 수동 실행으로 실 데이터 확보 →
    §5(AI 필드 실측·DDL·collector에 통합) → §6.2(Airflow 오케스트레이션) → §6.3(프론트엔드 API).
@@ -89,12 +89,12 @@
       (0번 리뷰에서 완료. Naver 블로그 검색 API가 blog.naver.com 외 티스토리/브런치/
       워드프레스/Blogger 등도 반환한다고 판단 — 실제 라이브 API 호출로 재검증은 아직
       안 함, 2-1의 ADR-006 실측 작업 때 같이 확인 권장).
-- [ ] **2-3. `dcat_dataset.publisher` NOT NULL 여부**
-      `description`/`source_type`을 NOT NULL로 바꿀 때 같이 후보에 올랐다가 범위 밖이라 보류한 항목.
-- [ ] **2-4. ADR-002("Airflow 도입 전 K8s CronJob") 갱신 여부**
-      프론트엔드발 동적 데이터셋 등록은 정적 CronJob YAML로 구조적으로 안 됨 → 사실상 Airflow
-      도입 조건 충족으로 판단(04_Collection_Pipeline_Operations.md 서두). 동의하면 ADR-002를
-      Superseded 처리하고 새 ADR로 "Airflow 도입 확정" 기록 필요.
+- [x] ~~2-3. `dcat_dataset.publisher` NOT NULL 여부~~ — **결정: NOT NULL로 변경.** 모든
+      시드 데이터가 값을 가지고 있고 NULL이 되는 시나리오가 없다고 판단. `sql/dcat_dataset.sql`
+      반영·실 서버 적용 완료 (2026-07-23).
+- [x] ~~2-4. ADR-002("Airflow 도입 전 K8s CronJob") 갱신 여부~~ — **결정: Superseded 처리.**
+      [ADR-007](adr/007_Airflow_Adoption.md)로 Airflow 도입 확정 기록 완료.
+      04_Collection_Pipeline_Operations.md §12, `00_Index.md` 반영 완료.
 - [x] ~~2-5. API Key 저장 모델~~ — **결정: 데이터셋별 저장.** `sql/dataset_credentials.sql`
       작성 완료(pgcrypto 암호화, 롤백 트랜잭션으로 암복호화 라운드트립 검증 완료).
       04_Collection_Pipeline_Operations.md §9, `05_Secrets_ConfigMaps.md` 반영 완료.
@@ -112,13 +112,12 @@
       컬럼으로 표시, 행은 보존.** `meta_youtube_video`/`meta_naver_news`/`meta_naver_blog`
       DDL에 반영 완료(오늘), 롤백 트랜잭션으로 검증 완료. 04_Collection_Pipeline_Operations.md
       §6.1 반영 완료.
-- [ ] **2-10. `next_collect_at` 드리프트 허용 여부**
-      04_Collection_Pipeline_Operations.md §6.3. 지금 설계는 "수집 종료 시각 + 주기"로
-      재계산해서 매번 조금씩 밀릴 수 있다. "매일 정확히 새벽 2시" 같은 고정 스케줄이
-      필요하면 계산식을 바꿔야 한다.
-- [ ] **2-11. 즉시 수집 트리거 필요 여부**
-      04_Collection_Pipeline_Operations.md §5.4. MVP 범위에 Airflow REST API 트리거를
-      넣을지, 15분 지연을 감수할지.
+- [x] ~~2-10. `next_collect_at` 드리프트 허용 여부~~ — **결정: 드리프트 허용.** "수집 종료
+      시각 + 주기" 재계산 방식 그대로 유지 — 고정 시각이 필요한 다운스트림 소비자가 없음.
+      04_Collection_Pipeline_Operations.md §12 반영 완료.
+- [x] ~~2-11. 즉시 수집 트리거 필요 여부~~ — **결정: MVP엔 넣지 않는다.** 최대 15분 지연
+      감수, Airflow REST API 트리거는 나중에 필요해지면 추가.
+      04_Collection_Pipeline_Operations.md §12 반영 완료.
 
 ---
 
@@ -135,7 +134,7 @@
 | 4 | `meta_naver_blog.is_removed` / `removed_at` | 컬럼 추가 | ✅ **완료** | 위와 동일 |
 | 5 | `dataset_credentials` | 신규 테이블 | ✅ **완료** | 데이터셋별 API Key 암호화 저장 (pgcrypto). 유일하게 "새 테이블"이 필요했던 항목 |
 | 6 | `UNIQUE(owner_id, source_type, ...)` 형태의 중복 방지 제약 | 인덱스 추가 | ⏳ 보류 (owner_id 컬럼은 생겼으나 실사용 데이터 필요) | 04_Collection_Pipeline_Operations.md §7.2~7.3. JSONB `subjects` 배열 특성상 완벽한 DB 제약보다 애플리케이션 레벨 체크에 가까울 수 있음 |
-| 7 | `meta_naver_news.updated_at` | 컬럼 추가 (미확정) | ⏳ 미결정 | 예전 세션에서 발견한 비대칭 — `meta_youtube_video`/`meta_naver_blog`는 `updated_at`이 있는데 `meta_naver_news`만 없음. 오늘 범위는 아니었어서 반영 안 함, 필요하면 0번 리뷰와 같이 처리 |
+| 7 | `meta_naver_news.updated_at` | 컬럼 추가 | ✅ **완료** | 예전 세션에서 발견한 비대칭 — `meta_youtube_video`/`meta_naver_blog`와 동일 패턴으로 추가, 실 서버 반영 완료 (2026-07-23) |
 | 8 | 계정 테이블 FK 연결 (`dcat_dataset.owner_id → <계정테이블>.<PK>`) | FK 제약 추가 (조건부, 남의 팀 일정 종속) | ⏳ **계정 테이블 스펙 확정 대기** | 계정/인증 테이블은 metadata-ingestion 팀이 아니라 플랫폼 다른 담당자가 만듦. 같은 `datagokr` DB 안에 별도 스키마로 생성될 예정(2026-07-23 기준 계획 단계, 테이블명·PK 타입 미정). 생성되면: (1) 실제로 같은 database인지 재확인 (다른 database면 FK 불가), (2) PK 타입에 맞춰 `owner_id` 타입 조정, (3) FK 추가 |
 
 ---

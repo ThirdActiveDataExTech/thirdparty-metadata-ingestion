@@ -70,6 +70,9 @@ CREATE TABLE meta_naver_news (
     -- ── 관리 ──────────────────────────────────────────────────
     collected_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
 
+    updated_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+    -- 본문 재스크래핑 등으로 필드 갱신 시 시각 (meta_youtube_video/meta_naver_blog와 동일 패턴)
+
     is_removed           BOOLEAN NOT NULL DEFAULT FALSE,
     -- 정기 수집 시 검색 결과에서 더 이상 발견되지 않는 기사(비공개·삭제 등)에 TRUE.
     -- 행 자체는 지우지 않고 마지막 known 상태로 보존 (architecture/04_Collection_Pipeline_Operations.md 참조)

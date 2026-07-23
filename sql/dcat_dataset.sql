@@ -24,7 +24,7 @@ CREATE TABLE dcat_dataset (
     -- title과 함께 핵심 속성으로 취급 (P02 DCAT 커버리지 목표: 핵심 속성 95%+)
 
     -- ── 출처 ──────────────────────────────────────────────────
-    publisher           TEXT,
+    publisher           TEXT NOT NULL,
     -- dct:publisher | 데이터 원천 플랫폼명
     -- 예) 'Naver', 'YouTube', '연합뉴스'
 

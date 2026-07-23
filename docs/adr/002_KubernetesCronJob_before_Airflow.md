@@ -1,12 +1,11 @@
 # ADR 002: Airflow 도입 전 K8s CronJob으로 수집 스케줄링
 
 > **Date:** 2026-07-01
-> **Status:** Accepted
+> **Status:** Superseded by [ADR-007](007_Airflow_Adoption.md) (2026-07-23)
 >
-> ⚠️ **갱신 검토 중 (2026-07-22)**: 프론트엔드발 동적 데이터셋 등록 설계
-> ([architecture/04_Collection_Pipeline_Operations.md](../architecture/04_Collection_Pipeline_Operations.md) 서두)에서
-> 이 ADR의 "단계별 재실행 필요" 조건이 사실상 충족된 것으로 보인다는 문제 제기가 있었다.
-> 아직 이 ADR을 Superseded 처리하지는 않았음 — 결정 대기 중 (`docs/NEXT_STEPS.md` 2-4 항목).
+> 프론트엔드발 동적 데이터셋 등록 설계([architecture/04_Collection_Pipeline_Operations.md](../architecture/04_Collection_Pipeline_Operations.md)
+> 서두)에서 이 ADR의 "단계별 재실행 필요" 조건이 사실상 충족됐다고 판단, Airflow 도입을
+> 확정했다. 아래 내용은 과거 결정 기록으로 보존한다 — 현재 유효한 결정은 ADR-007 참조.
 
 ---
 

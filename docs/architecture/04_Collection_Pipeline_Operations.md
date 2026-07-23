@@ -1,16 +1,11 @@
 # 04. Collection Pipeline Operations — 운영 중 수집 파이프라인 설계
 
-> **Last Updated:** 2026-07-22
+> **Last Updated:** 2026-07-23
 > **Status:** 설계안 (구현 전) — Airflow 도입을 전제로 함
 >
-> ⚠️ **ADR-002("Airflow 도입 전 K8s CronJob 사용")와의 관계**: ADR-002는 "데이터 소스
-> 10개 이상 / 단계별 재실행 필요 / 실패 모니터링 고도화 필요" 중 하나라도 충족 시
-> Airflow를 도입한다고 규정한다. 이 문서가 다루는 "프론트엔드에서 새 데이터셋이 동적으로
-> 등록되면 자동으로 수집 스케줄이 생겨야 한다"는 요구사항은 **정적 K8s CronJob YAML로는
-> 구조적으로 불가능**하다(데이터셋마다 YAML 작성 + 재배포 필요). 이는 ADR-002의 "단계별
-> 재실행 필요" 조건과도 맞물려 있어, 사실상 Airflow 도입 조건이 충족된 것으로 판단하고
-> 이 문서를 작성한다. **다만 ADR-002 자체를 이 문서가 대체하지는 않는다 — 실제 착수 전
-> ADR-002를 갱신하거나 새 ADR로 override할 것을 권장한다** (§12 참조).
+> Airflow 도입은 [ADR-007](../adr/007_Airflow_Adoption.md)로 확정됐다
+> ([ADR-002](../adr/002_KubernetesCronJob_before_Airflow.md) Superseded). 이 문서는 그
+> 확정을 전제로 실제 DAG·등록 흐름·Collector 실행 로직을 다룬다.
 
 ---
 
@@ -643,16 +638,19 @@ POST   /api/datasets/{id}/collect-now   즉시 수집 트리거 (§5.4, MVP 이�
 
 ## 12. 이 설계를 실행하기 전에 확정해야 할 것 (요약)
 
-- [ ] **ADR-002 갱신 여부** — §서두 판단(사실상 Airflow 도입 조건 충족)에 동의하는지,
-      동의하면 ADR-002를 Superseded 처리하고 새 ADR로 "Airflow 도입 확정"을 기록할지
+- [x] ~~ADR-002 갱신 여부~~ — **결정: Superseded 처리 완료.** [ADR-007](../adr/007_Airflow_Adoption.md)로
+      Airflow 도입 확정 기록 완료 (2026-07-23).
 - [x] ~~API Key 모델~~ — §9 결정 완료 (데이터셋별 저장, `dataset_credentials` + pgcrypto)
 - [x] ~~anchor 카테고리 UX~~ — §4.3 결정 완료 (사용자가 고른 첫 번째 카테고리 자동 지정)
 - [x] ~~admin 등록 경로~~ — §5.7 결정 완료 (YAML 불필요, user와 동일 경로 + `dataset_origin` 서버 결정)
 - [x] ~~영상/기사/게시물 삭제 감지~~ — §6.1 결정 완료 (`is_removed`/`removed_at`, 행 보존)
 - [x] ~~owner_id 모델~~ — §10 결정 완료 (같은 `datagokr` DB 안의 별도 계정 테이블 참조,
       컬럼은 추가했으나 계정 테이블 스펙 미정이라 FK는 추후)
-- [ ] **즉시 수집 트리거 필요 여부** — §5.4, MVP 범위에 넣을지 15분 지연을 감수할지
-- [ ] **next_collect_at 드리프트 허용 여부** — §6.3, 고정 시각이 필요하면 계산식 변경 필요
+- [x] ~~즉시 수집 트리거 필요 여부~~ — **결정: MVP엔 넣지 않는다.** §5.4, 최대 15분 지연
+      감수 — Airflow REST API 트리거는 나중에 필요해지면 추가
+- [x] ~~next_collect_at 드리프트 허용 여부~~ — **결정: 드리프트 허용.** §6.3, "수집 종료
+      시각 + 주기" 재계산 방식 그대로 유지 — 고정 시각 스케줄이 필요한 다운스트림
+      소비자가 없어 계산식 변경 불필요
 - [ ] Airflow 자체의 배포 방법 (K8s에 Airflow 설치 방식 — Helm chart, KubernetesExecutor
       여부 등) — 이 문서는 DAG/스케줄 설계만 다루고 Airflow 인프라 자체의 배포는
       다루지 않음. 별도 인프라 문서 필요 (`docs/infrastructure/07_Airflow.md` 후보)
