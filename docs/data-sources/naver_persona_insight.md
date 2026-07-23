@@ -2,7 +2,7 @@
 
 > **Last Updated:** 2026-07-10
 > **dataset_id:** `naver_persona_insight`
-> **source_type:** `shopping`
+> **source_type:** `persona_insight`
 
 ---
 

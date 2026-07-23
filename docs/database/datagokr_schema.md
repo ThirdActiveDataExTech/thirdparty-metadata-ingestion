@@ -28,7 +28,7 @@
 | `meta_naver_blog` | ✅ 생성 완료 | [sql/meta_naver_blog.sql](../../sql/meta_naver_blog.sql) | Naver 블로그 게시물 단위 메타 (Schema.org BlogPosting) |
 | `meta_naver_blog_vec` | ✅ 생성 완료 | [sql/meta_naver_blog_vec.sql](../../sql/meta_naver_blog_vec.sql) | Naver 블로그 게시물 임베딩 (pgvector 768차원) |
 | `active_meta_naver_blog` | ⚠️ 잠정 (미검증) | [sql/active_meta_naver_blog.sql](../../sql/active_meta_naver_blog.sql) | 댓글/공감 수집 가능 여부 미검증 — ADR-006 필요, 확정 전까지 수집 코드에서 미사용 |
-| `dataset_credentials` | ✅ DDL 작성 완료 | [sql/dataset_credentials.sql](../../sql/dataset_credentials.sql) | 데이터셋별 API Key 암호화 저장 (pgcrypto). [설계 배경](../architecture/04_Collection_Pipeline_Operations.md#6-api-key-저장-모델--결정-데이터셋별-저장-옵션-b) |
+| `dataset_credentials` | ✅ DDL 작성 완료 | [sql/dataset_credentials.sql](../../sql/dataset_credentials.sql) | 데이터셋별 API Key 암호화 저장 (pgcrypto). [설계 배경](../architecture/04_Collection_Pipeline_Operations.md#9-api-key-저장-모델--결정-데이터셋별-저장) |
 
 ---
 
