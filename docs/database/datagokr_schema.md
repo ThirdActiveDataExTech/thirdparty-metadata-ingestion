@@ -126,6 +126,84 @@ dcat_dataset (1)  ─── "무엇인가" (명세)
                                                    ON DELETE CASCADE  [예정]
 ```
 
+### ERD
+
+위 ASCII 다이어그램의 주석·설계 의도를 뺀, 표준 ER 다이어그램 형태 (GitHub에서 렌더링됨).
+`_ai` 테이블은 아직 DDL이 없어 점선으로 표시.
+
+```mermaid
+erDiagram
+    dcat_dataset ||--o{ dcat_provenance : "실행 이력"
+    dcat_dataset ||--|| data_registry : "운영 현황"
+    dcat_dataset ||--|| dcat_dataset_vec : "임베딩"
+    dcat_dataset ||--o{ dataset_credentials : "API Key"
+    dcat_dataset ||--o{ meta_youtube_video : "영상"
+    dcat_dataset ||--o{ meta_naver_shopping : "쇼핑 카테고리"
+    dcat_dataset ||--o{ meta_naver_persona : "Persona 카테고리"
+    dcat_dataset ||--o{ meta_naver_news : "뉴스 기사"
+    dcat_dataset ||--o{ meta_naver_blog : "블로그 게시물"
+
+    meta_youtube_video ||--o{ active_meta_youtube : "시계열"
+    meta_youtube_video ||--|| meta_youtube_video_vec : "임베딩"
+    meta_youtube_video ||..o| meta_youtube_video_ai : "AI 메타 (예정)"
+
+    meta_naver_shopping ||--o{ active_meta_naver_shopping : "일별 지수"
+    meta_naver_persona ||--o{ active_meta_naver_persona : "일별 Persona Index"
+
+    meta_naver_news ||--o{ active_meta_naver_news : "댓글 시계열"
+    meta_naver_news ||--|| meta_naver_news_vec : "임베딩"
+    meta_naver_news ||..o| meta_naver_news_ai : "AI 메타 (예정)"
+
+    meta_naver_blog ||--o{ active_meta_naver_blog : "댓글·공감 시계열 (잠정)"
+    meta_naver_blog ||--|| meta_naver_blog_vec : "임베딩"
+    meta_naver_blog ||..o| meta_naver_blog_ai : "AI 메타 (예정)"
+
+    dcat_dataset {
+        text dataset_id PK
+        text title
+        text source_type
+        text dataset_origin
+        text owner_id "FK 예정, 계정테이블 미정"
+        bigint item_count
+    }
+    dataset_credentials {
+        text dataset_id FK
+        text credential_type
+        bytea encrypted_value
+    }
+    meta_youtube_video {
+        bigint id PK
+        text dataset_id FK
+        text video_id
+        boolean is_removed
+    }
+    meta_naver_shopping {
+        bigint id PK
+        text dataset_id FK
+        text category_id
+        boolean is_anchor
+    }
+    meta_naver_persona {
+        bigint id PK
+        text dataset_id FK
+        text category_id
+    }
+    meta_naver_news {
+        bigint id PK
+        text dataset_id FK
+        text article_url
+        boolean is_naver_hosted
+        boolean is_removed
+    }
+    meta_naver_blog {
+        bigint id PK
+        text dataset_id FK
+        text post_url
+        text platform
+        boolean is_removed
+    }
+```
+
 ### 벡터 검색 2레벨
 
 | 레벨 | 테이블 | 질의 예시 |
@@ -323,5 +401,3 @@ python scripts/embed_naver_blog.py       # meta_naver_blog_vec
 순서)만 유지하고 "무엇을 언제 할지"는 NEXT_STEPS.md 하나로 모은다.
 
 ---
-
-*ERD는 주요 테이블 완성 후 추가.*
