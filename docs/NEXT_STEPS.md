@@ -51,8 +51,8 @@
 - [x] ~~`sql/seeds.sql` 재실행~~ — 완료
 - [x] ~~`sql/views.sql` 재실행~~ — 완료 (DDL 적용 순서 7단계, 기존 체크리스트에 누락돼 있었음)
 - [x] ~~임베딩 스크립트 재실행~~ — `embed_datasets.py`(6건), `embed_youtube_videos.py`(4건),
-      `embed_naver_news.py`(3건) 전부 완료. `embed_naver_blog.py`는 아직 없어서 제외
-      (§4 항목, 작성 후 별도 실행 필요)
+      `embed_naver_news.py`(3건) 전부 완료. 이 시점엔 `embed_naver_blog.py`가 아직 없어서
+      제외했었는데, 바로 다음(§4)에서 작성·실행까지 완료함(3건)
 - [x] ~~검색 스크립트로 sanity check~~ — `search_datasets.py`/`search_youtube_videos.py`/
       `search_naver_news.py` 전부 실행, 결과 의미상 정상 확인
 - [ ] **`dataset-credentials-encryption-key` K8s Secret 실제 생성 (§9 참조)** — 미완료.
@@ -128,15 +128,16 @@
 
 ---
 
-## 4. 임베딩 파이프라인 마무리
+## 4. (거의 완료) 임베딩 파이프라인 마무리
 
-- [ ] `scripts/embed_naver_blog.py` 작성 — `scripts/embed_naver_news.py` 패턴 그대로 이식
+- [x] ~~`scripts/embed_naver_blog.py` 작성~~ — `embed_naver_news.py` 패턴 그대로 이식 완료
       (`meta_naver_blog` → `meta_naver_blog_vec`, has_content 분기 동일)
-- [ ] `scripts/search_naver_blog.py` 작성 — `search_naver_news.py` 패턴
-- [ ] 1번(실제 DB 반영) 이후 실행해 검증
+- [x] ~~`scripts/search_naver_blog.py` 작성~~ — `search_naver_news.py` 패턴으로 완료
+- [x] ~~실행해 검증~~ — 실 서버에 3건 임베딩 완료, 검색 결과 의미상 정상 확인 (2026-07-23)
 - [ ] **증분 임베딩 방식으로 전환** — 지금 `embed_*.py`는 전체 DELETE→INSERT 재계산 방식이라
-      새 데이터셋이 동적으로 등록돼도 자동으로 임베딩되지 않음 (수동 재실행 필요). Airflow
-      파이프라인에 편입하려면 "새로 추가된 아이템만" 임베딩하는 방식으로 바꿔야 자동화가 완성됨
+      새 데이터셋이 동적으로 등록돼도 자동으로 임베딩되지 않음 (수동 재실행 필요). §6.2
+      Airflow 오케스트레이션 구축 시점에 같이 처리 — 그 전까진 급하지 않음(수동 재실행으로
+      충분), 지금 당장 할 필요는 없음
 
 ---
 

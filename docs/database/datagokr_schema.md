@@ -309,7 +309,7 @@ psql -h localhost -p 30433 -U admin -d datagokr \
 python scripts/embed_datasets.py         # dcat_dataset_vec
 python scripts/embed_youtube_videos.py   # meta_youtube_video_vec
 python scripts/embed_naver_news.py       # meta_naver_news_vec
-# meta_naver_blog_vec용 임베딩 스크립트는 아직 미작성 (embed_naver_news.py 참고해 추가 필요)
+python scripts/embed_naver_blog.py       # meta_naver_blog_vec
 ```
 
 ---
