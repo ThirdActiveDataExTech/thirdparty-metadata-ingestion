@@ -62,12 +62,11 @@
 - [x] ~~2-5. API Key 저장 모델~~ — **결정: 데이터셋별 저장.** `sql/dataset_credentials.sql`
       작성 완료(pgcrypto 암호화, 롤백 트랜잭션으로 암복호화 라운드트립 검증 완료).
       04_Collection_Pipeline_Operations.md §9, `05_Secrets_ConfigMaps.md` 반영 완료.
-- [ ] **2-6. `dcat_dataset.owner_id` 모델 — 새로 발견된 스키마 갭, 우선순위 높음**
-      04_Collection_Pipeline_Operations.md §10 참조. 지금 스키마엔 "어떤 사용자가 이
-      데이터셋을 만들었는지" 저장할 곳이 없다. 이게 없으면 "내 데이터셋 목록", "이 사용자가
-      이미 등록했는지 중복 확인"이 구현 불가능. 결정할 것: 이 DB가 사용자 신원을 직접
-      관리해야 하는지(→ `users` 테이블 신설 필요), 아니면 외부 인증 서비스가 이미 있고
-      그 ID를 문자열로만 참조하면 되는지. **§3(필요 테이블/컬럼 리스트업)의 1번 항목.**
+- [x] ~~2-6. `dcat_dataset.owner_id` 모델~~ — **결정: 계정 테이블은 다른 담당자가 만들되,
+      같은 `datagokr` database 안에 별도 스키마로 생성될 예정이라 FK를 나중에 걸 수 있음.**
+      `owner_id TEXT` 컬럼 추가 완료(FK 없음, 롤백 트랜잭션 검증 완료).
+      04_Collection_Pipeline_Operations.md §10 반영 완료. **단, 계정 테이블 스펙(테이블명/
+      PK 타입)이 아직 미정 — FK 추가는 그 팀 작업 완료 후로 보류, §3의 1번·8번 항목 참조.**
 - [x] ~~2-7. anchor 카테고리 UX~~ — **결정: 사용자가 고른 첫 번째 카테고리를 자동으로 anchor 지정.**
       04_Collection_Pipeline_Operations.md §4.3 반영 완료.
 - [x] ~~2-8. admin 데이터셋 등록 경로~~ — **결정: YAML+git 동기화 방식 채택 안 함.** admin도
@@ -94,14 +93,14 @@
 
 | # | 대상 | 종류 | 상태 | 설명 |
 |---|------|------|------|------|
-| 1 | `dcat_dataset.owner_id` (가칭) | 컬럼 추가 | ⚠️ **결정 필요 (2-6)** | 데이터셋을 만든 사용자 식별. 이 DB가 직접 관리(`users` 테이블 신설)할지, 외부 ID를 문자열로만 참조할지부터 결정. **가장 우선순위 높은 항목** — 이게 없으면 §5의 프론트엔드 연동 API 상당수가 구현 불가 |
+| 1 | `dcat_dataset.owner_id` | 컬럼 추가 | ✅ **컬럼 완료 · FK는 보류** | 데이터셋을 만든 사용자 식별. 컬럼(`TEXT`, FK 없음) 추가·검증 완료. 계정 테이블은 다른 담당자가 같은 `datagokr` DB 안에 별도 스키마로 만들 예정이나 스펙 미정 — 테이블 생성 후 FK 추가 필요 (8번 항목과 연결) |
 | 2 | `meta_youtube_video.is_removed` / `removed_at` | 컬럼 추가 | ✅ **완료** | 채널에서 사라진 영상 표시. 오늘 DDL 반영·검증 완료 |
 | 3 | `meta_naver_news.is_removed` / `removed_at` | 컬럼 추가 | ✅ **완료** | 위와 동일 (발견형 소스라 동일 패턴 적용) |
 | 4 | `meta_naver_blog.is_removed` / `removed_at` | 컬럼 추가 | ✅ **완료** | 위와 동일 |
 | 5 | `dataset_credentials` | 신규 테이블 | ✅ **완료** | 데이터셋별 API Key 암호화 저장 (pgcrypto). 유일하게 "새 테이블"이 필요했던 항목 |
-| 6 | `UNIQUE(owner_id, source_type, ...)` 형태의 중복 방지 제약 | 인덱스 추가 | ⏳ 보류 (owner_id 이후) | 04_Collection_Pipeline_Operations.md §7.2~7.3. JSONB `subjects` 배열 특성상 완벽한 DB 제약보다 애플리케이션 레벨 체크에 가까울 수 있음 — owner_id 확정 후 다시 설계 |
+| 6 | `UNIQUE(owner_id, source_type, ...)` 형태의 중복 방지 제약 | 인덱스 추가 | ⏳ 보류 (owner_id 컬럼은 생겼으나 실사용 데이터 필요) | 04_Collection_Pipeline_Operations.md §7.2~7.3. JSONB `subjects` 배열 특성상 완벽한 DB 제약보다 애플리케이션 레벨 체크에 가까울 수 있음 |
 | 7 | `meta_naver_news.updated_at` | 컬럼 추가 (미확정) | ⏳ 미결정 | 예전 세션에서 발견한 비대칭 — `meta_youtube_video`/`meta_naver_blog`는 `updated_at`이 있는데 `meta_naver_news`만 없음. 오늘 범위는 아니었어서 반영 안 함, 필요하면 0번 리뷰와 같이 처리 |
-| 8 | `users` 테이블 (owner_id를 이 DB가 직접 관리하기로 하면) | 신규 테이블 (조건부) | ⏳ 2-6 결정에 종속 | 이 프로젝트가 지금까지 순수 메타데이터 수집만 다뤄서 사용자 인증 관련 코드/문서가 전혀 없다 — 별도 인증 서비스가 있을 가능성이 높아 보이지만 확인 필요 |
+| 8 | 계정 테이블 FK 연결 (`dcat_dataset.owner_id → <계정테이블>.<PK>`) | FK 제약 추가 (조건부, 남의 팀 일정 종속) | ⏳ **계정 테이블 스펙 확정 대기** | 계정/인증 테이블은 metadata-ingestion 팀이 아니라 플랫폼 다른 담당자가 만듦. 같은 `datagokr` DB 안에 별도 스키마로 생성될 예정(2026-07-23 기준 계획 단계, 테이블명·PK 타입 미정). 생성되면: (1) 실제로 같은 database인지 재확인 (다른 database면 FK 불가), (2) PK 타입에 맞춰 `owner_id` 타입 조정, (3) FK 추가 |
 
 ---
 
@@ -132,8 +131,7 @@
 `src/collectors/` 등이 전부 비어있음 (`.gitkeep`만 존재). `03_Component_Architecture.md`에
 설계된 구조(`collectors/ → preprocess/ → extractor/ → storage/`)를 실제로 채워야 한다.
 운영 방식 상세 설계는 [architecture/04_Collection_Pipeline_Operations.md](architecture/04_Collection_Pipeline_Operations.md)
-전체 참조 — 착수 전 §12(결정 사항 요약)부터 확정할 것, 특히 owner_id(2-6)가 §6.3의
-프론트엔드 API 구현을 막고 있다.
+전체 참조 — 착수 전 §12(결정 사항 요약)부터 확정할 것.
 
 ### 6.1 Collector 코드
 
@@ -161,7 +159,9 @@
 
 ### 6.3 프론트엔드 연동 API
 
-**⚠️ 2-6(owner_id) 결정이 먼저 나야 아래 항목들을 제대로 구현할 수 있다.**
+**⚠️ `owner_id` 컬럼은 추가됐지만 FK는 아직 없다(§3의 8번 항목, 계정 테이블 스펙 대기 중).
+아래 API들은 FK 없이도 구현 가능하지만, `owner_id` 값의 유효성(존재하는 계정인지)은
+당분간 애플리케이션 레벨(인증 토큰 검증)로만 보장된다는 점을 감안할 것.**
 
 - [ ] `POST /api/datasets` 신규 데이터셋 등록 API 구현 — **소스 타입별 핸들러로 분리**
       (§4.4: video/news/blog는 발견형 핸들러, shopping/persona는 선언형 핸들러 — 등록
@@ -170,7 +170,7 @@
       runbooks/04_Add_New_Dataset_Existing_Source.md B 경로)
 - [ ] `GET /api/datasets/{id}/status` — 최초 수집 실패를 명확히 구분해서 반환 (§7.4,
       "등록 중..." 무한 스피너 방지)
-- [ ] `GET /api/datasets?owner=...` — 내 데이터셋 목록 (owner_id 결정 후 구현 가능)
+- [ ] `GET /api/datasets?owner=...` — 내 데이터셋 목록 (`owner_id` 컬럼 존재하므로 구현 가능)
 - [ ] `dataset_id` 채번 로직 — slug + 랜덤 접미사, `unique_violation` 시 재시도 (§7.1)
 - [ ] `dataset_origin`은 요청 바디로 받지 않고 서버가 caller 권한으로 결정 (§5.7 보안 주의사항)
 - [ ] 위 전체가 `docs/api/`로 정식 문서화 필요 (지금 완전히 비어있음)

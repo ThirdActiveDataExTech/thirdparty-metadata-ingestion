@@ -493,7 +493,7 @@ UUID 하나로 때우는 것보다, `dcat_provenance`/`data_registry`를 사람�
 ### 7.2 중복 등록 방지 — owner_id 필요 (§10과 연결)
 
 "이 사용자가 이미 이 채널을 등록했는지" 확인하려면 **누가 등록했는지 알아야 한다.**
-지금 `dcat_dataset`엔 이 정보가 없다 (§10 참조, 스키마 갭). owner_id가 생긴다는 전제 하에:
+`dcat_dataset.owner_id` 컬럼은 추가됐지만(§10, FK는 아직 없음) 아래 조회는 이미 가능하다:
 
 ```sql
 SELECT dataset_id FROM dcat_dataset
@@ -578,26 +578,38 @@ WHERE dataset_id = %(dataset_id)s AND credential_type = 'youtube_api_key';
 
 ---
 
-## 10. 스키마 갭: `dcat_dataset.owner_id`가 없음
+## 10. `dcat_dataset.owner_id` — 결정: 같은 DB 안의 별도 계정 테이블 참조 (FK는 추후)
 
-이번 설계 과정에서 발견된 구조적 공백이다. 지금 `dataset_origin`은 `'admin'`/`'user'`
-두 값뿐이고, **어떤 사용자**가 만들었는지 저장할 컬럼이 없다. 멀티 유저 프론트엔드라면
-이건 사실상 필수다 — 없으면:
+이번 설계 과정에서 발견된 구조적 공백이었다. 지금 `dataset_origin`은 `'admin'`/`'user'`
+두 값뿐이고, **어떤 사용자**가 만들었는지 저장할 컬럼이 없었다 — 없으면 §7.2의 "이 사용자가
+이미 등록했는지" 중복 확인이나 "내 데이터셋 목록" 화면 자체를 구현할 방법이 없다.
 
-- §7.2의 "이 사용자가 이미 등록했는지" 중복 확인이 불가능 (전체 플랫폼 기준으로만 확인 가능)
-- "내 데이터셋 목록" 같은 화면 자체를 구현할 방법이 없음
+**결정 (2026-07-23)**:
 
-**결정 필요한 것**: 이 DB가 사용자 신원의 권위 있는 저장소여야 하는지, 아니면 플랫폼에
-별도 인증/사용자 서비스가 이미 있고 여기는 그 ID를 참조만 하면 되는지.
+- 계정/인증 관련 테이블(회원 정보 등)은 metadata-ingestion 팀이 아니라 **플랫폼 쪽 다른
+  담당자가 별도로 설계·구현**한다 — 이 저장소는 사용자 신원을 직접 관리하지 않는다
+- 다만 완전히 분리된 서비스/DB가 아니라, **지금 쓰는 `datagokr` database 안에 별도
+  스키마로 함께 생성될 예정**이다. 그래서 (같은 서버라도 다른 database였다면 불가능했을)
+  **진짜 FK 제약을 나중에 걸 수 있다** — Postgres FK는 같은 database 안에서만 가능하고
+  스키마가 달라도 무방하기 때문
+- `owner_id`에는 계정명(username) 같은 가변 값이 아니라 그 계정 테이블의 **불변 PK**를
+  저장한다 (사용자가 아이디를 바꿔도 `owner_id` 참조가 끊기지 않도록)
 
-| 옵션 | 설명 |
-|---|---|
-| A. 외부 사용자 시스템 참조 | `dcat_dataset.owner_id TEXT` (FK 없이 외부 ID 문자열만 저장) — 별도 인증 서비스가 이미 있다는 전제 |
-| B. 이 DB가 사용자도 관리 | `owner_id`가 이 DB의 `users` 테이블을 FK로 참조 — 이 경우 `users` 테이블 자체를 새로 설계해야 함 |
+**지금 반영한 것**: `dcat_dataset.owner_id TEXT` 컬럼 추가, FK 없음, 인덱스만 추가
+(`sql/dcat_dataset.sql`, 롤백 트랜잭션 검증 완료). `dataset_origin='admin'`이면 특정
+사용자 소유가 아니므로 NULL 허용.
 
-이 프로젝트 저장소(metadata-ingestion)는 지금까지 순수하게 메타데이터 수집·저장만
-다뤄왔고 사용자 인증 관련 코드나 문서가 없다 — **옵션 A일 가능성이 높아 보이지만
-확인이 필요하다.**
+**나중에 확인·반영해야 할 것** (계정 테이블 스펙 확정 후 — 2026-07-23 기준 아직 미정):
+
+- [ ] 계정 테이블이 실제로 같은 `datagokr` database 안에 생기는지 재확인 (지금은 계획 단계)
+- [ ] 계정 테이블/스키마명, PK 컬럼명과 타입(TEXT/UUID/BIGINT 등) 확인
+- [ ] `owner_id` 컬럼 타입이 PK 타입과 다르면 `ALTER TABLE dcat_dataset ALTER COLUMN
+      owner_id TYPE ...`로 맞춤
+- [ ] `ALTER TABLE dcat_dataset ADD CONSTRAINT fk_dcat_dataset_owner
+      FOREIGN KEY (owner_id) REFERENCES <스키마>.<계정테이블>(<PK컬럼>)`로 FK 추가
+- [ ] §7.2의 `UNIQUE(owner_id, source_type, ...)` 중복 방지 제약 설계 착수 가능해짐
+
+이 항목은 `docs/NEXT_STEPS.md` 2-6에서 추적한다.
 
 ---
 
@@ -636,7 +648,8 @@ POST   /api/datasets/{id}/collect-now   즉시 수집 트리거 (§5.4, MVP 이�
 - [x] ~~anchor 카테고리 UX~~ — §4.3 결정 완료 (사용자가 고른 첫 번째 카테고리 자동 지정)
 - [x] ~~admin 등록 경로~~ — §5.7 결정 완료 (YAML 불필요, user와 동일 경로 + `dataset_origin` 서버 결정)
 - [x] ~~영상/기사/게시물 삭제 감지~~ — §6.1 결정 완료 (`is_removed`/`removed_at`, 행 보존)
-- [ ] **owner_id 모델** — §10, 외부 사용자 시스템 참조인지 이 DB가 직접 관리하는지
+- [x] ~~owner_id 모델~~ — §10 결정 완료 (같은 `datagokr` DB 안의 별도 계정 테이블 참조,
+      컬럼은 추가했으나 계정 테이블 스펙 미정이라 FK는 추후)
 - [ ] **즉시 수집 트리거 필요 여부** — §5.4, MVP 범위에 넣을지 15분 지연을 감수할지
 - [ ] **next_collect_at 드리프트 허용 여부** — §6.3, 고정 시각이 필요하면 계산식 변경 필요
 - [ ] Airflow 자체의 배포 방법 (K8s에 Airflow 설치 방식 — Helm chart, KubernetesExecutor

@@ -109,6 +109,14 @@ CREATE TABLE dcat_dataset (
     --           예) YouTube 데이터셋: 채널 여러 개 + 개별 영상 선택
     --           주의: source_type이 다른 항목(YouTube+뉴스 혼합 등)은 지원하지 않음
 
+    owner_id             TEXT,
+    -- 데이터셋을 생성한 사용자 식별자. 플랫폼 계정 테이블(같은 datagokr DB 안에
+    -- 별도 스키마로 생성 예정, 다른 팀 작업 — 2026-07-23 기준 테이블 스펙 미정)의
+    -- PK를 참조할 예정이나, 아직 그 테이블이 없어 지금은 FK 제약 없이 값만 저장한다.
+    -- 계정 테이블 생성 후 실제 PK 컬럼명/타입 확인하여 ALTER TABLE로 FK 추가 필요
+    -- (architecture/04_Collection_Pipeline_Operations.md §10, NEXT_STEPS.md 2-6 참조)
+    -- dataset_origin='admin'이면 특정 사용자 소유가 아니므로 NULL 허용
+
     -- ── 관리 ──────────────────────────────────────────────────
     version             TEXT NOT NULL DEFAULT '1.0',
     -- owl:versionInfo | 수집 방식 변경 시 버전 올림
@@ -124,3 +132,4 @@ CREATE TABLE dcat_dataset (
 CREATE INDEX idx_dcat_dataset_source_type ON dcat_dataset(source_type);
 CREATE INDEX idx_dcat_dataset_publisher   ON dcat_dataset(publisher);
 CREATE INDEX idx_dcat_dataset_updated     ON dcat_dataset(updated_at DESC);
+CREATE INDEX idx_dcat_dataset_owner       ON dcat_dataset(owner_id);
