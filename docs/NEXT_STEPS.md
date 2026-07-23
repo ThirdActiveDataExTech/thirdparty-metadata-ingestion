@@ -41,20 +41,30 @@
 
 ---
 
-## 1. 실제 DB 반영
+## 1. (거의 완료) 실제 DB 반영
 
-지금까지 만든 DDL 변경사항은 전부 롤백 트랜잭션으로만 검증했고 실제 서버에는 한 번도
-반영하지 않았다. `dcat_dataset.sql`이 `DROP TABLE ... CASCADE`라 전체 자식 테이블이
-함께 재생성된다.
+**2026-07-23 실제 서버에 반영 완료.** 기존 데이터는 전부 예시/시드 데이터라 재생성해도
+무방하다고 확인 후 진행 — 롤백 아니라 실제 커밋.
 
-- [ ] 0번 스키마 리뷰가 먼저 끝나야 함 (한 번에 반영하는 게 효율적)
-- [ ] DDL 18개 파일 순서대로 서버에 재실행 (`docs/database/datagokr_schema.md`의 "DDL 적용 순서" 참조,
-      `sql/dataset_credentials.sql` 포함 — `dcat_dataset.sql` 다음 아무 때나 가능, FK만 있으면 됨)
-- [ ] `sql/seeds.sql` 재실행
-- [ ] 임베딩 스크립트 재실행: `embed_datasets.py`, `embed_youtube_videos.py`, `embed_naver_news.py`
-      (`embed_naver_blog.py`는 3번 항목에서 먼저 작성해야 같이 실행 가능)
-- [ ] 검색 스크립트로 sanity check: `search_datasets.py`, `search_youtube_videos.py`, `search_naver_news.py`
-- [ ] `dataset-credentials-encryption-key` K8s Secret 실제 생성 (§9 참조)
+- [x] ~~0번 스키마 리뷰가 먼저 끝나야 함~~ — 완료
+- [x] ~~DDL 18개 파일 순서대로 서버에 재실행~~ — 완료 (`dataset_credentials.sql` 포함)
+- [x] ~~`sql/seeds.sql` 재실행~~ — 완료
+- [x] ~~`sql/views.sql` 재실행~~ — 완료 (DDL 적용 순서 7단계, 기존 체크리스트에 누락돼 있었음)
+- [x] ~~임베딩 스크립트 재실행~~ — `embed_datasets.py`(6건), `embed_youtube_videos.py`(4건),
+      `embed_naver_news.py`(3건) 전부 완료. `embed_naver_blog.py`는 아직 없어서 제외
+      (§4 항목, 작성 후 별도 실행 필요)
+- [x] ~~검색 스크립트로 sanity check~~ — `search_datasets.py`/`search_youtube_videos.py`/
+      `search_naver_news.py` 전부 실행, 결과 의미상 정상 확인
+- [ ] **`dataset-credentials-encryption-key` K8s Secret 실제 생성 (§9 참조)** — 미완료.
+      이 환경엔 클러스터 kubeconfig가 없어서 실행 불가. `metadata-ingestion` 네임스페이스
+      자체도 아직 실제 생성 안 됐을 가능성 있음(YAML만 존재) — 먼저 확인 필요. 클러스터
+      접근 가능한 곳에서 아래 실행:
+      ```bash
+      kubectl create namespace metadata-ingestion   # 없다면
+      kubectl create secret generic dataset-credentials-encryption-key \
+        --from-literal=key=$(openssl rand -base64 32) \
+        -n metadata-ingestion
+      ```
 
 ---
 
