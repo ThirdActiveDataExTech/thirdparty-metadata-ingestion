@@ -1,6 +1,6 @@
 # datagokr DB Schema
 
-> **Last Updated:** 2026-07-10
+> **Last Updated:** 2026-07-23
 > PostgreSQL 17.4 (postgres-174) — NodePort 30433
 
 ---
@@ -20,15 +20,21 @@
 | `meta_naver_news` | ✅ 생성 완료 | [sql/meta_naver_news.sql](../../sql/meta_naver_news.sql) | Naver 뉴스 기사 단위 메타 (Schema.org NewsArticle) |
 | `meta_naver_news_vec` | ✅ 생성 완료 | [sql/meta_naver_news_vec.sql](../../sql/meta_naver_news_vec.sql) | Naver 뉴스 기사 임베딩 (pgvector 768차원) |
 | `active_meta_naver_news` | ✅ 생성 완료 | [sql/active_meta_naver_news.sql](../../sql/active_meta_naver_news.sql) | Naver 뉴스 기사 시계열 통계 (댓글 수만 수집, [결정 배경](../adr/005_Naver_News_Metrics_Decision.md)) |
-| `meta_naver_news_ai` | ⏳ 미설계 | — | Naver 뉴스 기사 AI 생성 메타 |
-| `meta_naver_shopping` | ✅ 생성 완료 | [sql/meta_naver_shopping.sql](../../sql/meta_naver_shopping.sql) | 쇼핑인사이트 카테고리 정적 정보 (source_type=shopping_insight) |
+| `meta_naver_news_ai` | ⏳ 예정 (필드 후보만) | — | Naver 뉴스 기사 AI 생성 메타 |
+| `meta_naver_shopping` | ✅ 생성 완료 | [sql/meta_naver_shopping.sql](../../sql/meta_naver_shopping.sql) | 쇼핑인사이트 카테고리 정적 정보 (source_type=shopping_insight). **`_vec` 임베딩 테이블 없음(의도적)** — 아래 각주 참조 |
 | `active_meta_naver_shopping` | ✅ 생성 완료 | [sql/active_meta_naver_shopping.sql](../../sql/active_meta_naver_shopping.sql) | 일별 검색량 지수 (raw/normalized/pseudo_volume, 성별×연령) |
-| `meta_naver_persona` | ✅ 생성 완료 | [sql/meta_naver_persona.sql](../../sql/meta_naver_persona.sql) | Persona 카테고리 정적 정보 (source_type=persona_insight) |
+| `meta_naver_persona` | ✅ 생성 완료 | [sql/meta_naver_persona.sql](../../sql/meta_naver_persona.sql) | Persona 카테고리 정적 정보 (source_type=persona_insight). **`_vec` 임베딩 테이블 없음(의도적)** — 아래 각주 참조 |
 | `active_meta_naver_persona` | ✅ 생성 완료 | [sql/active_meta_naver_persona.sql](../../sql/active_meta_naver_persona.sql) | 일별 Persona Index (gender_pv × age_pv, 독립 가정 추정치) |
 | `meta_naver_blog` | ✅ 생성 완료 | [sql/meta_naver_blog.sql](../../sql/meta_naver_blog.sql) | Naver 블로그 게시물 단위 메타 (Schema.org BlogPosting) |
 | `meta_naver_blog_vec` | ✅ 생성 완료 | [sql/meta_naver_blog_vec.sql](../../sql/meta_naver_blog_vec.sql) | Naver 블로그 게시물 임베딩 (pgvector 768차원) |
 | `active_meta_naver_blog` | ⚠️ 잠정 (미검증) | [sql/active_meta_naver_blog.sql](../../sql/active_meta_naver_blog.sql) | 댓글/공감 수집 가능 여부 미검증 — ADR-006 필요, 확정 전까지 수집 코드에서 미사용 |
+| `meta_naver_blog_ai` | ⏳ 예정 (필드 후보만) | — | Naver 블로그 게시물 AI 생성 메타 |
 | `dataset_credentials` | ✅ DDL 작성 완료 | [sql/dataset_credentials.sql](../../sql/dataset_credentials.sql) | 데이터셋별 API Key 암호화 저장 (pgcrypto). [설계 배경](../architecture/04_Collection_Pipeline_Operations.md#9-api-key-저장-모델--결정-데이터셋별-저장) |
+
+> **shopping/persona에 `_vec` 임베딩 테이블이 없는 이유:** 카테고리 데이터(`category_name`)는
+> 사람이 자유 텍스트로 검색할 대상이 아니라 구조화된 분류값이라 의미 기반(semantic) 검색의
+> 효용이 낮다고 판단해 의도적으로 제외했다. 나중에 "이런 느낌의 카테고리 찾기" 같은 의미
+> 검색 요구가 실제로 생기면 그때 추가한다.
 
 ---
 
@@ -71,6 +77,9 @@ dcat_dataset (1)  ─── "무엇인가" (명세)
     ├──  dcat_dataset_vec (1)        ─── "데이터셋 description 임베딩" (데이터셋 레벨 검색)
     │                                     ON DELETE CASCADE
     │
+    ├──  dataset_credentials (N)     ─── "데이터셋별 API Key 암호화 저장" (pgcrypto)
+    │                                     UNIQUE(dataset_id, credential_type)   ON DELETE CASCADE
+    │
     ├──< meta_youtube_video (N)      ─── "YouTube 영상 단위 메타" (Schema.org VideoObject)
     │        UNIQUE(dataset_id, video_id)   ON DELETE CASCADE
     │        │
@@ -101,16 +110,20 @@ dcat_dataset (1)  ─── "무엇인가" (명세)
     │        ├──< active_meta_naver_news (N)  ─── "댓글 시계열 스냅샷"
     │        │                                     is_naver_hosted=TRUE 기사만 행 존재
     │        │                                     ON DELETE CASCADE
-    │        └──  meta_naver_news_vec (1)      ─── "기사 임베딩" (기사 레벨 검색)
-    │                                               ON DELETE CASCADE
+    │        ├──  meta_naver_news_vec (1)      ─── "기사 임베딩" (기사 레벨 검색)
+    │        │                                     ON DELETE CASCADE
+    │        └──  meta_naver_news_ai (1)       ─── "AI 생성 메타" (요약·키워드·개체명 등)
+    │                                             ON DELETE CASCADE  [예정]
     │
     └──< meta_naver_blog (N)         ─── "Naver 블로그 게시물 단위 메타" (Schema.org BlogPosting)
              UNIQUE(dataset_id, post_url)   ON DELETE CASCADE
              │
              ├──< active_meta_naver_blog (N)  ─── "댓글/공감 시계열 스냅샷" [⚠️ 잠정, ADR-006 필요]
              │                                     ON DELETE CASCADE
-             └──  meta_naver_blog_vec (1)      ─── "게시물 임베딩" (게시물 레벨 검색)
-                                                    ON DELETE CASCADE
+             ├──  meta_naver_blog_vec (1)      ─── "게시물 임베딩" (게시물 레벨 검색)
+             │                                     ON DELETE CASCADE
+             └──  meta_naver_blog_ai (1)       ─── "AI 생성 메타" (요약·키워드·개체명 등)
+                                                   ON DELETE CASCADE  [예정]
 ```
 
 ### 벡터 검색 2레벨
@@ -146,20 +159,36 @@ active_meta_youtube
 
 ## AI 메타데이터 파이프라인 (예정)
 
-트랜스크립트 기반 AI 생성 메타데이터. 수집 코드 완성 후 성능 테스트를 거쳐 도입.
+`meta_youtube_video_ai`/`meta_naver_news_ai`/`meta_naver_blog_ai` 공통 설계. 수집 코드
+완성 후 성능 테스트를 거쳐 도입 — 아직 DDL 없음(필드 후보만 정리된 상태).
 
-### 처리 흐름
+> **⚠️ 설계 제약 (2026-07-23 확정): 이 프로젝트를 위한 별도 학습·파인튜닝은 하지 않는다.**
+> 그럴 시간이 없다. 대신 이미 학습이 끝난 오픈소스 모델을 그대로 가져다 쓰는 것은 전부
+> 허용 — Groq API로 호출하는 LLM(Llama/Gemma 등) 프롬프트 방식이든, HuggingFace의
+> 사전학습 BERT 계열 분류기/NER/감성분석 모델이든 상관없다. 필드별로 어느 쪽이 더
+> 정확할지는 실제 구현 단계에서 후보 모델 몇 개를 붙여보고 고르면 된다 — 아래 필드
+> 목록은 "학습 없이 뽑아낼 수 있는가"만 기준으로 추렸고, "어떤 모델로"는 구현 시 결정.
+
+### 처리 흐름 (YouTube 예시)
 
 ```
 트랜스크립트 (youtube-transcript-api)
     ↓ 전처리 (타임스탬프 제거, 줄 합치기)
     ↓
-Groq API (무료, llama-3.1-8b / gemma2-9b)
+사전학습 모델 호출 (Groq LLM 프롬프트 또는 HuggingFace 사전학습 모델 — 필드별로 선택)
     ↓
 meta_youtube_video_ai INSERT
 ```
 
-### 추출 필드 (확정 예정)
+뉴스/블로그는 `active_meta`처럼 소스별 시계열 통계 컬럼은 다르지만, AI 파이프라인
+자체는 "본문 텍스트 → 사전학습 모델 → INSERT" 구조가 동일하다. YouTube만 트랜스크립트
+대신 썸네일 이미지를 쓰는 비전 모델 경로가 추가로 있다.
+
+### YouTube — `meta_youtube_video_ai` (트랜스크립트 + 썸네일)
+
+기존에 트랜스크립트 기반 5개 필드만 정리돼 있었는데, `research/paper_topics.md`
+연구주제 #6(VLM 썸네일 메타데이터)에서 이미 제안된 썸네일 기반 4개 필드가 이 문서엔
+반영이 안 돼 있었다 — 아래 표로 통합.
 
 | 필드 | 설명 | 입력 소스 |
 |------|------|----------|
@@ -168,15 +197,56 @@ meta_youtube_video_ai INSERT
 | `ai_entities` | 등장 기관·인물·제품명 (JSONB) | 트랜스크립트 |
 | `ai_content_type` | tutorial / review / presentation / interview / news | 트랜스크립트 |
 | `ai_key_points` | 핵심 포인트 bullet 배열 | 트랜스크립트 |
+| `ai_visual_summary` | 썸네일 시각 요약 | 썸네일 (VLM, 예: LLaVA 계열) |
+| `ai_dominant_objects` | 썸네일에 등장하는 주요 객체 (JSONB) | 썸네일 |
+| `ai_visual_emotion` | 썸네일이 유발하는 감정 톤 | 썸네일 |
+| `ai_layout_type` | 썸네일 레이아웃 유형 (얼굴클로즈업/스크린샷/텍스트오버레이 등) | 썸네일 |
 
-### 인프라 결정 사항
+트랜스크립트 없는 영상은 title+description으로 fallback(위 5개 필드), 썸네일
+4개 필드는 트랜스크립트 유무와 무관하게 항상 추출 가능. 상세 연구 설계는
+[research/paper_topics.md](../research/paper_topics.md) #3, #6 참조.
+
+### 뉴스 — `meta_naver_news_ai` (신규 제안, 필드 확정 전)
+
+이 프로젝트가 반도체·AI 등 산업 뉴스를 주로 다루는 걸 감안한 후보 필드.
+
+| 필드 | 설명 | 입력 소스 |
+|------|------|----------|
+| `ai_summary` | 3문장 이내 요약 | 기사 본문 |
+| `ai_keywords` | 핵심 키워드 배열 | 기사 본문 |
+| `ai_entities` | 등장 기관·인물·기업명 (JSONB) | 기사 본문 — LLM 프롬프트 또는 사전학습 한국어 NER 모델 |
+| `ai_related_companies` | 언급된 기업명 목록 (JSONB) | 기사 본문 — 산업 동향 분석 연결 목적 |
+| `ai_sentiment` | 기사 톤(긍정/중립/부정) | 기사 본문 — LLM 또는 사전학습 감성분석 모델, 특정 기업·이슈 여론 추적용 |
+| `ai_topic_category` | 산업/정치/사회/기술 등 분류 | 기사 본문 |
+| `ai_is_opinion` | 사실 보도 vs 사설·의견 구분 | 기사 본문 |
+
+`has_content=FALSE`(스크래핑 실패) 기사는 title+description으로 fallback.
+
+### 블로그 — `meta_naver_blog_ai` (신규 제안, 필드 확정 전)
+
+시드 데이터도 리뷰/후기 위주("3주 사용 후기" 등)라 리뷰 콘텐츠 특성에 맞춘 후보 필드.
+
+| 필드 | 설명 | 입력 소스 |
+|------|------|----------|
+| `ai_summary` | 3문장 이내 요약 | 게시물 본문 |
+| `ai_keywords` | 핵심 키워드 배열 | 게시물 본문 |
+| `ai_content_type` | 리뷰/정보성/협찬(광고)/일상 분류 | 게시물 본문 |
+| `ai_sponsored_likelihood` | 협찬(광고) 콘텐츠 여부 추정 | 게시물 본문 — 법정 고지 문구("소정의 원고료" 등) 패턴 탐지 + 모델 판단 병행, 블로그 신뢰도 판단에 중요 |
+| `ai_product_mentions` | 언급된 제품·브랜드명 (JSONB) | 게시물 본문 — shopping_insight 데이터와 교차분석 가능 |
+| `ai_sentiment` | 리뷰 톤(긍정/중립/부정) | 게시물 본문 |
+| `ai_pros_cons` | 장단점 목록 (JSONB, 리뷰 글 한정) | 게시물 본문 |
+
+`has_content=FALSE`(스크래핑 실패) 게시물은 title+description으로 fallback.
+
+### 인프라 결정 사항 (공통)
 
 | 항목 | 결정 |
 |------|------|
-| 처리 방식 | Groq 무료 API (HTTP 호출) |
-| 이유 | 서버(RnD-analyzer01) GPU 없음 — 로컬 LLM 실용 불가 |
-| NER 전용 모델 미사용 이유 | Product 타입 없음, STT 노이즈에 취약 → LLM이 더 적합 |
-| 트랜스크립트 없는 영상 | title + description으로 fallback, ai 테이블 row 없을 수 있음 |
+| 처리 방식 | 사전학습된 오픈소스 모델만 사용 — Groq API 경유 LLM 프롬프트, HuggingFace 사전학습 분류기/NER/감성분석 모델 모두 후보 |
+| 이유 | 서버(RnD-analyzer01) GPU 없음 — 로컬 대형 LLM은 실용 불가하나 경량 HuggingFace 모델은 CPU로도 가능. 학습 데이터 구축·파인튜닝 시간도 없음 |
+| 모델 선택 기준 | 필드별로 구현 단계에서 후보 몇 개 비교 후 결정 — LLM 프롬프트 vs 사전학습 전용 모델 |
+| 본문/트랜스크립트 없는 경우 | title + description으로 fallback, ai 테이블 row 없을 수 있음 |
+| 정확도가 낮은 필드 처리 | 프롬프트 개선 또는 다른 사전학습 모델로 교체, 파인튜닝 검토 안 함 |
 
 ---
 

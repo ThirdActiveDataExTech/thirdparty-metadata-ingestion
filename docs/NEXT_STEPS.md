@@ -10,10 +10,11 @@
 
 ---
 
-## 0. (진행 중) `meta_naver_shopping` / `meta_naver_persona` / `meta_naver_blog` 스키마 리뷰
+## 0. (완료) `meta_naver_shopping` / `meta_naver_persona` / `meta_naver_blog` 스키마 리뷰
 
-**담당: 사용자 직접 검토 중.** 세 테이블의 컬럼 목록은 대화 중 정리해서 전달함 — 필요하면
-`sql/meta_naver_shopping.sql`, `sql/meta_naver_persona.sql`, `sql/meta_naver_blog.sql` 직접 참조.
+**사용자 최종 확인 완료 (2026-07-23).** 세 테이블의 컬럼 목록은 대화 중 정리해서 전달함 —
+필요하면 `sql/meta_naver_shopping.sql`, `sql/meta_naver_persona.sql`, `sql/meta_naver_blog.sql`
+직접 참조.
 
 검토 중 발견된 비대칭:
 - [x] ~~`meta_naver_shopping`의 `cat_level1~4` 예시 주석이 `meta_naver_persona`엔 없던 문제~~
@@ -131,11 +132,19 @@
 
 ## 5. AI 메타데이터 테이블
 
-- [ ] `meta_youtube_video_ai` DDL 작성 (필드 초안은 `datagokr_schema.md`의
-      "AI 메타데이터 파이프라인" 절에 이미 있음: ai_summary/ai_keywords/ai_entities/
-      ai_content_type/ai_key_points). P03 연구 주제와 직결.
-- [ ] `meta_naver_news_ai` 필드 설계 (초안조차 없음)
-- [ ] `meta_naver_blog_ai` 필드 설계 (초안조차 없음)
+**설계 제약 (2026-07-23 확정): 이 프로젝트를 위한 별도 학습·파인튜닝은 하지 않는다.**
+사전학습된 오픈소스 모델(Groq API 경유 LLM 프롬프트, HuggingFace 사전학습 분류기/NER/
+감성분석 모델 등)을 그대로 쓰는 것만 허용 — 어느 모델을 쓸지는 필드별로 구현 단계에서
+후보를 비교해 결정. 상세: `datagokr_schema.md`의 "AI 메타데이터 파이프라인" 절.
+
+- [ ] `meta_youtube_video_ai` DDL 작성 — 필드 후보 정리 완료(트랜스크립트 5개 +
+      썸네일 VLM 4개, `datagokr_schema.md` 참조). P03/P06 연구 주제와 직결.
+- [ ] `meta_naver_news_ai` 필드 후보 정리 완료(신규, `datagokr_schema.md` 참조:
+      ai_summary/keywords/entities/related_companies/sentiment/topic_category/is_opinion) —
+      DDL은 아직. 실측 검증 필요(어느 필드가 실제로 유용한 정확도가 나오는지)
+- [ ] `meta_naver_blog_ai` 필드 후보 정리 완료(신규, `datagokr_schema.md` 참조:
+      ai_summary/keywords/content_type/sponsored_likelihood/product_mentions/sentiment/
+      pros_cons) — DDL은 아직. 실측 검증 필요
 
 ---
 
