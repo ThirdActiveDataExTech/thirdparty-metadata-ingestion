@@ -27,7 +27,7 @@
 | `active_meta_naver_persona` | ✅ 생성 완료 | [sql/active_meta_naver_persona.sql](../../sql/active_meta_naver_persona.sql) | 일별 Persona Index (gender_pv × age_pv, 독립 가정 추정치) |
 | `meta_naver_blog` | ✅ 생성 완료 | [sql/meta_naver_blog.sql](../../sql/meta_naver_blog.sql) | Naver 블로그 게시물 단위 메타 (Schema.org BlogPosting) |
 | `meta_naver_blog_vec` | ✅ 생성 완료 | [sql/meta_naver_blog_vec.sql](../../sql/meta_naver_blog_vec.sql) | Naver 블로그 게시물 임베딩 (pgvector 768차원) |
-| `active_meta_naver_blog` | ⚠️ 잠정 (미검증) | [sql/active_meta_naver_blog.sql](../../sql/active_meta_naver_blog.sql) | 댓글/공감 수집 가능 여부 미검증 — ADR-006 필요, 확정 전까지 수집 코드에서 미사용 |
+| `active_meta_naver_blog` | ✅ 생성 완료 | [sql/active_meta_naver_blog.sql](../../sql/active_meta_naver_blog.sql) | 반응(공감 등) 수 시계열 — [ADR-006](../adr/006_Naver_Blog_Metrics_Decision.md)으로 확정, 댓글 수·조회수는 미수집 |
 | `meta_naver_blog_ai` | ⏳ 예정 (필드 후보만) | — | Naver 블로그 게시물 AI 생성 메타 |
 | `dataset_credentials` | ✅ DDL 작성 완료 | [sql/dataset_credentials.sql](../../sql/dataset_credentials.sql) | 데이터셋별 API Key 암호화 저장 (pgcrypto). [설계 배경](../architecture/04_Collection_Pipeline_Operations.md#9-api-key-저장-모델--결정-데이터셋별-저장) |
 
@@ -118,7 +118,7 @@ dcat_dataset (1)  ─── "무엇인가" (명세)
     └──< meta_naver_blog (N)         ─── "Naver 블로그 게시물 단위 메타" (Schema.org BlogPosting)
              UNIQUE(dataset_id, post_url)   ON DELETE CASCADE
              │
-             ├──< active_meta_naver_blog (N)  ─── "댓글/공감 시계열 스냅샷" [⚠️ 잠정, ADR-006 필요]
+             ├──< active_meta_naver_blog (N)  ─── "반응(공감 등) 시계열 스냅샷" [ADR-006 확정]
              │                                     ON DELETE CASCADE
              ├──  meta_naver_blog_vec (1)      ─── "게시물 임베딩" (게시물 레벨 검색)
              │                                     ON DELETE CASCADE
@@ -154,7 +154,7 @@ erDiagram
     meta_naver_news ||--|| meta_naver_news_vec : "임베딩"
     meta_naver_news ||..o| meta_naver_news_ai : "AI 메타 (예정)"
 
-    meta_naver_blog ||--o{ active_meta_naver_blog : "댓글·공감 시계열 (잠정)"
+    meta_naver_blog ||--o{ active_meta_naver_blog : "반응 시계열 (ADR-006)"
     meta_naver_blog ||--|| meta_naver_blog_vec : "임베딩"
     meta_naver_blog ||..o| meta_naver_blog_ai : "AI 메타 (예정)"
 
@@ -369,7 +369,7 @@ psql -h localhost -p 30433 -U admin -d datagokr \
   -f sql/meta_naver_persona.sql \
   -f sql/active_meta_naver_persona.sql
 
-# 5. Naver 블로그 메타 테이블 생성 (active_meta_naver_blog는 ADR-006 확정 전까지 미사용)
+# 5. Naver 블로그 메타 테이블 생성 (active_meta_naver_blog는 ADR-006으로 반응 수 수집 확정)
 psql -h localhost -p 30433 -U admin -d datagokr \
   -f sql/meta_naver_blog.sql \
   -f sql/meta_naver_blog_vec.sql \

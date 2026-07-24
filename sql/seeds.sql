@@ -7,7 +7,7 @@
 --   → meta_naver_news → active_meta_naver_news
 --   → meta_naver_shopping → active_meta_naver_shopping
 --   → meta_naver_persona → active_meta_naver_persona
---   → meta_naver_blog → active_meta_naver_blog (⚠️ 잠정 스키마, ADR-006 참조)
+--   → meta_naver_blog → active_meta_naver_blog (ADR-006 확정 — 반응 수만 수집)
 --
 -- dataset_credentials는 의도적으로 여기서 시드하지 않는다: 암호화 키(ENCRYPTION_KEY)를
 -- K8s Secret(dataset-credentials-encryption-key)에서만 가져오게 설계했고, 그 키를 이런
@@ -108,7 +108,7 @@ INSERT INTO dcat_dataset (
     'ko', 'KR', '2026-06-20', NULL, NULL, 'P1D', 3,
     '["블로그","AI","반도체","네이버"]',
     'https://developers.naver.com/notice/terms',
-    '네이버 API 이용약관 준수. 블로그 본문 스크래핑은 저작권 정책 별도 확인 필요. active_meta_naver_blog는 잠정 설계(ADR-006 확정 전)로 실사용 안 함.',
+    '네이버 API 이용약관 준수. 블로그 본문 스크래핑은 저작권 정책 별도 확인 필요. active_meta_naver_blog는 ADR-006으로 반응 수 수집 확정(댓글 수·조회수는 미수집).',
     'admin', NULL
 );
 
@@ -180,7 +180,7 @@ INSERT INTO dcat_provenance (
     'naver_blog_ai', 'initial', 'naver_blog', 'manual',
     '2026-06-28 07:00:00+09', '2026-06-28 07:00:33+09', 'success', 3,
     '{"keywords":["인공지능","AI","반도체"],"display":30}',
-    NULL, '최초 수집 (샘플 3건, active_meta 파이프라인은 ADR-006 확정 전까지 미가동)'
+    NULL, '최초 수집 (샘플 3건, active_meta 파이프라인은 ADR-006으로 반응 수 수집 확정)'
 );
 
 -- ── data_registry ─────────────────────────────────────────────
@@ -240,8 +240,8 @@ INSERT INTO data_registry (
     'meta_naver_blog', 'active_meta_naver_blog', 'dcat_dataset_vec',
     'active', '2026-06-28 07:00:33+09', '2026-07-01 07:00:00+09', NULL,
     3, 3, '2026-06-20', NULL
-    -- item_count=3: 게시물 3건. active_meta_naver_blog는 잠정(ADR-006 미확정) 상태라
-    -- row_count도 아직 item_count와 동일 (실사용 집계 전)
+    -- item_count=3: 게시물 3건. active_meta_naver_blog는 ADR-006으로 반응 수 수집 확정,
+    -- row_count도 현재 active_meta 시드 행 수(3)와 동일
 );
 
 -- ── dcat_dataset_vec ──────────────────────────────────────────
@@ -536,18 +536,16 @@ INSERT INTO meta_naver_blog (
 );
 
 -- ── active_meta_naver_blog ────────────────────────────────────
--- ⚠️ 잠정 데이터 — ADR-006 확정 전까지 실제 수집 코드에서 사용하지 않는 테이블의
--- 스키마 검증용 샘플. comment_count/sympathy_count 등 실제 API로 수집 가능한지
--- 미검증 상태이므로 아래 값은 전부 예시(placeholder)이다.
+-- ADR-006으로 확정된 스키마 — 반응(공감 등) 수만 수집 (댓글 수·조회수는 미수집).
 -- meta_naver_blog.id 삽입 순서: 1=HBM4, 2=Galaxy AI, 3=반도체 전망(본문 없음, 행 없음)
 
 INSERT INTO active_meta_naver_blog (
     meta_id, collected_at,
-    comment_count, expose_count, reply_count, sympathy_count,
-    delta_comments
+    reaction_count, reaction_breakdown,
+    delta_reactions
 ) VALUES
 -- meta_id=1 (HBM4): 2회 수집
-(1, '2026-06-30 07:00:33+09',  12,  11,  1,  34,  NULL),
-(1, '2026-07-07 07:00:18+09',  19,  18,  2,  51,     7),
+(1, '2026-06-30 07:00:33+09', 34, '{"like": 34}'::jsonb,                    NULL),
+(1, '2026-07-07 07:00:18+09', 51, '{"like": 48, "impressive": 3}'::jsonb,      17),
 -- meta_id=2 (Galaxy AI): 1회 수집
-(2, '2026-06-30 07:00:33+09',   6,   6,  0,  22,  NULL);
+(2, '2026-06-30 07:00:33+09', 22, '{"like": 22}'::jsonb,                    NULL);

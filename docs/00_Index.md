@@ -113,7 +113,7 @@ DB 스키마, 테이블 정의. **테이블이 추가되거나 컬럼이 변경�
 | ADR-003 | [Vector DB 전략 — pgvector 시작, Qdrant 전환 경로](adr/003_VectorDB_Strategy.md) | Accepted |
 | ADR-004 | [Object Storage 전략 — MinIO → SeaweedFS 전환](adr/004_ObjectStorage_Strategy.md) | Accepted |
 | ADR-005 | [Naver 뉴스 수집 가능 지표 결정](adr/005_Naver_News_Metrics_Decision.md) | Accepted |
-| ADR-006 | Naver 블로그 댓글/공감 수집 가능 여부 (예정, 미작성) | — |
+| ADR-006 | [Naver 블로그 수집 가능 지표 결정](adr/006_Naver_Blog_Metrics_Decision.md) | Accepted |
 | ADR-007 | [Airflow 도입 확정](adr/007_Airflow_Adoption.md) | Accepted |
 
 ---

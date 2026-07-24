@@ -51,12 +51,14 @@ CREATE TABLE meta_naver_blog (
     -- blog.naver.com 외에도 검색 결과에 노출되는 티스토리/브런치/워드프레스/Blogger 등
     -- 다양한 플랫폼을 함께 반환하기 때문에 필요 (API 이름이 "Naver Blog Search"가 아님)
     -- 값 예시: 'naver', 'tistory', 'brunch', 'wordpress', 'blogger', 'other'
-    -- 아래 blog_id/log_no, active_meta 댓글/공감 수집 가능 여부(ADR-006)는
-    -- platform='naver'일 때만 해당
+    -- 실측(2026-07-24, ADR-006 조사 중): 다양한 검색어 350건 샘플에서 blog.naver.com 96%,
+    -- tistory.com 3.4%, 완전 커스텀 도메인 소수 — brunch/wordpress/blogger는 이번 샘플엔
+    -- 없었으나 다른 검색어에서 나올 수 있어 enum 제약은 걸지 않음
+    -- 아래 blog_id/log_no, active_meta 반응 수 수집(ADR-006 결정: 반응만 수집, 댓글/조회수는
+    -- 미수집)은 platform='naver'일 때만 해당
 
     -- ── Naver 블로그 ID 파싱값 (platform='naver'일 때만 채움) ────
-    -- 댓글/공감 수 등 시계열 지표 수집 가능 여부를 결정하는 키가 될 예정
-    -- (ADR-006 확정 전까지는 파싱만 해두고 active_meta 연동은 보류)
+    -- 반응(공감 등) 수 수집의 키 — ADR-006으로 확정, active_meta_naver_blog 연동 완료
     blog_id              TEXT,
     -- 네이버 블로그 ID (예: 'techblog_samsung')
 

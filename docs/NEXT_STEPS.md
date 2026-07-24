@@ -13,8 +13,9 @@
 남은 작업을 성격별로 분류해 아래 순서로 진행하기로 합의:
 
 1. ~~**A. 결정만 필요한 것** — 2-3, 2-4, 2-10, 2-11, §3의 7번~~ **완료 (2026-07-23)**
-2. **B. 조사해야 결정 가능** — 2-1(blog API 실측 → ADR-006), §5 AI 필드 실측 검증 ← 다음 단계
-3. **C. 외부 의존 (대기)** — §3의 8번(계정테이블 FK), K8s Secret 생성
+2. ~~**B-1. 2-1(blog API 실측 → ADR-006)**~~ **완료 (2026-07-24)** — §5 AI 필드 실측
+   검증은 D 순서(§6.1 이후)로 이미 미뤄둔 상태라 B의 나머지 항목 아님
+3. **C. 외부 의존 (대기)** — §3의 8번(계정테이블 FK), K8s Secret 생성 ← 다음 확인할 것
 4. **D. 구현 작업** — 순서는 §6.1(Collector 코드) → 수동 실행으로 실 데이터 확보 →
    §5(AI 필드 실측·DDL·collector에 통합) → §6.2(Airflow 오케스트레이션) → §6.3(프론트엔드 API).
    AI 메타데이터 검증에 Airflow는 불필요(수동 `run()` 호출로 충분)하다고 판단, `run()` 동작이
@@ -82,13 +83,15 @@
 
 ## 2. 남은 스키마·API 결정
 
-- [ ] **2-1. `active_meta_naver_blog` 실제 API 조사 → ADR-006**
-      댓글/공감/조회수를 실제로 수집할 수 있는지 미검증 (ADR-005가 뉴스에 대해 했던 것과 동일한 수준의
-      실제 API 호출 테스트 필요). 확정 전까지 이 테이블은 수집 코드에서 미사용.
-- [x] ~~2-2. `meta_naver_blog` 플랫폼 구분 확인~~ — **결정: `platform TEXT` 컬럼 추가**
-      (0번 리뷰에서 완료. Naver 블로그 검색 API가 blog.naver.com 외 티스토리/브런치/
-      워드프레스/Blogger 등도 반환한다고 판단 — 실제 라이브 API 호출로 재검증은 아직
-      안 함, 2-1의 ADR-006 실측 작업 때 같이 확인 권장).
+- [x] ~~2-1. `active_meta_naver_blog` 실제 API 조사 → ADR-006~~ — **결정 완료 (2026-07-24).**
+      실제 API 호출로 검증: 반응(공감 등) 수는 `blog.like.naver.com`으로 브라우저 자동화
+      없이 수집 가능(확인), 댓글 수는 cbox 계열 API가 정책적으로 차단됨(보류), 조회수는
+      페이지에 아예 노출 안 됨(미수집). [ADR-006](adr/006_Naver_Blog_Metrics_Decision.md)
+      작성 완료. `sql/active_meta_naver_blog.sql` 재설계(`reaction_count`/
+      `reaction_breakdown`/`delta_reactions`), 실 서버 반영·검증 완료.
+- [x] ~~2-2. `meta_naver_blog` 플랫폼 구분 확인~~ — **결정: `platform TEXT` 컬럼 추가.**
+      2-1 실측 때 같이 재검증 완료: 다양한 검색어 350건 샘플에서 blog.naver.com 96%,
+      tistory.com 3.4%, 커스텀 도메인 소수 확인 — GPT 근거 추정이 아니라 실측으로 확정.
 - [x] ~~2-3. `dcat_dataset.publisher` NOT NULL 여부~~ — **결정: NOT NULL로 변경.** 모든
       시드 데이터가 값을 가지고 있고 NULL이 되는 시나리오가 없다고 판단. `sql/dcat_dataset.sql`
       반영·실 서버 적용 완료 (2026-07-23).
