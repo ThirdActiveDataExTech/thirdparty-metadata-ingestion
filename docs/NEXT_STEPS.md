@@ -204,9 +204,17 @@
       12조합 persona_index = gender_pv×age_pv). `naver_datalab_scale.py`를
       shopping과 그대로 공유 재사용. 실 API로 검증 — 4카테고리×12조합=48행,
       재실행해도 upsert로 중복 없음
-- [ ] Naver 뉴스 수집 코드 — 발견형, 본문 스크래핑 포함(레거시 `naver_news.py`는 CSS
-      셀렉터 기반 스크래핑이 취약하고 자격증명이 하드코딩돼 있어 재작성 필요, API 호출
-      부분만 포팅 가치 있음)
+- [x] ~~Naver 뉴스 수집 코드~~ — **완료 (2026-07-28).** `src/collectors/
+      naver_news_collector.py`(검색 API 페이지네이션, 본문 스크래핑, ADR-005 댓글수
+      API) + `src/pipelines/naver_news_pipeline.py`. 자격증명 하드코딩·본문 셀렉터는
+      레거시에서 정리해서 포팅.
+      **개발 중 중요한 버그 발견·수정**: 처음엔 YouTube와 같은 "검색 결과에 없으면
+      삭제" 방식을 썼는데, 뉴스 검색은 `sort=date` 슬라이딩 윈도우라 몇 분 만에도
+      상위 N건 밖으로 밀려날 수 있음 — 실측 결과 기존 기사 146건이 "부재"로 나왔는데
+      91건(62%)이 실제로는 살아있는 200 응답이었음. `check_article_still_exists()`로
+      URL을 직접 재확인(404/410 확정시만 삭제 처리)하는 방식으로 수정 —
+      04_Collection_Pipeline_Operations.md §6.1에 원칙 기록, **블로그도 동일 원칙
+      적용 필요**. 실 API로 검증 — 1334개 기사, 댓글수(ADR-005) 987건 수집
 - [ ] Naver 블로그 수집 코드 — 발견형, `platform` 파싱(§4) + 반응 수 수집(ADR-006) 포함
 - [ ] **성능 개선**: 지금 DB 헬퍼 함수들이 호출마다 새 커넥션을 열어서, 영상 1400개+
       채널 재실행이 ~5분 걸림. 커넥션을 pipeline 실행 단위로 재사용하도록 리팩터링 권장

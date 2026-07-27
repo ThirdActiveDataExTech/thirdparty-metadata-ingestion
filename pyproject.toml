@@ -10,6 +10,7 @@ dependencies = [
     "sentence-transformers",   # paraphrase-multilingual-mpnet-base-v2 (768 dims)
     "pgvector",                # pgvector Python adapter (vector type support)
     "google-api-python-client", # YouTube Data API v3
+    "beautifulsoup4",           # 뉴스/블로그 본문 스크래핑
 ]
 
 [project.optional-dependencies]
