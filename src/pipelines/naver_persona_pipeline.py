@@ -5,10 +5,15 @@ shopping_insight와 마찬가지로 카테고리 목록은 등록 시점에 고�
 호출하고(anchor·배칭 없음), gender/age 시리즈를 stacking한 median으로 scale을
 보정한 뒤 persona_index = gender_pv × age_pv (독립 가정)를 12조합(2성별×6연령)
 전부 계산해 저장한다. 레거시 3amd/naver_persona.py 포팅.
+
+날짜 범위는 shopping과 동일하게 "DB 마지막 저장 날짜 - OVERLAP_DAYS부터 어제까지"를
+매번 다시 가져온다(2026-07-28, naver_shopping_pipeline.py 상단 주석 참조 — 하루씩만
+가져오면 inter_scale 계산에 쓸 겹치는 날짜가 절대 안 생겨서 gender_scale/age_scale이
+항상 1.0으로 죽어있던 버그의 수정).
 """
 
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from src.collectors import naver_datalab_scale, naver_persona_collector
 from src.database import dcat, meta_naver_persona
@@ -17,6 +22,7 @@ from src.database.db import get_conn
 AGENT = "naver_persona_collector"
 GENDER_GROUPS = ["m", "f"]
 AGE_GROUPS = ["10", "20", "30", "40", "50", "60"]
+OVERLAP_DAYS = 7
 
 
 def _get_registry_status(dataset_id: str) -> str:
@@ -52,6 +58,16 @@ def _flatten(parsed: Dict[str, Dict[str, float]]) -> Dict[str, float]:
     return {f"{period}|{group}": ratio for period, groups in parsed.items() for group, ratio in groups.items()}
 
 
+def _compute_fetch_range(dataset_id: str) -> Tuple[str, str]:
+    end_date = date.today() - timedelta(days=1)
+    last_period = meta_naver_persona.get_last_period(dataset_id)
+    if last_period is None:
+        start_date = end_date - timedelta(days=OVERLAP_DAYS)
+    else:
+        start_date = min(date.fromisoformat(last_period) - timedelta(days=OVERLAP_DAYS), end_date)
+    return start_date.isoformat(), end_date.isoformat()
+
+
 def run(dataset_id: str, triggered_by: str) -> None:
     dataset = dcat.fetch_dcat_dataset(dataset_id)
     was_pending = _get_registry_status(dataset_id) == "pending"
@@ -59,13 +75,13 @@ def run(dataset_id: str, triggered_by: str) -> None:
     client_secret = dcat.get_api_key(dataset_id, "naver_client_secret")
 
     categories = meta_naver_persona.get_meta_naver_persona_rows(dataset_id)
-    target_date = (date.today() - timedelta(days=1)).isoformat()
+    start_date, end_date = _compute_fetch_range(dataset_id)
     started_at = datetime.now(timezone.utc)
     rows_written = 0
 
     try:
         for cat in categories:
-            rows_written += _collect_one_category(cat, target_date, client_id, client_secret)
+            rows_written += _collect_one_category(cat, start_date, end_date, client_id, client_secret)
 
         ended_at = datetime.now(timezone.utc)
         dcat.insert_dcat_provenance(
@@ -73,7 +89,7 @@ def run(dataset_id: str, triggered_by: str) -> None:
             agent=AGENT, triggered_by=triggered_by,
             started_at=started_at, ended_at=ended_at, status="success",
             rows_affected=rows_written,
-            params={"target_date": target_date, "categories": len(categories)},
+            params={"start_date": start_date, "end_date": end_date, "categories": len(categories)},
         )
         dcat.update_data_registry(
             dataset_id,
@@ -100,15 +116,15 @@ def run(dataset_id: str, triggered_by: str) -> None:
 
 
 def _collect_one_category(
-    cat: Dict[str, Any], target_date: str, client_id: str, client_secret: str
+    cat: Dict[str, Any], start_date: str, end_date: str, client_id: str, client_secret: str
 ) -> int:
     gender_data = naver_persona_collector.fetch_ratios(
         naver_persona_collector.GENDER_API_URL, client_id, client_secret,
-        target_date, target_date, "date", cat["category_id"],
+        start_date, end_date, "date", cat["category_id"],
     )
     age_data = naver_persona_collector.fetch_ratios(
         naver_persona_collector.AGE_API_URL, client_id, client_secret,
-        target_date, target_date, "date", cat["category_id"],
+        start_date, end_date, "date", cat["category_id"],
     )
     gender_parsed = naver_persona_collector.parse_persona_response(gender_data) if gender_data else {}
     age_parsed = naver_persona_collector.parse_persona_response(age_data) if age_data else {}

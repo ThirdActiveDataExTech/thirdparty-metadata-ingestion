@@ -231,6 +231,17 @@
 - [x] ~~Phase 2 전체 완료~~ — **2026-07-28.** YouTube(Phase 1)+쇼핑(Phase 1)+Persona+
       뉴스+블로그 5개 소스 전부 실 API·실 DB로 검증 완료. 다음은 §5(AI 필드) 또는
       §6.2(Airflow)
+- [x] ~~쇼핑/Persona "오늘 하루만 수집" → inter_scale 항상 1.0으로 죽는 버그~~ —
+      **완료 (2026-07-28), Phase 2 마무리 후 사용자 질문으로 발견.** "다음 수집 때
+      정확히 무슨 일이 일어나는지" 설명하다가 발견 — 매번 새 날짜만 조회하니 DB
+      기존 데이터와 겹치는 날짜가 없어 `inter_scale`(수집 구간 간 보정)이 실질적으로
+      작동을 안 하고 있었음. **사용자 제안대로** "마지막 저장 날짜 - 7일부터 어제까지"
+      재조회하는 방식(`OVERLAP_DAYS=7`)으로 수정 — 겹치는 구간이 생겨 inter_scale이
+      실제로 계산되고, 부수 효과로 Airflow 중단 후 재개 시 최대 7일 결측도 자동
+      보충됨. `naver_shopping_pipeline.py`/`naver_persona_pipeline.py`/
+      `meta_naver_shopping.py`/`meta_naver_persona.py`(`get_last_period` 추가) 수정.
+      실 API로 검증 — scale_factor가 1.0이 아닌 실제 값(예: 1.130692)으로 계산됨 확인.
+      04_Collection_Pipeline_Operations.md §6.2에 원칙 기록
 - [ ] **성능 개선**: 지금 DB 헬퍼 함수들이 호출마다 새 커넥션을 열어서, 영상 1400개+
       채널 재실행이 ~5분 걸림. 커넥션을 pipeline 실행 단위로 재사용하도록 리팩터링 권장
       (배포 전 처리하는 게 좋음 — Airflow 스케줄로 자동 실행되면 체감 안 되지만 여전히

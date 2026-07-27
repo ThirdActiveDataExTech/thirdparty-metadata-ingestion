@@ -466,17 +466,42 @@ def run(dataset_id: str, triggered_by: str):
 
 `shopping_insight`/`persona_insight`는 신규/기존 분기도, 삭제 감지도 필요 없다 —
 `meta_naver_shopping`의 카테고리 목록은 사용자가 등록 API로 직접 넣은 것이라 Collector가
-목록 자체를 바꾸지 않는다. 매 실행마다 그 고정된 카테고리들의 오늘자 지수만 API로
-가져와서 `active_meta_naver_shopping`에 새 행을 추가할 뿐이다.
+목록 자체를 바꾸지 않는다. 매 실행마다 그 고정된 카테고리들의 지수를 API로 가져와서
+`active_meta_naver_shopping`에 UPSERT한다.
+
+> ⚠️ **"오늘자 하루만" 가져오면 안 된다 (2026-07-28, 실제 구현·검증 중 발견).**
+> 처음엔 문자 그대로 "오늘(정확히는 어제)자 지수만" 가져오는 걸로 구현했는데, 이러면
+> 매번 새 날짜만 조회하는 꼴이라 DB에 이미 있는 날짜와 절대 안 겹친다. `inter_scale`
+> (수집 구간 간 보정)은 "이번 조회 결과의 anchor 값"과 "DB에 이미 저장된 같은 날짜의
+> anchor 값"을 비교해서 계산하는데, 겹치는 날짜가 없으면 비교 대상이 없어 **항상
+> 1.0으로 죽는다** — `pseudo_volume`의 존재 이유(여러 수집 구간을 하나의 연속
+> 시계열로 잇는 것) 자체가 무력화되는 실질적 버그였다.
+>
+> **수정**: 매 실행마다 "DB에 저장된 마지막 날짜 - `OVERLAP_DAYS`(7일)부터 어제까지"를
+> 다시 가져온다. `ON CONFLICT UPSERT`라 겹치는 날짜를 다시 써도 중복 행은 안 생기고,
+> 최신 계산된 `scale_factor`로 재계산돼 덮어써진다. 부수 효과로 Airflow가 며칠
+> 멈췄다 재개돼도 `OVERLAP_DAYS` 범위 안의 결측은 자동으로 보충된다(그보다 오래된
+> 결측은 못 채움 — 레거시 스크립트의 `--auto` 2단계 초기 백필 같은 별도 로직은
+> 이식하지 않았음).
 
 ```python
+OVERLAP_DAYS = 7
+
 def run(dataset_id: str, triggered_by: str):
     categories = get_meta_naver_shopping_rows(dataset_id)  # 이미 등록된 카테고리 목록
     anchor = next(c for c in categories if c["is_anchor"])
-    # ... anchor 기준 intra_scale/inter_scale 계산 (P01 pseudo_volume 방법론과 동일) ...
+
+    end_date = today() - 1  # 당일 데이터는 API에 아직 안 실릴 수 있음
+    last_period = get_last_period(dataset_id)  # DB에 이미 저장된 마지막 날짜
+    start_date = (last_period - OVERLAP_DAYS) if last_period else (end_date - OVERLAP_DAYS)
+
+    # ... anchor 기준 intra_scale/inter_scale 계산 (P01 pseudo_volume 방법론과 동일).
+    # start_date~end_date 범위 전체(여러 날짜)를 한 번에 조회, 겹치는 날짜가 있으므로
+    # inter_scale이 실제 값으로 계산됨 ...
     for category in categories:
-        raw_ratio = shopping_api.get_ratio(category["category_id"], api_key)
-        insert_active_meta_naver_shopping(category["id"], raw_ratio, ...)
+        ratios_by_period = shopping_api.get_ratios(category["category_id"], start_date, end_date, api_key)
+        for period, raw_ratio in ratios_by_period.items():
+            upsert_active_meta_naver_shopping(category["id"], period, raw_ratio, ...)
     # 카테고리 목록 자체는 절대 바꾸지 않음 — 사용자가 subjects UPDATE(§5.6)로만 바꿀 수 있음
 ```
 

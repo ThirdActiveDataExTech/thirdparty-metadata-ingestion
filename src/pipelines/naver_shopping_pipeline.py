@@ -3,10 +3,19 @@
 
 shopping_insight/persona_insight는 신규/기존 분기도 삭제 감지도 필요 없다 —
 meta_naver_shopping의 카테고리 목록은 등록 시점에 사용자가 이미 확정한 것이라
-Collector가 목록 자체를 바꾸지 않는다. 매 실행마다 그 고정된 카테고리들의
-"어제자" 지수만 API로 가져와 active_meta_naver_shopping에 새 행을 추가한다
-(당일 데이터는 아직 API에 반영 안 됐을 수 있어 하루 지연 — 레거시 스크립트와
-동일한 관례).
+Collector가 목록 자체를 바꾸지 않는다.
+
+날짜 범위는 "어제 하루만"이 아니라 **DB에 저장된 마지막 날짜 - OVERLAP_DAYS부터
+어제까지**를 매번 다시 가져온다(2026-07-28 수정, 최초엔 하루만 가져왔었음). 이렇게
+겹치는 구간을 두는 이유 두 가지:
+  1) inter_scale(수집 구간 간 보정)이 실제로 작동하려면 이번 수집 결과와 DB의
+     기존 값이 "같은 날짜"를 가리켜야 한다. 하루씩만 가져오면 겹치는 날짜가 절대
+     없어서 inter_scale이 항상 1.0으로 죽어있었다 — pseudo_volume의 핵심 목적
+     (여러 수집 구간을 하나의 연속 시계열로 잇기)이 실질적으로 무의미했던 버그.
+  2) Airflow가 며칠 멈췄다 재개되는 경우, 그 사이 결측 구간을 OVERLAP_DAYS 범위
+     안에서는 자동으로 보충한다(그보다 오래된 결측은 못 채움 — 별도 backfill 필요).
+UPSERT라 겹치는 날짜를 다시 써도 중복 행은 안 생기고, 최신 scale_factor로
+재계산돼서 덮어써진다.
 
 anchor 카테고리는 모든 배치 호출에 포함시켜 호출당 최대 3카테고리 제약을
 맞춘다(비-anchor 2개씩 묶음). intra_scale(배치 간)·inter_scale(수집 구간 간)
@@ -23,6 +32,7 @@ from src.database.db import get_conn
 AGENT = "naver_shopping_collector"
 GENDERS = ["m", "f"]
 AGES = ["10", "20", "30", "40", "50", "60"]
+OVERLAP_DAYS = 7
 
 
 def _get_registry_status(dataset_id: str) -> str:
@@ -57,6 +67,18 @@ def _chunk(items: List[Any], size: int) -> List[List[Any]]:
     return [items[i : i + size] for i in range(0, len(items), size)] or [[]]
 
 
+def _compute_fetch_range(dataset_id: str) -> Tuple[str, str]:
+    """(start_date, end_date) — last_period가 있으면 거기서 OVERLAP_DAYS 전부터,
+    없으면(최초 수집) 어제부터 OVERLAP_DAYS 전까지."""
+    end_date = date.today() - timedelta(days=1)  # 당일 데이터는 API에 아직 안 실릴 수 있음
+    last_period = meta_naver_shopping.get_last_period(dataset_id)
+    if last_period is None:
+        start_date = end_date - timedelta(days=OVERLAP_DAYS)
+    else:
+        start_date = min(date.fromisoformat(last_period) - timedelta(days=OVERLAP_DAYS), end_date)
+    return start_date.isoformat(), end_date.isoformat()
+
+
 def run(dataset_id: str, triggered_by: str) -> None:
     dataset = dcat.fetch_dcat_dataset(dataset_id)
     was_pending = _get_registry_status(dataset_id) == "pending"
@@ -68,7 +90,7 @@ def run(dataset_id: str, triggered_by: str) -> None:
     non_anchor = [c for c in categories if not c["is_anchor"]]
     batches = _chunk(non_anchor, 2)
 
-    target_date = (date.today() - timedelta(days=1)).isoformat()
+    start_date, end_date = _compute_fetch_range(dataset_id)
     started_at = datetime.now(timezone.utc)
     rows_written = 0
 
@@ -77,7 +99,7 @@ def run(dataset_id: str, triggered_by: str) -> None:
             for age in AGES:
                 rows_written += _collect_one_combo(
                     dataset_id, anchor, batches, gender, age,
-                    target_date, client_id, client_secret,
+                    start_date, end_date, client_id, client_secret,
                 )
 
         ended_at = datetime.now(timezone.utc)
@@ -86,7 +108,7 @@ def run(dataset_id: str, triggered_by: str) -> None:
             agent=AGENT, triggered_by=triggered_by,
             started_at=started_at, ended_at=ended_at, status="success",
             rows_affected=rows_written,
-            params={"target_date": target_date, "categories": len(categories)},
+            params={"start_date": start_date, "end_date": end_date, "categories": len(categories)},
         )
         dcat.update_data_registry(
             dataset_id,
@@ -118,19 +140,20 @@ def _collect_one_combo(
     batches: List[List[Dict[str, Any]]],
     gender: str,
     age: str,
-    target_date: str,
+    start_date: str,
+    end_date: str,
     client_id: str,
     client_secret: str,
 ) -> int:
     """(gender, age) 조합 1개에 대해 배치 전부 호출 → scale 보정 → 저장. 저장 행 수 반환."""
     anchor_pair = (anchor["category_id"], anchor["category_name"])
 
-    # Step 1: 이 (gender, age)의 모든 배치 호출
+    # Step 1: 이 (gender, age)의 모든 배치 호출 — start_date~end_date 범위 전체(여러 날짜)
     batch_results: List[Tuple[int, List[Dict[str, Any]], Any]] = []
     for b_idx, batch in enumerate(batches):
         cats_in_call = [anchor_pair] + [(c["category_id"], c["category_name"]) for c in batch]
         data = naver_shopping_collector.fetch_insight(
-            client_id, client_secret, target_date, target_date, "date",
+            client_id, client_secret, start_date, end_date, "date",
             cats_in_call, gender, age,
         )
         parsed = naver_shopping_collector.parse_response(data) if data else None

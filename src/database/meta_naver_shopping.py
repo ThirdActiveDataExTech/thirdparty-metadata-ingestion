@@ -24,6 +24,29 @@ def get_meta_naver_shopping_rows(dataset_id: str) -> List[Dict[str, Any]]:
         conn.close()
 
 
+def get_last_period(dataset_id: str) -> Optional[str]:
+    """이 dataset_id의 카테고리 중 가장 최근 수집된 period. 데이터 없으면 None.
+
+    overlap 윈도우 계산(파이프라인)의 기준점 — 이 날짜에서 며칠 전부터 다시
+    가져와야 inter_scale 계산에 쓸 겹치는 기간이 생긴다.
+    """
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT MAX(a.period) FROM active_meta_naver_shopping a
+            JOIN meta_naver_shopping m ON m.id = a.meta_id
+            WHERE m.dataset_id = %s
+            """,
+            (dataset_id,),
+        )
+        row = cur.fetchone()
+        return row[0].isoformat() if row and row[0] else None
+    finally:
+        conn.close()
+
+
 def get_existing_anchor_raw(
     anchor_meta_id: int, gender: str, age: str, periods: List[str]
 ) -> Dict[str, float]:
