@@ -13,9 +13,19 @@ Collector가 목록 자체를 바꾸지 않는다.
      없어서 inter_scale이 항상 1.0으로 죽어있었다 — pseudo_volume의 핵심 목적
      (여러 수집 구간을 하나의 연속 시계열로 잇기)이 실질적으로 무의미했던 버그.
   2) Airflow가 며칠 멈췄다 재개되는 경우, 그 사이 결측 구간을 OVERLAP_DAYS 범위
-     안에서는 자동으로 보충한다(그보다 오래된 결측은 못 채움 — 별도 backfill 필요).
+     안에서는 자동으로 보충한다(그보다 오래된 결측은 못 채움).
 UPSERT라 겹치는 날짜를 다시 써도 중복 행은 안 생기고, 최신 scale_factor로
 재계산돼서 덮어써진다.
+
+**최초 수집 시 소급 수집**(2026-07-28 추가): `dcat_dataset.temporal_start`에
+값이 있으면(등록 시 프론트엔드/관리자가 지정) 그 날짜부터 소급 수집한다 — 레거시
+`--auto`의 "데이터 없으면 1년 전부터" 2단계 로직과 같은 목적이지만, 날짜 범위
+하나로 한 번에 호출한다(레거시는 왜 2단계로 나눴는지 특별한 이유가 없어 보여서
+단순화 — 어차피 한 번의 API 호출 응답 안에서는 M값이 하나로 통일되니 오히려
+더 일관됨). 지정 안 하면 기존과 동일하게 OVERLAP_DAYS만큼만. 첫 수집 성공 후
+`dcat_dataset.temporal_start`를 실제로 수집된 가장 이른 날짜로 갱신한다(그
+이후엔 건드리지 않음 — 나중 수집은 항상 앞으로만 진행하니 시작일이 당겨질
+일이 없음).
 
 anchor 카테고리는 모든 배치 호출에 포함시켜 호출당 최대 3카테고리 제약을
 맞춘다(비-anchor 2개씩 묶음). intra_scale(배치 간)·inter_scale(수집 구간 간)
@@ -23,7 +33,7 @@ anchor 카테고리는 모든 배치 호출에 포함시켜 호출당 최대 3�
 """
 
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from src.collectors import naver_datalab_scale, naver_shopping_collector
 from src.database import dcat, meta_naver_shopping
@@ -32,7 +42,7 @@ from src.database.db import get_conn
 AGENT = "naver_shopping_collector"
 GENDERS = ["m", "f"]
 AGES = ["10", "20", "30", "40", "50", "60"]
-OVERLAP_DAYS = 7
+OVERLAP_DAYS = 14
 
 
 def _get_registry_status(dataset_id: str) -> str:
@@ -67,16 +77,40 @@ def _chunk(items: List[Any], size: int) -> List[List[Any]]:
     return [items[i : i + size] for i in range(0, len(items), size)] or [[]]
 
 
-def _compute_fetch_range(dataset_id: str) -> Tuple[str, str]:
-    """(start_date, end_date) — last_period가 있으면 거기서 OVERLAP_DAYS 전부터,
-    없으면(최초 수집) 어제부터 OVERLAP_DAYS 전까지."""
+def _compute_fetch_range(dataset_id: str, dataset: Dict[str, Any]) -> Tuple[str, str]:
+    """(start_date, end_date).
+
+    최초 수집(last_period 없음)이면 dcat_dataset.temporal_start가 지정돼 있을 때
+    그 날짜부터 소급 수집 — 없으면 기존과 동일하게 OVERLAP_DAYS만큼만.
+    이미 수집 이력이 있으면 마지막 저장 날짜 - OVERLAP_DAYS부터.
+    """
     end_date = date.today() - timedelta(days=1)  # 당일 데이터는 API에 아직 안 실릴 수 있음
     last_period = meta_naver_shopping.get_last_period(dataset_id)
     if last_period is None:
-        start_date = end_date - timedelta(days=OVERLAP_DAYS)
+        desired_start = dataset.get("temporal_start")  # date 객체 또는 None
+        start_date = desired_start if desired_start is not None else end_date - timedelta(days=OVERLAP_DAYS)
     else:
         start_date = min(date.fromisoformat(last_period) - timedelta(days=OVERLAP_DAYS), end_date)
     return start_date.isoformat(), end_date.isoformat()
+
+
+def _current_temporal_start(dataset_id: str) -> Optional[str]:
+    """실제로 지금까지 수집된 가장 이른 period. 데이터 없으면 None."""
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT MIN(a.period) FROM active_meta_naver_shopping a
+            JOIN meta_naver_shopping m ON m.id = a.meta_id
+            WHERE m.dataset_id = %s
+            """,
+            (dataset_id,),
+        )
+        row = cur.fetchone()
+        return row[0].isoformat() if row and row[0] else None
+    finally:
+        conn.close()
 
 
 def run(dataset_id: str, triggered_by: str) -> None:
@@ -90,7 +124,7 @@ def run(dataset_id: str, triggered_by: str) -> None:
     non_anchor = [c for c in categories if not c["is_anchor"]]
     batches = _chunk(non_anchor, 2)
 
-    start_date, end_date = _compute_fetch_range(dataset_id)
+    start_date, end_date = _compute_fetch_range(dataset_id, dataset)
     started_at = datetime.now(timezone.utc)
     rows_written = 0
 
@@ -110,12 +144,21 @@ def run(dataset_id: str, triggered_by: str) -> None:
             rows_affected=rows_written,
             params={"start_date": start_date, "end_date": end_date, "categories": len(categories)},
         )
+
+        temporal_start_update: Dict[str, Any] = {}
+        if was_pending:
+            actual_start = _current_temporal_start(dataset_id)
+            if actual_start is not None:
+                temporal_start_update["temporal_start"] = actual_start
+                dcat.update_dcat_dataset(dataset_id, temporal_start=actual_start)
+
         dcat.update_data_registry(
             dataset_id,
             status="active",
             item_count=len(categories),
             row_count=_current_row_count(dataset_id),
             last_collected_at=ended_at,
+            **temporal_start_update,
             next_collect_at=ended_at + dcat.parse_iso8601_duration_to_timedelta(dataset["accrual_periodicity"]),
             last_error=None,
         )

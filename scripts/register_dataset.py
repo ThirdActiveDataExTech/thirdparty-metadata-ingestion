@@ -12,10 +12,11 @@ runbooks/04_Add_New_Dataset_Existing_Source.md의 "A. 신규 데이터셋 생성
       --title "SK하이닉스 공식 채널" --description "SK하이닉스 유튜브 채널 영상 수집" \\
       --subjects UCltyil2FaQZZ4kUNinKkKmw --origin admin
 
-  # 선언형 (쇼핑인사이트) — 다른 카테고리 조합을 새 데이터셋으로
+  # 선언형 (쇼핑인사이트) — 다른 카테고리 조합을 새 데이터셋으로, 소급 수집 시작일 지정
   python scripts/register_dataset.py shopping_insight \\
       --title "IT/가전 카테고리 쇼핑 인사이트" --description "..." \\
-      --categories "50000003:디지털/가전,50000005:가구/인테리어" --origin admin
+      --categories "50000003:디지털/가전,50000005:가구/인테리어" --origin admin \\
+      --temporal-start 2025-01-01
 
 등록 후 실제 수집을 트리거하려면:
   python -m src.main run <출력된-dataset_id>
@@ -139,13 +140,13 @@ def register_declarative(args) -> str:
             INSERT INTO dcat_dataset (
                 dataset_id, title, description, publisher, source_type,
                 subjects, accrual_periodicity, item_count,
-                dataset_origin, owner_id, license
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                dataset_origin, owner_id, license, temporal_start
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
                 dataset_id, args.title, args.description, meta["publisher"],
                 args.source_type, json.dumps([cid for cid, _ in categories]), args.periodicity,
-                len(categories), args.origin, args.owner_id, meta["license"],
+                len(categories), args.origin, args.owner_id, meta["license"], args.temporal_start,
             ),
         )
         cur.execute(
@@ -195,6 +196,11 @@ def main():
     parser.add_argument("--dataset-id", default=None, help="지정 안 하면 title로 자동 채번")
     parser.add_argument("--subjects", help="발견형: 채널ID/검색어 콤마 구분 목록")
     parser.add_argument("--categories", help="선언형: 'id:name,id:name' 콤마 구분 목록")
+    parser.add_argument(
+        "--temporal-start", default=None, metavar="YYYY-MM-DD",
+        help="선언형(shopping_insight/persona_insight) 전용: 최초 수집 시 이 날짜부터 "
+             "소급 수집한다(naver_shopping_pipeline.py 참조). 발견형은 아직 안 씀.",
+    )
     args = parser.parse_args()
 
     if args.source_type in DISCOVERY_TYPES:

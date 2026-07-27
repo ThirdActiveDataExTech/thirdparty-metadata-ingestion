@@ -480,20 +480,33 @@ def run(dataset_id: str, triggered_by: str):
 > **수정**: 매 실행마다 "DB에 저장된 마지막 날짜 - `OVERLAP_DAYS`(7일)부터 어제까지"를
 > 다시 가져온다. `ON CONFLICT UPSERT`라 겹치는 날짜를 다시 써도 중복 행은 안 생기고,
 > 최신 계산된 `scale_factor`로 재계산돼 덮어써진다. 부수 효과로 Airflow가 며칠
-> 멈췄다 재개돼도 `OVERLAP_DAYS` 범위 안의 결측은 자동으로 보충된다(그보다 오래된
-> 결측은 못 채움 — 레거시 스크립트의 `--auto` 2단계 초기 백필 같은 별도 로직은
-> 이식하지 않았음).
+> 멈췄다 재개돼도 `OVERLAP_DAYS`(14일) 범위 안의 결측은 자동으로 보충된다(그보다
+> 오래된 결측은 못 채움).
+>
+> **최초 수집 시 소급 수집** (2026-07-28 추가, 사용자 제안): `dcat_dataset.temporal_start`에
+> 등록 시점에 지정한 값이 있으면(레거시의 "1년 전부터" 2단계 백필과 같은 목적) 최초
+> 수집은 그 날짜부터 어제까지 통째로 한 번에 가져온다 — 레거시처럼 2단계로 나누지
+> 않는다(한 번의 API 응답 안에서는 M값이 하나로 통일되니 오히려 더 일관됨, 나눠야
+> 할 특별한 이유가 안 보였음). 첫 수집 성공 후 `dcat_dataset.temporal_start`를 실제
+> 수집된 가장 이른 날짜로 갱신한다 — 그 이후엔 건드리지 않는다(나중 수집은 항상
+> 앞으로만 진행하니 시작일이 당겨질 일이 없음). `scripts/register_dataset.py
+> --temporal-start`로 지정, 실 API로 검증 완료(요청 날짜=실제 수집 시작일 일치 확인).
 
 ```python
-OVERLAP_DAYS = 7
+OVERLAP_DAYS = 14
 
 def run(dataset_id: str, triggered_by: str):
+    dataset = fetch_dcat_dataset(dataset_id)
     categories = get_meta_naver_shopping_rows(dataset_id)  # 이미 등록된 카테고리 목록
     anchor = next(c for c in categories if c["is_anchor"])
 
     end_date = today() - 1  # 당일 데이터는 API에 아직 안 실릴 수 있음
     last_period = get_last_period(dataset_id)  # DB에 이미 저장된 마지막 날짜
-    start_date = (last_period - OVERLAP_DAYS) if last_period else (end_date - OVERLAP_DAYS)
+    if last_period is None:
+        # 최초 수집 — temporal_start 지정돼 있으면 거기서부터 소급, 없으면 OVERLAP_DAYS만
+        start_date = dataset["temporal_start"] or (end_date - OVERLAP_DAYS)
+    else:
+        start_date = last_period - OVERLAP_DAYS
 
     # ... anchor 기준 intra_scale/inter_scale 계산 (P01 pseudo_volume 방법론과 동일).
     # start_date~end_date 범위 전체(여러 날짜)를 한 번에 조회, 겹치는 날짜가 있으므로
@@ -503,7 +516,16 @@ def run(dataset_id: str, triggered_by: str):
         for period, raw_ratio in ratios_by_period.items():
             upsert_active_meta_naver_shopping(category["id"], period, raw_ratio, ...)
     # 카테고리 목록 자체는 절대 바꾸지 않음 — 사용자가 subjects UPDATE(§5.6)로만 바꿀 수 있음
+
+    if last_period is None:
+        update_dcat_dataset(dataset_id, temporal_start=current_min_period(dataset_id))
 ```
+
+> **API 호출 rate limiting도 이때 같이 고쳤다**: 레거시는 매 호출 사이에
+> `time.sleep(delay)`(기본 1초)로 rate limit을 피했는데, 처음 포팅할 때 이걸
+> 빠뜨렸었다. `naver_shopping_collector.py`/`naver_persona_collector.py`의
+> `fetch_insight`/`fetch_ratios`가 호출 성공 직후 자체적으로 1초씩 쉬도록 수정 —
+> 어디서 호출하든 자동으로 페이싱된다.
 
 ### 6.3 next_collect_at 갱신과 스케줄 드리프트
 

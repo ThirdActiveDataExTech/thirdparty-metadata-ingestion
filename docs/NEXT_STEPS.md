@@ -235,13 +235,27 @@
       **완료 (2026-07-28), Phase 2 마무리 후 사용자 질문으로 발견.** "다음 수집 때
       정확히 무슨 일이 일어나는지" 설명하다가 발견 — 매번 새 날짜만 조회하니 DB
       기존 데이터와 겹치는 날짜가 없어 `inter_scale`(수집 구간 간 보정)이 실질적으로
-      작동을 안 하고 있었음. **사용자 제안대로** "마지막 저장 날짜 - 7일부터 어제까지"
-      재조회하는 방식(`OVERLAP_DAYS=7`)으로 수정 — 겹치는 구간이 생겨 inter_scale이
-      실제로 계산되고, 부수 효과로 Airflow 중단 후 재개 시 최대 7일 결측도 자동
+      작동을 안 하고 있었음. **사용자 제안대로** "마지막 저장 날짜 - N일부터 어제까지"
+      재조회하는 방식(`OVERLAP_DAYS=14`)으로 수정 — 겹치는 구간이 생겨 inter_scale이
+      실제로 계산되고, 부수 효과로 Airflow 중단 후 재개 시 최대 14일 결측도 자동
       보충됨. `naver_shopping_pipeline.py`/`naver_persona_pipeline.py`/
       `meta_naver_shopping.py`/`meta_naver_persona.py`(`get_last_period` 추가) 수정.
       실 API로 검증 — scale_factor가 1.0이 아닌 실제 값(예: 1.130692)으로 계산됨 확인.
       04_Collection_Pipeline_Operations.md §6.2에 원칙 기록
+- [x] ~~레거시와 재검증 후 추가 발견: API 호출 rate limiting 누락 + 최초 수집 소급
+      백필 없음~~ — **완료 (2026-07-28).** 사용자가 레거시(`3amd/naver_shopping_insight.py`,
+      `naver_persona.py`)와 라인 단위 대조를 요청해서 발견:
+      1) 레거시는 매 호출 사이 `time.sleep(1초)`가 있었는데 포팅 시 빠뜨림 →
+         `naver_shopping_collector.py`/`naver_persona_collector.py`의 `fetch_insight`/
+         `fetch_ratios`가 호출 성공 직후 자체적으로 쉬도록 수정
+      2) 레거시 `--auto`의 "데이터 없으면 1년 전부터 2단계 백필" 로직이 없었음 →
+         `dcat_dataset.temporal_start`를 소급 수집 시작일로 재활용(사용자 제안).
+         등록 시 지정하면 최초 수집이 그 날짜부터 통째로 가져옴(레거시처럼 2단계로
+         안 나눔), 첫 수집 성공 후 실제 관측된 최솟값으로 자동 갱신.
+         `src/database/dcat.py`에 `update_dcat_dataset()` 추가,
+         `scripts/register_dataset.py --temporal-start` 옵션 추가.
+         실 API로 검증 — `--temporal-start 2026-06-27` 지정 후 실제로 그 날짜부터
+         720행(2카테고리×30일×12조합) 수집, `temporal_start`도 정확히 갱신됨 확인
 - [ ] **성능 개선**: 지금 DB 헬퍼 함수들이 호출마다 새 커넥션을 열어서, 영상 1400개+
       채널 재실행이 ~5분 걸림. 커넥션을 pipeline 실행 단위로 재사용하도록 리팩터링 권장
       (배포 전 처리하는 게 좋음 — Airflow 스케줄로 자동 실행되면 체감 안 되지만 여전히

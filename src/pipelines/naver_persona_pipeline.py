@@ -9,11 +9,12 @@ shopping_insight와 마찬가지로 카테고리 목록은 등록 시점에 고�
 날짜 범위는 shopping과 동일하게 "DB 마지막 저장 날짜 - OVERLAP_DAYS부터 어제까지"를
 매번 다시 가져온다(2026-07-28, naver_shopping_pipeline.py 상단 주석 참조 — 하루씩만
 가져오면 inter_scale 계산에 쓸 겹치는 날짜가 절대 안 생겨서 gender_scale/age_scale이
-항상 1.0으로 죽어있던 버그의 수정).
+항상 1.0으로 죽어있던 버그의 수정). 최초 수집 시 `dcat_dataset.temporal_start`가
+지정돼 있으면 그 날짜부터 소급 수집하는 것도 shopping과 동일.
 """
 
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from src.collectors import naver_datalab_scale, naver_persona_collector
 from src.database import dcat, meta_naver_persona
@@ -22,7 +23,7 @@ from src.database.db import get_conn
 AGENT = "naver_persona_collector"
 GENDER_GROUPS = ["m", "f"]
 AGE_GROUPS = ["10", "20", "30", "40", "50", "60"]
-OVERLAP_DAYS = 7
+OVERLAP_DAYS = 14
 
 
 def _get_registry_status(dataset_id: str) -> str:
@@ -58,14 +59,33 @@ def _flatten(parsed: Dict[str, Dict[str, float]]) -> Dict[str, float]:
     return {f"{period}|{group}": ratio for period, groups in parsed.items() for group, ratio in groups.items()}
 
 
-def _compute_fetch_range(dataset_id: str) -> Tuple[str, str]:
+def _compute_fetch_range(dataset_id: str, dataset: Dict[str, Any]) -> Tuple[str, str]:
     end_date = date.today() - timedelta(days=1)
     last_period = meta_naver_persona.get_last_period(dataset_id)
     if last_period is None:
-        start_date = end_date - timedelta(days=OVERLAP_DAYS)
+        desired_start = dataset.get("temporal_start")
+        start_date = desired_start if desired_start is not None else end_date - timedelta(days=OVERLAP_DAYS)
     else:
         start_date = min(date.fromisoformat(last_period) - timedelta(days=OVERLAP_DAYS), end_date)
     return start_date.isoformat(), end_date.isoformat()
+
+
+def _current_temporal_start(dataset_id: str) -> Optional[str]:
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT MIN(a.period) FROM active_meta_naver_persona a
+            JOIN meta_naver_persona m ON m.id = a.meta_id
+            WHERE m.dataset_id = %s
+            """,
+            (dataset_id,),
+        )
+        row = cur.fetchone()
+        return row[0].isoformat() if row and row[0] else None
+    finally:
+        conn.close()
 
 
 def run(dataset_id: str, triggered_by: str) -> None:
@@ -75,7 +95,7 @@ def run(dataset_id: str, triggered_by: str) -> None:
     client_secret = dcat.get_api_key(dataset_id, "naver_client_secret")
 
     categories = meta_naver_persona.get_meta_naver_persona_rows(dataset_id)
-    start_date, end_date = _compute_fetch_range(dataset_id)
+    start_date, end_date = _compute_fetch_range(dataset_id, dataset)
     started_at = datetime.now(timezone.utc)
     rows_written = 0
 
@@ -91,12 +111,21 @@ def run(dataset_id: str, triggered_by: str) -> None:
             rows_affected=rows_written,
             params={"start_date": start_date, "end_date": end_date, "categories": len(categories)},
         )
+
+        temporal_start_update: Dict[str, Any] = {}
+        if was_pending:
+            actual_start = _current_temporal_start(dataset_id)
+            if actual_start is not None:
+                temporal_start_update["temporal_start"] = actual_start
+                dcat.update_dcat_dataset(dataset_id, temporal_start=actual_start)
+
         dcat.update_data_registry(
             dataset_id,
             status="active",
             item_count=len(categories),
             row_count=_current_row_count(dataset_id),
             last_collected_at=ended_at,
+            **temporal_start_update,
             next_collect_at=ended_at + dcat.parse_iso8601_duration_to_timedelta(dataset["accrual_periodicity"]),
             last_error=None,
         )

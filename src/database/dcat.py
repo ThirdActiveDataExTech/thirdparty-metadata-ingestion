@@ -36,6 +36,13 @@ _DATA_REGISTRY_COLUMNS = {
     "s3_jsonld_prefix",
 }
 
+# dcat_dataset.UPDATE에서 허용하는 컬럼 화이트리스트
+_DCAT_DATASET_COLUMNS = {
+    "temporal_start",
+    "temporal_end",
+    "item_count",
+}
+
 
 def fetch_dcat_dataset(dataset_id: str) -> Dict[str, Any]:
     conn = get_conn()
@@ -44,7 +51,8 @@ def fetch_dcat_dataset(dataset_id: str) -> Dict[str, Any]:
         cur.execute(
             """
             SELECT dataset_id, title, description, publisher, source_type,
-                   subjects, accrual_periodicity, dataset_origin, owner_id
+                   subjects, accrual_periodicity, dataset_origin, owner_id,
+                   temporal_start, temporal_end
             FROM dcat_dataset WHERE dataset_id = %s
             """,
             (dataset_id,),
@@ -54,6 +62,29 @@ def fetch_dcat_dataset(dataset_id: str) -> Dict[str, Any]:
             raise ValueError(f"dcat_dataset에 dataset_id={dataset_id!r} 없음")
         columns = [d[0] for d in cur.description]
         return dict(zip(columns, row))
+    finally:
+        conn.close()
+
+
+def update_dcat_dataset(dataset_id: str, **fields: Any) -> None:
+    """전달된 필드만 UPDATE. updated_at은 항상 now()로 같이 갱신."""
+    unknown = set(fields) - _DCAT_DATASET_COLUMNS
+    if unknown:
+        raise ValueError(f"dcat_dataset UPDATE에 없는 컬럼: {unknown}")
+    if not fields:
+        return
+
+    set_clause = ", ".join(f"{col} = %s" for col in fields)
+    values = list(fields.values()) + [dataset_id]
+
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            f"UPDATE dcat_dataset SET {set_clause}, updated_at = now() WHERE dataset_id = %s",
+            values,
+        )
+        conn.commit()
     finally:
         conn.close()
 
