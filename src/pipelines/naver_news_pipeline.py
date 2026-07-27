@@ -35,6 +35,16 @@ def _get_registry_status(dataset_id: str) -> str:
         conn.close()
 
 
+def _current_item_count(dataset_id: str) -> int:
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT count(*) FROM meta_naver_news WHERE dataset_id = %s", (dataset_id,))
+        return cur.fetchone()[0]
+    finally:
+        conn.close()
+
+
 def _current_row_count(dataset_id: str) -> int:
     conn = get_conn()
     try:
@@ -121,7 +131,6 @@ def run(dataset_id: str, triggered_by: str) -> None:
                 removed_count += 1
 
         ended_at = datetime.now(timezone.utc)
-        item_count = len(existing) + new_count
 
         dcat.insert_dcat_provenance(
             dataset_id, activity_type="initial" if was_pending else "update",
@@ -134,7 +143,7 @@ def run(dataset_id: str, triggered_by: str) -> None:
         dcat.update_data_registry(
             dataset_id,
             status="active",
-            item_count=item_count,
+            item_count=_current_item_count(dataset_id),
             row_count=_current_row_count(dataset_id),
             last_collected_at=ended_at,
             next_collect_at=ended_at + dcat.parse_iso8601_duration_to_timedelta(dataset["accrual_periodicity"]),

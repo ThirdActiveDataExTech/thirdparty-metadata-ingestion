@@ -19,7 +19,7 @@ PIPELINE_MODULES = {
     "shopping_insight": "src.pipelines.naver_shopping_pipeline",
     "persona_insight": "src.pipelines.naver_persona_pipeline",
     "news": "src.pipelines.naver_news_pipeline",
-    # blog: Phase 2에서 마저 추가
+    "blog": "src.pipelines.naver_blog_pipeline",
 }
 
 
