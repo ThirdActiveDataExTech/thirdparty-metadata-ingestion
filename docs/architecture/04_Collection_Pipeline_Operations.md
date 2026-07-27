@@ -1,6 +1,6 @@
 # 04. Collection Pipeline Operations — 운영 중 수집 파이프라인 설계
 
-> **Last Updated:** 2026-07-23
+> **Last Updated:** 2026-07-27
 > **Status:** 설계안 (구현 전) — Airflow 도입을 전제로 함
 >
 > Airflow 도입은 [ADR-007](../adr/007_Airflow_Adoption.md)로 확정됐다
@@ -470,9 +470,10 @@ def run(dataset_id: str, triggered_by: str):
 
 `next_collect_at`은 **"이번 수집이 끝난 시각" 기준으로 매번 재계산**한다
 (`ended_at + accrual_periodicity`). 즉 정확히 24시간 간격이 보장되는 게 아니라, 수집이
-늦어지거나 재시도가 끼면 다음 스케줄도 같이 밀린다(드리프트). "매일 정확히 새벽 2시에"
-같은 고정 시각이 필요하면 다른 계산식(다음 지정 시각으로 반올림)이 필요하다 —
-**아직 결정 안 됨** (§12).
+늦어지거나 재시도가 끼면 다음 스케줄도 같이 밀린다(드리프트). **결정 완료(2-10, §12):
+드리프트를 그대로 허용한다** — 고정 시각이 필요한 다운스트림 소비자가 없어 계산식은
+그대로 유지. `src/database/dcat.py`의 `parse_iso8601_duration_to_timedelta` +
+`update_data_registry(next_collect_at=...)`로 구현됨(§6.1 YouTube pipeline 실제 코드 참조).
 
 ---
 

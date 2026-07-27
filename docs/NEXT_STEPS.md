@@ -1,6 +1,6 @@
 # 다음 작업 로드맵
 
-> **Last Updated:** 2026-07-23
+> **Last Updated:** 2026-07-27
 > **목적:** 세션이 끊겨도 여기서부터 바로 이어갈 수 있도록, 남은 작업을 순서대로 기록한다.
 > 완료된 작업의 상세 이력은 `git log` 참조 — 이 문서는 "지금 무엇을 해야 하는가"만 담는다.
 > 항목을 끝내면 체크하고, 새로 발견한 항목은 해당 순서 구간에 추가한다.
@@ -15,11 +15,11 @@
 1. ~~**A. 결정만 필요한 것** — 2-3, 2-4, 2-10, 2-11, §3의 7번~~ **완료 (2026-07-23)**
 2. ~~**B-1. 2-1(blog API 실측 → ADR-006)**~~ **완료 (2026-07-24)** — §5 AI 필드 실측
    검증은 D 순서(§6.1 이후)로 이미 미뤄둔 상태라 B의 나머지 항목 아님
-3. **C. 외부 의존 (대기)** — §3의 8번(계정테이블 FK), K8s Secret 생성 ← 다음 확인할 것
-4. **D. 구현 작업** — 순서는 §6.1(Collector 코드) → 수동 실행으로 실 데이터 확보 →
-   §5(AI 필드 실측·DDL·collector에 통합) → §6.2(Airflow 오케스트레이션) → §6.3(프론트엔드 API).
-   AI 메타데이터 검증에 Airflow는 불필요(수동 `run()` 호출로 충분)하다고 판단, `run()` 동작이
-   안정된 뒤 오케스트레이션으로 감싸는 순서가 재작업이 적음.
+3. **C. 외부 의존 (대기)** — §3의 8번(계정테이블 FK), K8s Secret 생성 — 여전히 대기 중,
+   우리가 지금 처리 불가
+4. **D. 구현 작업** — 순서: ~~§6.1 Phase 1(YouTube+쇼핑 파일럿)~~ **완료 (2026-07-27)**,
+   실 서버·실 API로 검증까지 끝남 → 다음은 §6.1 Phase 2(뉴스/블로그/Persona 복제) 또는
+   §5(AI 필드 실측·DDL·collector에 통합) → §6.2(Airflow 오케스트레이션) → §6.3(프론트엔드 API)
 
 ---
 
@@ -175,24 +175,44 @@
 
 ## 6. 수집 코드 작성 (가장 큰 작업)
 
-`src/collectors/` 등이 전부 비어있음 (`.gitkeep`만 존재). `03_Component_Architecture.md`에
-설계된 구조(`collectors/ → preprocess/ → extractor/ → storage/`)를 실제로 채워야 한다.
 운영 방식 상세 설계는 [architecture/04_Collection_Pipeline_Operations.md](architecture/04_Collection_Pipeline_Operations.md)
-전체 참조 — 착수 전 §12(결정 사항 요약)부터 확정할 것.
+전체 참조. 실제 `src/` 레이어 구조는 [architecture/03_Component_Architecture.md](architecture/03_Component_Architecture.md)
+참조(`collectors/`+`pipelines/`+`database/` 분리 — 파일럿 구현 중 확정).
 
 ### 6.1 Collector 코드
 
-- [ ] 레거시 코드(`3amd/naver_shopping_insight.py`, `3amd/naver_persona.py`)를
-      `src/collectors/`로 이식 (config.yaml → 환경변수/설정 체계 전환 포함)
-- [ ] YouTube 수집 코드 신규 작성 — 발견형 로직 (04_Collection_Pipeline_Operations.md §6.1:
-      신규/기존 분기 + `is_removed` 삭제 감지)
-- [ ] Naver 뉴스 수집 코드 신규 작성 (본문 스크래핑 포함, 발견형 로직 동일 적용)
-- [ ] Naver 블로그 수집 코드 신규 작성 (2-1, 2-2 결정 이후, 발견형 로직 동일 적용)
-- [ ] 쇼핑/Persona 수집 코드는 선언형 로직 (§6.2: 신규/기존 분기·삭제 감지 불필요,
-      카테고리 목록 고정 + 일별 지수만 갱신)
-- [ ] 각 Collector: `run(dataset_id=...)` 함수 노출, 성공/실패 시
-      `dcat_provenance` INSERT + `data_registry` UPDATE(status/next_collect_at/item_count)
-      공통 로직 적용 (§6.3 next_collect_at 재계산 포함)
+**Phase 1 완료 (2026-07-27): YouTube(발견형) + Naver Shopping(선언형) 파일럿.**
+실 서버·실 API로 끝까지 검증 완료:
+- [x] ~~YouTube 수집 코드~~ — `src/collectors/youtube_collector.py`(페이지네이션·50개
+      배치·Shorts 필터, 레거시 `youtube_channel_extractor.py`/`youtube_video_extractor.py`
+      포팅) + `src/pipelines/youtube_pipeline.py`(신규/기존 분기, `is_removed` 삭제감지 +
+      재등장 시 자동 해제). 실제 Samsung 채널(`UCWwgaK7x0_FR1goeSRazfsQ`)로 검증 —
+      1431개 영상 발견, 재실행 시 delta 정확히 계산됨(중복 없음)
+- [x] ~~쇼핑 수집 코드~~ — `src/collectors/naver_shopping_collector.py` +
+      `src/collectors/naver_datalab_scale.py`(intra/inter_scale, persona도 재사용 가능) +
+      `src/pipelines/naver_shopping_pipeline.py`(선언형, anchor 3개/호출 배칭). 실 API로
+      검증 — 70행 반영, 재실행해도 upsert로 중복 없음
+- [x] ~~공통 인프라~~ — `src/database/dcat.py`(provenance/registry/API키 공통 헬퍼),
+      `src/common/retry.py`(레거시엔 없던 재시도+백오프 신규 추가), `src/main.py`
+      (`python -m src.main run <dataset_id>` 수동 실행 CLI)
+- [x] ~~단위 테스트~~ — `tests/`에 scale 보정 수학·Shorts 판정·재시도 로직 17건, 전부 통과
+
+**Phase 2 (미착수)**: 아래는 Phase 1에서 검증된 패턴을 그대로 복제
+- [ ] Naver 뉴스 수집 코드 — 발견형, 본문 스크래핑 포함(레거시 `naver_news.py`는 CSS
+      셀렉터 기반 스크래핑이 취약하고 자격증명이 하드코딩돼 있어 재작성 필요, API 호출
+      부분만 포팅 가치 있음)
+- [ ] Naver 블로그 수집 코드 — 발견형, `platform` 파싱(§4) + 반응 수 수집(ADR-006) 포함
+- [ ] Naver Persona 수집 코드 — 선언형, `naver_datalab_scale.py`의 stacked-median
+      보정 재사용(레거시 `naver_persona.py` 포팅)
+- [ ] **성능 개선**: 지금 DB 헬퍼 함수들이 호출마다 새 커넥션을 열어서, 영상 1400개+
+      채널 재실행이 ~5분 걸림. 커넥션을 pipeline 실행 단위로 재사용하도록 리팩터링 권장
+      (배포 전 처리하는 게 좋음 — Airflow 스케줄로 자동 실행되면 체감 안 되지만 여전히
+      비효율)
+- [ ] **SeaweedFS raw 데이터 백업 미구현**: `data_registry.s3_raw_prefix`/`s3_jsonld_prefix`
+      컬럼은 있지만, 지금 Collector(YouTube/쇼핑)는 SeaweedFS를 전혀 거치지 않고
+      PostgreSQL에만 바로 저장한다. 원래 설계(`01_System_Architecture.md`)는 raw API
+      응답을 SeaweedFS에 먼저 백업하는 걸 전제로 했는데 Phase 1 파일럿에서는 범위 밖으로
+      빠졌음 — 필요성 재검토 필요(재현성/디버깅용으로 원할 수도, DB만으로 충분할 수도)
 
 ### 6.2 오케스트레이션 (Airflow)
 

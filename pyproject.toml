@@ -9,7 +9,11 @@ dependencies = [
     "requests",
     "sentence-transformers",   # paraphrase-multilingual-mpnet-base-v2 (768 dims)
     "pgvector",                # pgvector Python adapter (vector type support)
+    "google-api-python-client", # YouTube Data API v3
 ]
+
+[project.optional-dependencies]
+dev = ["pytest"]
 
 [tool.ruff]
 line-length = 100
