@@ -17,7 +17,8 @@ from src.database.db import get_conn
 PIPELINE_MODULES = {
     "video": "src.pipelines.youtube_pipeline",
     "shopping_insight": "src.pipelines.naver_shopping_pipeline",
-    # news/blog/persona_insight: Phase 2에서 추가
+    "persona_insight": "src.pipelines.naver_persona_pipeline",
+    # news/blog: Phase 2에서 마저 추가
 }
 
 

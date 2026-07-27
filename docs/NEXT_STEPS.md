@@ -1,6 +1,6 @@
 # 다음 작업 로드맵
 
-> **Last Updated:** 2026-07-27
+> **Last Updated:** 2026-07-28
 > **목적:** 세션이 끊겨도 여기서부터 바로 이어갈 수 있도록, 남은 작업을 순서대로 기록한다.
 > 완료된 작업의 상세 이력은 `git log` 참조 — 이 문서는 "지금 무엇을 해야 하는가"만 담는다.
 > 항목을 끝내면 체크하고, 새로 발견한 항목은 해당 순서 구간에 추가한다.
@@ -197,13 +197,17 @@
       (`python -m src.main run <dataset_id>` 수동 실행 CLI)
 - [x] ~~단위 테스트~~ — `tests/`에 scale 보정 수학·Shorts 판정·재시도 로직 17건, 전부 통과
 
-**Phase 2 (미착수)**: 아래는 Phase 1에서 검증된 패턴을 그대로 복제
+**Phase 2 (진행 중)**: Phase 1에서 검증된 패턴을 복제
+- [x] ~~Naver Persona 수집 코드~~ — **완료 (2026-07-28).** `src/collectors/
+      naver_persona_collector.py`(성별/연령 API 독립 호출) + `src/pipelines/
+      naver_persona_pipeline.py`(stacked median으로 gender_scale/age_scale,
+      12조합 persona_index = gender_pv×age_pv). `naver_datalab_scale.py`를
+      shopping과 그대로 공유 재사용. 실 API로 검증 — 4카테고리×12조합=48행,
+      재실행해도 upsert로 중복 없음
 - [ ] Naver 뉴스 수집 코드 — 발견형, 본문 스크래핑 포함(레거시 `naver_news.py`는 CSS
       셀렉터 기반 스크래핑이 취약하고 자격증명이 하드코딩돼 있어 재작성 필요, API 호출
       부분만 포팅 가치 있음)
 - [ ] Naver 블로그 수집 코드 — 발견형, `platform` 파싱(§4) + 반응 수 수집(ADR-006) 포함
-- [ ] Naver Persona 수집 코드 — 선언형, `naver_datalab_scale.py`의 stacked-median
-      보정 재사용(레거시 `naver_persona.py` 포팅)
 - [ ] **성능 개선**: 지금 DB 헬퍼 함수들이 호출마다 새 커넥션을 열어서, 영상 1400개+
       채널 재실행이 ~5분 걸림. 커넥션을 pipeline 실행 단위로 재사용하도록 리팩터링 권장
       (배포 전 처리하는 게 좋음 — Airflow 스케줄로 자동 실행되면 체감 안 되지만 여전히
