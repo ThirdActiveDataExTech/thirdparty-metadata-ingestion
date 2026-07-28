@@ -63,9 +63,9 @@
 |------|-----------|-------------|------|
 | [Naver Shopping Insight](data-sources/naver_shopping_insight.md) | `naver_shopping_insight` | shopping_insight | 완성 |
 | [Naver Persona Insight](data-sources/naver_persona_insight.md) | `naver_persona_insight` | persona_insight | 완성 |
-| [YouTube](data-sources/youtube.md) | `youtube_{채널명}` | video | Collector 구현·검증 완료, 문서는 갱신 필요 |
-| [Naver News](data-sources/naver_news.md) | `naver_news_{주제}` | news | Collector 구현·검증 완료, 문서는 갱신 필요 |
-| Naver Blog | `user_{제목}` 등 | blog | ⚠️ **Collector 구현·검증 완료(2026-07-28)인데 전용 문서 자체가 없음** — 새 문서 작성 필요 |
+| [YouTube](data-sources/youtube.md) | `youtube_{채널명}` | video | 완성 |
+| [Naver News](data-sources/naver_news.md) | `naver_news_{주제}` | news | 완성 |
+| [Naver Blog](data-sources/naver_blog.md) | `naver_blog_{주제}` | blog | 완성 (2026-07-28 신규 작성) |
 
 ---
 

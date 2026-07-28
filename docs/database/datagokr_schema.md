@@ -13,7 +13,7 @@
 | `dcat_provenance` | ✅ 운영 중 | [sql/dcat_provenance.sql](../../sql/dcat_provenance.sql) | 수집 실행 이력 |
 | `data_registry` | ✅ 운영 중 | [sql/data_registry.sql](../../sql/data_registry.sql) | 통합 운영정보 (저장소 위치, 운영 상태) |
 | `dcat_dataset_vec` | ✅ 운영 중 | [sql/dcat_dataset_vec.sql](../../sql/dcat_dataset_vec.sql) | 데이터셋 description 임베딩 (pgvector 768차원) |
-| `meta_youtube_video` | ✅ 생성 완료 | [sql/meta_youtube_video.sql](../../sql/meta_youtube_video.sql) | YouTube 영상 단위 메타 (Schema.org VideoObject) |
+| `meta_youtube_video` | ✅ 생성 완료 | [sql/meta_youtube_video.sql](../../sql/meta_youtube_video.sql) | YouTube 영상 단위 메타 (Schema.org VideoObject). `has_transcript`/`transcribed_at` 컬럼 추가(2026-07-28) — 자체 STT 트랜스크립트 저장 여부, [architecture/05_Object_Storage_Export.md](../architecture/05_Object_Storage_Export.md) 참조 |
 | `meta_youtube_video_vec` | ✅ 생성 완료 | [sql/meta_youtube_video_vec.sql](../../sql/meta_youtube_video_vec.sql) | YouTube 영상 임베딩 (pgvector 768차원) |
 | `active_meta_youtube` | ✅ 생성 완료 | [sql/active_meta_youtube.sql](../../sql/active_meta_youtube.sql) | YouTube 영상 시계열 통계 (dataset+video 단위) |
 | `meta_youtube_video_ai` | ⏳ 예정 | — | YouTube 영상 AI 생성 메타 (요약·키워드·개체명 등) |
@@ -29,7 +29,7 @@
 | `meta_naver_blog_vec` | ✅ 생성 완료 | [sql/meta_naver_blog_vec.sql](../../sql/meta_naver_blog_vec.sql) | Naver 블로그 게시물 임베딩 (pgvector 768차원) |
 | `active_meta_naver_blog` | ✅ 생성 완료 | [sql/active_meta_naver_blog.sql](../../sql/active_meta_naver_blog.sql) | 반응(공감 등) 수 시계열 — [ADR-006](../adr/006_Naver_Blog_Metrics_Decision.md)으로 확정, 댓글 수·조회수는 미수집 |
 | `meta_naver_blog_ai` | ⏳ 예정 (필드 후보만) | — | Naver 블로그 게시물 AI 생성 메타 |
-| `dataset_credentials` | ✅ DDL 작성 완료 | [sql/dataset_credentials.sql](../../sql/dataset_credentials.sql) | 데이터셋별 API Key 암호화 저장 (pgcrypto). [설계 배경](../architecture/04_Collection_Pipeline_Operations.md#9-api-key-저장-모델--결정-데이터셋별-저장) |
+| `dataset_credentials` | ✅ 운영 가능 (2026-07-28, 암호화 키 K8s Secret 생성+검증 완료) | [sql/dataset_credentials.sql](../../sql/dataset_credentials.sql) | 데이터셋별 API Key 암호화 저장 (pgcrypto). [설계 배경](../architecture/04_Collection_Pipeline_Operations.md#9-api-key-저장-모델--결정-데이터셋별-저장). **단, `register_dataset.py`에 API Key 입력 옵션이 아직 없어 실제로 쓰는 데이터셋은 아직 0건** |
 
 > **shopping/persona에 `_vec` 임베딩 테이블이 없는 이유:** 카테고리 데이터(`category_name`)는
 > 사람이 자유 텍스트로 검색할 대상이 아니라 구조화된 분류값이라 의미 기반(semantic) 검색의
