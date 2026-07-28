@@ -18,9 +18,12 @@
 3. **C. 외부 의존 (대기)** — §3의 8번(계정테이블 FK), K8s Secret 생성 — 여전히 대기 중,
    우리가 지금 처리 불가
 4. **D. 구현 작업** — ~~§6.1 Phase 1(YouTube+쇼핑 파일럿)~~ **완료 (2026-07-27)**,
-   ~~§6.1 Phase 2(Persona+뉴스+블로그)~~ **완료 (2026-07-28)** — 5개 소스 전부 실
-   서버·실 API 검증 끝남 → 다음은 §5(AI 필드 실측·DDL·collector에 통합) 또는
-   §6.2(Airflow 오케스트레이션) → §6.3(프론트엔드 API)
+   ~~§6.1 Phase 2(Persona+뉴스+블로그)~~ **완료 (2026-07-28)**,
+   ~~SeaweedFS raw/JSON-LD export + YouTube 트랜스크립트(자체 STT)~~ **완료
+   (2026-07-28)** — 5개 소스 전부 실 서버·실 API 검증 끝남, `RnD-analyzer01`에도
+   배포·파일럿 검증 완료 → 다음은 §5(AI 필드 실측·DDL·collector에 통합) 또는
+   §6.2(Airflow 오케스트레이션) → §6.3(프론트엔드 API), 그 사이 성능 개선(커넥션
+   재사용)·YouTube 트랜스크립트 백로그 소진도 병행 가능
 
 ---
 
@@ -277,6 +280,13 @@
 
 ### 6.2 오케스트레이션 (Airflow)
 
+- [ ] **YouTube 트랜스크립트 안전망 태스크 검토** (2026-07-28 기록,
+      [architecture/05_Object_Storage_Export.md](../architecture/05_Object_Storage_Export.md) §4.6):
+      백로그(~2,000개)는 Airflow 도입 전에 `backfill_youtube_transcripts.py --limit`을
+      키워가며 수동으로 미리 소진해둘 예정 — 소진 후엔 `run()`이 신규 영상 발견 시점에
+      STT까지 인라인으로 처리하므로 별도 배치 태스크는 불필요. 다만 인라인 STT가
+      실패한 영상은 `has_transcript=FALSE`로 영구히 남으므로, 저빈도(예: 주 1회) 안전망
+      DAG 태스크로 백필 스크립트를 계속 돌릴지 여부는 Airflow 착수 시점에 결정
 - [ ] 2-4 결정(ADR-002 갱신) 먼저 확정
 - [ ] Airflow 자체 K8s 배포 (Helm chart 등 방식 결정 — 별도 인프라 문서 필요,
       `docs/infrastructure/07_Airflow.md` 후보)
