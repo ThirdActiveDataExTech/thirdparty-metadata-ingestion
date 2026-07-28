@@ -280,13 +280,17 @@
 
 ### 6.2 오케스트레이션 (Airflow)
 
-- [ ] **YouTube 트랜스크립트 안전망 태스크 검토** (2026-07-28 기록,
-      [architecture/05_Object_Storage_Export.md](../architecture/05_Object_Storage_Export.md) §4.6):
-      백로그(~2,000개)는 Airflow 도입 전에 `backfill_youtube_transcripts.py --limit`을
-      키워가며 수동으로 미리 소진해둘 예정 — 소진 후엔 `run()`이 신규 영상 발견 시점에
-      STT까지 인라인으로 처리하므로 별도 배치 태스크는 불필요. 다만 인라인 STT가
-      실패한 영상은 `has_transcript=FALSE`로 영구히 남으므로, 저빈도(예: 주 1회) 안전망
-      DAG 태스크로 백필 스크립트를 계속 돌릴지 여부는 Airflow 착수 시점에 결정
+- [ ] **YouTube 트랜스크립트 안전망 태스크 — 확정, Airflow 착수 시 같이 구현**
+      (2026-07-28 결정, [architecture/05_Object_Storage_Export.md](../architecture/05_Object_Storage_Export.md) §4.6):
+      기존 백로그(2,076개, 실측 순수 연산 52~77시간)는 **지금 처리하지 않는다** —
+      현재 YouTube 데이터셋 2개는 개발/테스트용이라 실제 서비스 데이터셋으로 교체될
+      가능성이 커서, 지워질 수도 있는 데이터에 미리 연산을 쏟지 않기로 함(기능
+      자체는 이미 이 2개로 검증 완료). 대신 주 1회 `backfill_youtube_transcripts.py
+      --limit N`을 자동 실행하는 **저빈도 안전망 DAG 태스크를 Airflow 설계에 처음부터
+      포함**시켜, 기존 백로그든 신규 데이터셋 등록 후 인라인 STT 실패분이든 사람 개입
+      없이 걷어내도록 한다. 참고: 신규 데이터셋 등록 시 최초 수집에서 영상이 대량
+      발견되면(`run()`이 전부 순차 인라인 처리하므로) 그 최초 실행 자체가 몇 시간
+      단위로 길어질 수 있음 — 정상 동작이며 다른 데이터셋 태스크엔 영향 없음
 - [ ] 2-4 결정(ADR-002 갱신) 먼저 확정
 - [ ] Airflow 자체 K8s 배포 (Helm chart 등 방식 결정 — 별도 인프라 문서 필요,
       `docs/infrastructure/07_Airflow.md` 후보)
