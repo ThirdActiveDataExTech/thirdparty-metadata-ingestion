@@ -262,10 +262,21 @@
          `scripts/register_dataset.py --temporal-start` 옵션 추가.
          실 API로 검증 — `--temporal-start 2026-06-27` 지정 후 실제로 그 날짜부터
          720행(2카테고리×30일×12조합) 수집, `temporal_start`도 정확히 갱신됨 확인
-- [ ] **성능 개선**: 지금 DB 헬퍼 함수들이 호출마다 새 커넥션을 열어서, 영상 1400개+
-      채널 재실행이 ~5분 걸림. 커넥션을 pipeline 실행 단위로 재사용하도록 리팩터링 권장
-      (배포 전 처리하는 게 좋음 — Airflow 스케줄로 자동 실행되면 체감 안 되지만 여전히
-      비효율)
+- [x] ~~**성능 개선**: DB 커넥션 재사용~~ — **완료 (2026-07-28)**. `src/database/db.py`만
+      수정 — 프로세스당 커넥션 1개를 지연 생성해 재사용, `get_conn()` 호출마다
+      `SELECT 1`로 가볍게 생존 확인 후 죽어있으면 재연결(STT 처리처럼 쿼리 사이
+      유휴 시간이 긴 경우 서버가 유휴 커넥션을 끊을 수 있어서 필요 — `.closed`
+      속성만으로는 서버 쪽 끊김을 못 잡음). 호출부(`database/meta_*.py`,
+      `pipelines/*.py`)는 인터페이스가 동일해서(`conn = get_conn(); ...; conn.close()`)
+      **단 한 줄도 안 건드림** — `close()`가 실제로 닫지 않고 트랜잭션만 정리하도록
+      의미만 바뀜. 실 서버로 `youtube_samsung_official`(1434개 영상) 재실행 검증 —
+      기존 ~5분 → **2분 31초**로 단축, `data_registry`/S3 export 정합성 이상 없음.
+      ⚠️ **멀티스레드 주의**: psycopg2 커넥션이 스레드 세이프하지 않아 이 설계는
+      "프로세스=순차 실행" 전제 — Airflow가 같은 프로세스 안에서 태스크를 스레드로
+      동시 실행하는 구조로 바뀌면(§6.2 실행 방식 미정) 그 전에 반드시 `psycopg2.pool`로
+      마이그레이션할 것(인터페이스는 유지되므로 `db.py` 내부만 바꾸면 됨).
+      KubernetesExecutor(태스크=별도 Pod)로 가면 이 문제 자체가 없음 — §6.2 착수
+      시점에 실행 방식 결정하며 재검토 필요
 - [x] ~~**SeaweedFS raw/JSON-LD 저장**~~ — 구현·검증 완료 (2026-07-27, 설계는
       [architecture/05_Object_Storage_Export.md](../architecture/05_Object_Storage_Export.md)):
       `src/storage/{s3_client,raw_export,jsonld_export}.py` 신설, `src/collectors/
@@ -274,12 +285,20 @@
       컬럼 추가, `scripts/backfill_youtube_transcripts.py`(기존 영상 백로그 소급
       처리용) 작성. 실 서버로 `naver_news_ai`(뉴스, 1815개 raw txt + JSON-LD 1개)와
       `youtube_samsung_official`(트랜스크립트 JSON) 둘 다 검증 완료 — `data_registry.
-      s3_raw_prefix`/`s3_jsonld_prefix` 정상 채워짐. 남은 것: 백로그 ~2,000개 영상은
-      아직 대부분 미처리 상태라 `--limit`을 키워가며 여러 날에 걸쳐 백필 필요(05번
-      문서 §8 참조, 처리 속도는 실제 대상 서버 `RnD-analyzer01`에서 재측정 권장)
+      s3_raw_prefix`/`s3_jsonld_prefix` 정상 채워짐. 백로그(~2,076개)는 **지금 처리
+      안 함**(§6.2 안전망 태스크 항목 참조 — 현재 데이터셋이 개발/테스트용이라 교체
+      가능성 큼)
 
 ### 6.2 오케스트레이션 (Airflow)
 
+- [ ] **실행 방식 결정 시 DB 커넥션 재사용 설계 재검토 필요** (2026-07-28 기록, §6.1
+      성능 개선 항목 참조): `src/database/db.py`는 "프로세스=순차 실행" 전제로
+      커넥션 1개를 재사용한다 — Airflow가 같은 프로세스 안에서 태스크를 스레드로
+      동시 실행하는 구조(예: 특정 LocalExecutor 설정)로 가면 psycopg2 커넥션이
+      스레드 세이프하지 않아 데이터가 조용히 꼬일 수 있음. **KubernetesExecutor
+      (태스크=별도 Pod)라면 이 문제 자체가 없음** — 실행 방식(Helm chart, Executor
+      종류) 결정하는 이 시점에 반드시 같이 확인할 것. 멀티스레드 방식으로 갈 경우
+      `psycopg2.pool`로 마이그레이션(인터페이스 유지되므로 `db.py` 내부만 수정하면 됨)
 - [ ] **YouTube 트랜스크립트 안전망 태스크 — 확정, Airflow 착수 시 같이 구현**
       (2026-07-28 결정, [architecture/05_Object_Storage_Export.md](../architecture/05_Object_Storage_Export.md) §4.6):
       기존 백로그(2,076개, 실측 순수 연산 52~77시간)는 **지금 처리하지 않는다** —
