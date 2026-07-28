@@ -152,7 +152,10 @@
 - [ ] **증분 임베딩 방식으로 전환** — 지금 `embed_*.py`는 전체 DELETE→INSERT 재계산 방식이라
       새 데이터셋이 동적으로 등록돼도 자동으로 임베딩되지 않음 (수동 재실행 필요). §6.2
       Airflow 오케스트레이션 구축 시점에 같이 처리 — 그 전까진 급하지 않음(수동 재실행으로
-      충분), 지금 당장 할 필요는 없음
+      충분), 지금 당장 할 필요는 없음. **순서 제안(2026-07-27)**: 증분 전환을 먼저 하고
+      그 다음에 Airflow task로 연결 — 지금 방식 그대로 자동 연결하면 영상 1개 늘 때마다
+      수천 개 재임베딩하는 비효율 발생. SeaweedFS export(§6.1, `architecture/
+      05_Object_Storage_Export.md` §6)와 구조적으로 같은 처지("수집 후 후속 단계, 현재 수동")
 
 ---
 
@@ -260,11 +263,17 @@
       채널 재실행이 ~5분 걸림. 커넥션을 pipeline 실행 단위로 재사용하도록 리팩터링 권장
       (배포 전 처리하는 게 좋음 — Airflow 스케줄로 자동 실행되면 체감 안 되지만 여전히
       비효율)
-- [ ] **SeaweedFS raw 데이터 백업 미구현**: `data_registry.s3_raw_prefix`/`s3_jsonld_prefix`
-      컬럼은 있지만, 지금 Collector(YouTube/쇼핑)는 SeaweedFS를 전혀 거치지 않고
-      PostgreSQL에만 바로 저장한다. 원래 설계(`01_System_Architecture.md`)는 raw API
-      응답을 SeaweedFS에 먼저 백업하는 걸 전제로 했는데 Phase 1 파일럿에서는 범위 밖으로
-      빠졌음 — 필요성 재검토 필요(재현성/디버깅용으로 원할 수도, DB만으로 충분할 수도)
+- [x] ~~**SeaweedFS raw/JSON-LD 저장**~~ — 구현·검증 완료 (2026-07-27, 설계는
+      [architecture/05_Object_Storage_Export.md](../architecture/05_Object_Storage_Export.md)):
+      `src/storage/{s3_client,raw_export,jsonld_export}.py` 신설, `src/collectors/
+      youtube_transcript_collector.py`(yt-dlp+faster-whisper 자체 STT) 신설, 5개
+      파이프라인 전부 통합, `meta_youtube_video.has_transcript`/`transcribed_at`
+      컬럼 추가, `scripts/backfill_youtube_transcripts.py`(기존 영상 백로그 소급
+      처리용) 작성. 실 서버로 `naver_news_ai`(뉴스, 1815개 raw txt + JSON-LD 1개)와
+      `youtube_samsung_official`(트랜스크립트 JSON) 둘 다 검증 완료 — `data_registry.
+      s3_raw_prefix`/`s3_jsonld_prefix` 정상 채워짐. 남은 것: 백로그 ~2,000개 영상은
+      아직 대부분 미처리 상태라 `--limit`을 키워가며 여러 날에 걸쳐 백필 필요(05번
+      문서 §8 참조, 처리 속도는 실제 대상 서버 `RnD-analyzer01`에서 재측정 권장)
 
 ### 6.2 오케스트레이션 (Airflow)
 

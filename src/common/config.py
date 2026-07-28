@@ -25,3 +25,9 @@ DB_USER = get_env("DB_USER")
 DB_PASSWORD = get_env("DB_PASSWORD")
 
 TRIGGERED_BY = get_env("TRIGGERED_BY", "manual")
+
+S3_ENDPOINT = get_env("S3_ENDPOINT", "http://localhost:30920")
+S3_ACCESS_KEY = get_env("S3_ACCESS_KEY")
+S3_SECRET_KEY = get_env("S3_SECRET_KEY")
+S3_BUCKET = get_env("S3_BUCKET", "metadata-ingestion")
+S3_REGION = get_env("S3_REGION", "us-east-1")

@@ -10,15 +10,18 @@ collectors(순수 API 호출)와 database(순수 DB IO) 모듈을 조합해 다�
 """
 
 import json
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 
-from src.collectors import youtube_collector
+from src.collectors import youtube_collector, youtube_transcript_collector
 from src.database import dcat
 from src.database import meta_youtube
 from src.database.db import get_conn
+from src.storage import jsonld_export, raw_export
 
 AGENT = "youtube_collector"
+logger = logging.getLogger(__name__)
 
 
 def _get_registry_status(dataset_id: str) -> str:
@@ -98,6 +101,16 @@ def run(dataset_id: str, triggered_by: str) -> None:
                 if video["video_id"] not in existing:
                     meta_id = meta_youtube.insert_meta_youtube_video(dataset_id, video)
                     meta_youtube.insert_active_meta_youtube(meta_id, video)
+                    try:
+                        transcript = youtube_transcript_collector.fetch_transcript(video["video_id"])
+                        if transcript is not None:
+                            segments, full_text, language = transcript
+                            raw_export.write_video_transcript(
+                                dataset_id, video["video_id"], segments, full_text, language
+                            )
+                            meta_youtube.mark_transcribed(meta_id, transcribed_at=datetime.now(timezone.utc))
+                    except Exception as e:
+                        logger.warning(f"트랜스크립트 처리 실패 (video_id={video['video_id']}): {e}")
                     new_count += 1
                 else:
                     meta_id = existing[video["video_id"]]
@@ -138,6 +151,12 @@ def run(dataset_id: str, triggered_by: str) -> None:
             next_collect_at=ended_at + dcat.parse_iso8601_duration_to_timedelta(dataset["accrual_periodicity"]),
             last_error=None,
         )
+
+        try:
+            s3_raw_prefix, s3_jsonld_prefix = jsonld_export.export_dataset(dataset_id)
+            dcat.update_data_registry(dataset_id, s3_raw_prefix=s3_raw_prefix, s3_jsonld_prefix=s3_jsonld_prefix)
+        except Exception as e:
+            logger.warning(f"S3 export 실패, 수집 자체는 성공 처리: {e}")
     except Exception as e:
         ended_at = datetime.now(timezone.utc)
         dcat.insert_dcat_provenance(

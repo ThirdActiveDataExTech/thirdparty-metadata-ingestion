@@ -13,6 +13,7 @@ YouTube는 채널의 전체 영상 목록을 한 번에 다 가져올 수 있어
 """
 
 import json
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
@@ -20,8 +21,10 @@ from src.collectors import naver_news_collector
 from src.database import dcat
 from src.database import meta_naver_news
 from src.database.db import get_conn
+from src.storage import jsonld_export, raw_export
 
 AGENT = "naver_news_collector"
+logger = logging.getLogger(__name__)
 
 
 def _get_registry_status(dataset_id: str) -> str:
@@ -104,6 +107,11 @@ def run(dataset_id: str, triggered_by: str) -> None:
                     content = naver_news_collector.fetch_article_content(url)
                     meta_id = meta_naver_news.insert_meta_naver_news(dataset_id, article, content)
                     _collect_comment_stats(meta_id, article, prev=None)
+                    if content:
+                        try:
+                            raw_export.write_article_content(dataset_id, "news", meta_id, content)
+                        except Exception as e:
+                            logger.warning(f"raw 본문 업로드 실패 (meta_id={meta_id}): {e}")
                     # 같은 기사가 다른 검색어에서도 매칭될 수 있어, 이번 실행 중 발견한
                     # 것도 바로 existing에 반영 — 안 하면 두 번째 매칭 때 중복 INSERT 시도함
                     existing[url] = {
@@ -149,6 +157,12 @@ def run(dataset_id: str, triggered_by: str) -> None:
             next_collect_at=ended_at + dcat.parse_iso8601_duration_to_timedelta(dataset["accrual_periodicity"]),
             last_error=None,
         )
+
+        try:
+            s3_raw_prefix, s3_jsonld_prefix = jsonld_export.export_dataset(dataset_id)
+            dcat.update_data_registry(dataset_id, s3_raw_prefix=s3_raw_prefix, s3_jsonld_prefix=s3_jsonld_prefix)
+        except Exception as e:
+            logger.warning(f"S3 export 실패, 수집 자체는 성공 처리: {e}")
     except Exception as e:
         ended_at = datetime.now(timezone.utc)
         dcat.insert_dcat_provenance(

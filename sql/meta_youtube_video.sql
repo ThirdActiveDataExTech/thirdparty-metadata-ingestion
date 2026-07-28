@@ -90,8 +90,17 @@ CREATE TABLE meta_youtube_video (
     -- 정기 수집 시 채널에서 더 이상 발견되지 않는 영상(비공개 전환·삭제 등)에 TRUE.
     -- 행 자체는 지우지 않고 마지막 known 상태로 보존 (architecture/04_Collection_Pipeline_Operations.md 참조)
 
-    removed_at                TIMESTAMPTZ
+    removed_at                TIMESTAMPTZ,
     -- is_removed가 TRUE로 바뀐 시각. is_removed=FALSE면 NULL
+
+    -- ── 트랜스크립트 (architecture/05_Object_Storage_Export.md §4 자체 STT) ──
+    has_transcript            BOOLEAN NOT NULL DEFAULT FALSE,
+    -- SeaweedFS에 트랜스크립트(raw/video/{dataset_id}/{video_id}.json) 저장 성공 여부.
+    -- meta_naver_news/meta_naver_blog의 has_content와 동일한 목적 — 신규 발견 시 STT
+    -- 실패한 것 포함, 백필 스크립트가 처리 대상을 고르는 데 씀 (2026-07-27 추가)
+
+    transcribed_at             TIMESTAMPTZ
+    -- has_transcript가 TRUE로 바뀐 시각. FALSE면 NULL
 );
 
 -- 조회용 인덱스
@@ -100,3 +109,4 @@ CREATE INDEX idx_meta_yt_video      ON meta_youtube_video(video_id);
 CREATE INDEX idx_meta_yt_published  ON meta_youtube_video(published_at DESC);
 CREATE INDEX idx_meta_yt_channel    ON meta_youtube_video(channel_id);
 CREATE INDEX idx_meta_yt_removed    ON meta_youtube_video(is_removed);
+CREATE INDEX idx_meta_yt_transcript ON meta_youtube_video(has_transcript);

@@ -11,6 +11,7 @@
 """
 
 import json
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
@@ -18,8 +19,10 @@ from src.collectors import naver_blog_collector
 from src.database import dcat
 from src.database import meta_naver_blog
 from src.database.db import get_conn
+from src.storage import jsonld_export, raw_export
 
 AGENT = "naver_blog_collector"
+logger = logging.getLogger(__name__)
 
 
 def _get_registry_status(dataset_id: str) -> str:
@@ -104,6 +107,11 @@ def run(dataset_id: str, triggered_by: str) -> None:
                     )
                     meta_id = meta_naver_blog.insert_meta_naver_blog(dataset_id, post, content)
                     _collect_reaction_stats(meta_id, post, prev=None)
+                    if content:
+                        try:
+                            raw_export.write_article_content(dataset_id, "blog", meta_id, content)
+                        except Exception as e:
+                            logger.warning(f"raw 본문 업로드 실패 (meta_id={meta_id}): {e}")
                     existing[url] = {
                         "id": meta_id, "platform": post["platform"],
                         "blog_id": post["blog_id"], "log_no": post["log_no"],
@@ -144,6 +152,12 @@ def run(dataset_id: str, triggered_by: str) -> None:
             next_collect_at=ended_at + dcat.parse_iso8601_duration_to_timedelta(dataset["accrual_periodicity"]),
             last_error=None,
         )
+
+        try:
+            s3_raw_prefix, s3_jsonld_prefix = jsonld_export.export_dataset(dataset_id)
+            dcat.update_data_registry(dataset_id, s3_raw_prefix=s3_raw_prefix, s3_jsonld_prefix=s3_jsonld_prefix)
+        except Exception as e:
+            logger.warning(f"S3 export 실패, 수집 자체는 성공 처리: {e}")
     except Exception as e:
         ended_at = datetime.now(timezone.utc)
         dcat.insert_dcat_provenance(

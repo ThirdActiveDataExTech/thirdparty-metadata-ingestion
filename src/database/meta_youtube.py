@@ -2,7 +2,7 @@
 
 import json
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from src.database.db import get_conn
 
@@ -112,5 +112,46 @@ def mark_removed(meta_id: int, removed_at: datetime) -> None:
             (removed_at, meta_id),
         )
         conn.commit()
+    finally:
+        conn.close()
+
+
+def mark_transcribed(meta_id: int, transcribed_at: datetime) -> None:
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE meta_youtube_video SET has_transcript = TRUE, transcribed_at = %s WHERE id = %s",
+            (transcribed_at, meta_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_untranscribed(dataset_id: Optional[str] = None, limit: int = 100) -> List[Dict[str, Any]]:
+    """트랜스크립트가 없는(has_transcript=FALSE) 삭제되지 않은 영상 — 백필 스크립트용."""
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        if dataset_id is not None:
+            cur.execute(
+                """
+                SELECT id, dataset_id, video_id FROM meta_youtube_video
+                WHERE has_transcript = FALSE AND is_removed = FALSE AND dataset_id = %s
+                ORDER BY id LIMIT %s
+                """,
+                (dataset_id, limit),
+            )
+        else:
+            cur.execute(
+                """
+                SELECT id, dataset_id, video_id FROM meta_youtube_video
+                WHERE has_transcript = FALSE AND is_removed = FALSE
+                ORDER BY id LIMIT %s
+                """,
+                (limit,),
+            )
+        return [{"id": r[0], "dataset_id": r[1], "video_id": r[2]} for r in cur.fetchall()]
     finally:
         conn.close()

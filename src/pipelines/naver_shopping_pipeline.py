@@ -32,14 +32,17 @@ anchor 카테고리는 모든 배치 호출에 포함시켜 호출당 최대 3�
 보정은 naver_datalab_scale.py 참조.
 """
 
+import logging
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.collectors import naver_datalab_scale, naver_shopping_collector
 from src.database import dcat, meta_naver_shopping
 from src.database.db import get_conn
+from src.storage import jsonld_export
 
 AGENT = "naver_shopping_collector"
+logger = logging.getLogger(__name__)
 GENDERS = ["m", "f"]
 AGES = ["10", "20", "30", "40", "50", "60"]
 OVERLAP_DAYS = 14
@@ -162,6 +165,12 @@ def run(dataset_id: str, triggered_by: str) -> None:
             next_collect_at=ended_at + dcat.parse_iso8601_duration_to_timedelta(dataset["accrual_periodicity"]),
             last_error=None,
         )
+
+        try:
+            s3_raw_prefix, s3_jsonld_prefix = jsonld_export.export_dataset(dataset_id)
+            dcat.update_data_registry(dataset_id, s3_raw_prefix=s3_raw_prefix, s3_jsonld_prefix=s3_jsonld_prefix)
+        except Exception as e:
+            logger.warning(f"S3 export 실패, 수집 자체는 성공 처리: {e}")
     except Exception as e:
         ended_at = datetime.now(timezone.utc)
         dcat.insert_dcat_provenance(
