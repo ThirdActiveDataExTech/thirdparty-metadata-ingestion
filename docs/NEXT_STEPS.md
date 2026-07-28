@@ -310,13 +310,14 @@
       없이 걷어내도록 한다. 참고: 신규 데이터셋 등록 시 최초 수집에서 영상이 대량
       발견되면(`run()`이 전부 순차 인라인 처리하므로) 그 최초 실행 자체가 몇 시간
       단위로 길어질 수 있음 — 정상 동작이며 다른 데이터셋 태스크엔 영향 없음
-- [ ] 2-4 결정(ADR-002 갱신) 먼저 확정
+- [x] ~~2-4 결정(ADR-002 갱신) 먼저 확정~~ — §2에서 이미 완료(Superseded, ADR-007)
+- [x] ~~`metadata-ingestion` K8s 네임스페이스 실제 생성~~ — **완료 (2026-07-28)**,
+      §1의 K8s Secret 작업 중 `RnD-analyzer01`에서 `sudo kubectl create namespace`로 생성
 - [ ] Airflow 자체 K8s 배포 (Helm chart 등 방식 결정 — 별도 인프라 문서 필요,
-      `docs/infrastructure/07_Airflow.md` 후보)
+      `docs/infrastructure/07_Airflow.md` 후보) — **Executor 종류 결정 시 위 커넥션
+      재사용/안전망 태스크 항목 같이 검토**
 - [ ] `dags/` 폴더 신설, source_type당 DAG 작성 (§3 — 3-레이어 구조: Scheduler/판단 태스크/실행 태스크)
 - [ ] `data_registry` 조회 공통 함수(`get_due_datasets` 등) 작성
-- [ ] `metadata-ingestion` K8s 네임스페이스 실제 생성
-      (`kubectl apply -f k8s/namespaces/metadata-ingestion-ns.yaml`)
 
 ### 6.3 프론트엔드 연동 API
 
