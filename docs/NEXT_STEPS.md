@@ -15,8 +15,9 @@
 1. ~~**A. 결정만 필요한 것** — 2-3, 2-4, 2-10, 2-11, §3의 7번~~ **완료 (2026-07-23)**
 2. ~~**B-1. 2-1(blog API 실측 → ADR-006)**~~ **완료 (2026-07-24)** — §5 AI 필드 실측
    검증은 D 순서(§6.1 이후)로 이미 미뤄둔 상태라 B의 나머지 항목 아님
-3. **C. 외부 의존 (대기)** — §3의 8번(계정테이블 FK), K8s Secret 생성 — 여전히 대기 중,
-   우리가 지금 처리 불가
+3. **C. 외부 의존 (대기)** — §3의 8번(계정테이블 FK, 다른 팀 작업 대기) 여전히 막힘.
+   K8s Secret 생성은 **더 이상 외부 의존 아님**(2026-07-28, `RnD-analyzer01`에서
+   `sudo kubectl` 접근 확인됨) — §1 항목 참조, 그 서버에서 바로 실행 가능
 4. **D. 구현 작업** — ~~§6.1 Phase 1(YouTube+쇼핑 파일럿)~~ **완료 (2026-07-27)**,
    ~~§6.1 Phase 2(Persona+뉴스+블로그)~~ **완료 (2026-07-28)**,
    ~~SeaweedFS raw/JSON-LD export + YouTube 트랜스크립트(자체 STT)~~ **완료
@@ -73,9 +74,11 @@
 - [x] ~~검색 스크립트로 sanity check~~ — `search_datasets.py`/`search_youtube_videos.py`/
       `search_naver_news.py` 전부 실행, 결과 의미상 정상 확인
 - [ ] **`dataset-credentials-encryption-key` K8s Secret 실제 생성 (§9 참조)** — 미완료.
-      이 환경엔 클러스터 kubeconfig가 없어서 실행 불가. `metadata-ingestion` 네임스페이스
-      자체도 아직 실제 생성 안 됐을 가능성 있음(YAML만 존재) — 먼저 확인 필요. 클러스터
-      접근 가능한 곳에서 아래 실행:
+      **갱신 (2026-07-28): `RnD-analyzer01`에서 `sudo kubectl`로 클러스터 접근 가능함
+      확인됨**(SeaweedFS export 작업 중 시크릿 조회로 실측) — 더 이상 "클러스터 접근
+      불가"가 막는 이유 아님, 그 서버에서 바로 실행 가능. `metadata-ingestion` 네임스페이스
+      자체도 아직 실제 생성 안 됐을 가능성 있음(YAML만 존재) — 먼저 확인 필요. 아래
+      실행(계정 권한에 따라 `sudo` 필요할 수 있음):
       ```bash
       kubectl create namespace metadata-ingestion   # 없다면
       kubectl create secret generic dataset-credentials-encryption-key \
