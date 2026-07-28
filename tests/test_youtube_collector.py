@@ -1,4 +1,64 @@
-from src.collectors.youtube_collector import is_short, parse_duration_seconds
+from src.collectors.youtube_collector import (
+    fetch_specific_videos,
+    get_video_details,
+    is_short,
+    parse_duration_seconds,
+)
+
+
+class _FakeRequest:
+    def __init__(self, response):
+        self._response = response
+
+    def execute(self):
+        return self._response
+
+
+class _FakeVideosResource:
+    def __init__(self, response):
+        self._response = response
+
+    def list(self, id, part):
+        return _FakeRequest(self._response)
+
+
+class _FakeService:
+    def __init__(self, response):
+        self._response = response
+
+    def videos(self):
+        return _FakeVideosResource(self._response)
+
+
+def _video_item(video_id, duration):
+    return {
+        "id": video_id,
+        "snippet": {"title": f"title-{video_id}", "thumbnails": {}},
+        "statistics": {},
+        "contentDetails": {"duration": duration},
+        "topicDetails": {},
+    }
+
+
+def test_get_video_details_filters_shorts_by_default():
+    response = {"items": [_video_item("short1", "PT30S"), _video_item("long1", "PT5M")]}
+    service = _FakeService(response)
+    videos = get_video_details(service, ["short1", "long1"])
+    assert [v["video_id"] for v in videos] == ["long1"]
+
+
+def test_get_video_details_keeps_shorts_when_filter_disabled():
+    response = {"items": [_video_item("short1", "PT30S"), _video_item("long1", "PT5M")]}
+    service = _FakeService(response)
+    videos = get_video_details(service, ["short1", "long1"], filter_shorts=False)
+    assert {v["video_id"] for v in videos} == {"short1", "long1"}
+
+
+def test_fetch_specific_videos_does_not_filter_shorts():
+    response = {"items": [_video_item("short1", "PT30S")]}
+    service = _FakeService(response)
+    videos = fetch_specific_videos(service, ["short1"])
+    assert [v["video_id"] for v in videos] == ["short1"]
 
 
 def test_parse_duration_seconds_hours_minutes_seconds():

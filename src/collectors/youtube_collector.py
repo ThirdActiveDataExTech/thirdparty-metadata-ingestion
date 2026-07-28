@@ -129,8 +129,13 @@ def _normalize_video(item: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def get_video_details(service, video_ids: List[str]) -> List[Dict[str, Any]]:
-    """video_id 목록을 50개씩 배치로 조회 — Shorts(<=60초)는 결과에서 제외."""
+def get_video_details(service, video_ids: List[str], filter_shorts: bool = True) -> List[Dict[str, Any]]:
+    """video_id 목록을 50개씩 배치로 조회.
+
+    filter_shorts=True(기본)면 Shorts(<=60초)를 결과에서 제외 — 채널 전체 발견 시
+    쓰는 기존 기본값. 관리자가 직접 지정한 개별 영상(fetch_specific_videos)은
+    명시적으로 고른 것이므로 Shorts라도 조용히 빼지 않는다.
+    """
     videos: List[Dict[str, Any]] = []
     for i in range(0, len(video_ids), 50):
         batch = video_ids[i : i + 50]
@@ -142,7 +147,7 @@ def get_video_details(service, video_ids: List[str]) -> List[Dict[str, Any]]:
         )
         for item in resp.get("items", []):
             video = _normalize_video(item)
-            if is_short(video["duration"]):
+            if filter_shorts and is_short(video["duration"]):
                 continue
             videos.append(video)
         time.sleep(0.1)
@@ -154,3 +159,8 @@ def fetch_channel_videos(service, channel_id: str) -> List[Dict[str, Any]]:
     playlist_info = get_uploads_playlist_id(service, channel_id)
     video_ids = get_all_video_ids(service, playlist_info["playlist_id"])
     return get_video_details(service, video_ids)
+
+
+def fetch_specific_videos(service, video_ids: List[str]) -> List[Dict[str, Any]]:
+    """관리자가 직접 지정한 개별 video_id 목록의 메타데이터 — Shorts 필터 없음."""
+    return get_video_details(service, video_ids, filter_shorts=False)

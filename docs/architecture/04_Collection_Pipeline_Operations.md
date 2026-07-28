@@ -183,6 +183,20 @@ subjects  JSONB,
 `meta_youtube_video`/`meta_naver_news`/`meta_naver_blog`에 쓴다. 아이템 수는 계속
 늘어날 수 있고(새 영상 업로드), 시간이 지나며 일부가 사라질 수도 있다(§6.2 `is_removed`).
 
+**YouTube는 "채널 전체 발견"과 "관리자가 직접 고른 개별 영상"을 한 데이터셋 안에
+섞을 수 있다** (2026-07-28 확장). "위암수술전 환자 추천영상"처럼 여러 채널에서
+영상을 하나씩 골라 만드는 큐레이션형 데이터셋은 "채널을 지속 모니터링"하는 발견형
+모델과 안 맞아서, `dcat_dataset.subjects`를 `{"channels": ["UCxxx", ...], "videos":
+["dQw4w9WgXcQ", ...]}` 형태로 확장해 두 방식을 동시에 지원한다 —
+`channels`는 기존과 동일하게 `fetch_channel_videos`로 전체 재생목록을 페이지네이션,
+`videos`는 `fetch_specific_videos`로 지정된 video_id를 직접 조회한다(둘 다 재생목록
+Shorts 필터는 `channels` 쪽에만 적용 — 개별 지정 영상은 명시적으로 고른 것이라
+Shorts라도 제외하지 않음). 삭제 감지(`is_removed`)는 두 경로 모두 "이번 실행 결과에
+없으면 삭제"를 그대로 쓴다 — 개별 지정 영상도 `videos.list`로 직접 조회하는 방식이라
+뉴스/블로그의 슬라이딩 윈도우 검색과 달리 이 판정이 안전하다(순위 밖으로 밀려나는
+개념 자체가 없고, 조회 실패=진짜 접근 불가). news/blog는 아직 검색어(subjects가
+평평한 배열)만 지원 — 개별 아이템 큐레이션 확장은 필요해지면 검토.
+
 ### 4.2 선언형 (쇼핑인사이트 · Persona)
 
 `3amd/config.yaml`의 카테고리 목록(`{id, name}` 여러 개)처럼, **목록 자체가 사용자
@@ -255,11 +269,16 @@ def register_dataset(payload, caller):
 ### 5.2 소스 타입별 요청 계약
 
 ```jsonc
-// video (발견형)
+// video (발견형) — 채널 전체 발견 + 개별 영상 큐레이션 혼합 가능 (§4.1)
 {
   "source_type": "video",
   "title": "경쟁사 반도체 채널 모음", "description": "...",
-  "config": { "channel_url": "https://youtube.com/@SamsungSemiconductor" },
+  "config": {
+    "channel_urls": ["https://youtube.com/@SamsungSemiconductor"],  // URL/핸들/ID 혼용 가능
+    "video_urls": []            // 채널과 별개로 관리자가 직접 고른 개별 영상 (선택)
+    // 백엔드가 각각 실존 확인 API로 정규화해서 dcat_dataset.subjects =
+    // {"channels": [...], "videos": [...]} 형태로 저장 (§4.1, register_dataset.py 참조)
+  },
   "api_key": "AIzaSy...",              // 선택, 없으면 플랫폼 공유 키 폴백
   "accrual_periodicity": "P1D"          // 선택
 }

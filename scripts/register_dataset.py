@@ -12,6 +12,12 @@ runbooks/04_Add_New_Dataset_Existing_Source.md의 "A. 신규 데이터셋 생성
       --title "SK하이닉스 공식 채널" --description "SK하이닉스 유튜브 채널 영상 수집" \\
       --subjects UCltyil2FaQZZ4kUNinKkKmw --origin admin
 
+  # 발견형 (YouTube) — 채널 전체 + 개별 영상 큐레이션을 한 데이터셋에 혼합
+  python scripts/register_dataset.py video \\
+      --title "위암수술전 환자 추천영상" --description "..." \\
+      --subjects UCltyil2FaQZZ4kUNinKkKmw \\
+      --videos dQw4w9WgXcQ,abc123XYZde --origin admin
+
   # 선언형 (쇼핑인사이트) — 다른 카테고리 조합을 새 데이터셋으로, 소급 수집 시작일 지정
   python scripts/register_dataset.py shopping_insight \\
       --title "IT/가전 카테고리 쇼핑 인사이트" --description "..." \\
@@ -88,7 +94,16 @@ def make_dataset_id(conn, title: str, origin: str) -> str:
 
 def register_discovery(args) -> str:
     meta = _SOURCE_META[args.source_type]
-    subjects = args.subjects.split(",")
+    if args.source_type == "video":
+        # 채널 전체 발견(channels)과 관리자가 직접 고른 개별 영상(videos)을 한
+        # 데이터셋 안에 섞을 수 있다(2026-07-28 확장, youtube_pipeline.py 참조).
+        # news/blog는 검색어 배열이라 기존 평평한 리스트 형식 그대로 둔다.
+        subjects = {
+            "channels": args.subjects.split(",") if args.subjects else [],
+            "videos": args.videos.split(",") if args.videos else [],
+        }
+    else:
+        subjects = args.subjects.split(",")
 
     conn = get_conn()
     try:
@@ -194,7 +209,17 @@ def main():
     parser.add_argument("--owner-id", default=None, help="origin=user일 때만 의미 있음")
     parser.add_argument("--periodicity", default="P1D", help="ISO 8601 duration, 기본 P1D")
     parser.add_argument("--dataset-id", default=None, help="지정 안 하면 title로 자동 채번")
-    parser.add_argument("--subjects", help="발견형: 채널ID/검색어 콤마 구분 목록")
+    parser.add_argument(
+        "--subjects",
+        help="발견형: video는 채널ID 콤마 구분 목록(채널 전체 발견용), "
+             "news/blog는 검색어 콤마 구분 목록",
+    )
+    parser.add_argument(
+        "--videos",
+        help="video 전용: 채널과 별개로 관리자가 직접 고른 개별 video_id 콤마 구분 "
+             "목록 — --subjects(채널)와 같이 써서 섞을 수 있고, --subjects 없이 "
+             "이것만 줘도 됨(채널 전체 없이 개별 영상만 큐레이션하는 데이터셋)",
+    )
     parser.add_argument("--categories", help="선언형: 'id:name,id:name' 콤마 구분 목록")
     parser.add_argument(
         "--temporal-start", default=None, metavar="YYYY-MM-DD",
@@ -204,7 +229,10 @@ def main():
     args = parser.parse_args()
 
     if args.source_type in DISCOVERY_TYPES:
-        if not args.subjects:
+        if args.source_type == "video":
+            if not args.subjects and not args.videos:
+                parser.error("source_type='video'는 --subjects(채널) 또는 --videos(개별 영상) 중 하나는 필요")
+        elif not args.subjects:
             parser.error(f"source_type={args.source_type!r}는 --subjects 필요")
         dataset_id = register_discovery(args)
     else:

@@ -42,10 +42,15 @@ CREATE TABLE dcat_dataset (
     -- 예) 'https://openapi.naver.com/v1/datalab/shopping/categories'
 
     subjects            JSONB,
-    -- dct:subject | 실제 수집 대상 목록 (JSON 배열)
-    -- 예) ["50001421","50000204"]          ← Naver 카테고리 ID
-    -- 예) ["UCQrLs7LGqlcfrKDM0MXWFCQ"]    ← YouTube 채널 ID
-    -- 예) ["인공지능","반도체"]             ← 뉴스 검색 키워드
+    -- dct:subject | 실제 수집 대상 목록
+    -- 예) ["50001421","50000204"]          ← Naver 카테고리 ID (평평한 배열)
+    -- 예) ["인공지능","반도체"]             ← 뉴스/블로그 검색 키워드 (평평한 배열)
+    -- 예) {"channels":["UCQrLs7LGqlcfrKDM0MXWFCQ"],"videos":["dQw4w9WgXcQ"]}
+    --     ← YouTube 전용 (2026-07-28 확장): 채널 전체 발견(channels)과 관리자가
+    --       직접 고른 개별 영상(videos)을 한 데이터셋에 혼합 가능. 둘 중 하나는
+    --       비어있을 수 있음(예: 큐레이션 전용 데이터셋은 channels=[]).
+    --       architecture/04_Collection_Pipeline_Operations.md §4.1,
+    --       src/pipelines/youtube_pipeline.py 참조
 
     -- ── 언어 / 지역 ───────────────────────────────────────────
     language            TEXT DEFAULT 'ko',

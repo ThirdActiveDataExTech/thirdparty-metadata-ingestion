@@ -2,10 +2,17 @@
 
 run(dataset_id, triggered_by)이 Airflow/CLI가 호출하는 유일한 진입점이다.
 collectors(순수 API 호출)와 database(순수 DB IO) 모듈을 조합해 다음을 수행한다:
-  1. 채널별 최신 영상 목록 조회
+  1. 채널 전체 발견(subjects.channels) + 관리자가 직접 지정한 개별 영상
+     (subjects.videos) 목록 조회 — 채널 큐레이션과 개별 영상 큐레이션을 한
+     데이터셋 안에 섞을 수 있다(2026-07-28 확장). 개별 지정 영상은 채널
+     페이지네이션을 안 거치고 video_id로 직접 조회하므로 Shorts 필터가 없다
+     (명시적으로 고른 걸 존중 — youtube_collector.fetch_specific_videos 참조).
   2. DB에 이미 있는 영상과 비교해 신규/기존 분기
   3. 기존 영상은 시계열 스냅샷만 추가(delta 계산), 신규 영상은 meta+최초 스냅샷 INSERT
-  4. 원격에서 더 이상 안 보이는 영상은 is_removed=TRUE (재등장 시 자동 해제)
+  4. 원격(채널 전체 목록이든 개별 조회든)에서 더 이상 안 보이는 영상은 is_removed=TRUE
+     (재등장 시 자동 해제) — 개별 지정 영상도 video_id 직접 조회라 "조회 실패=삭제"가
+     news/blog의 슬라이딩 윈도우 검색과 달리 안전하게 성립한다(직접 조회는 있으면
+     있고 없으면 없고, 순위 밖으로 밀려나는 개념 자체가 없음)
   5. dcat_provenance INSERT + data_registry UPDATE (실패 시 재시도 스케줄 앞당김)
 """
 
@@ -82,11 +89,35 @@ def _compute_delta(prev: Dict[str, Any], video: Dict[str, Any], key: str) -> Any
     return new_val - prev_val
 
 
+def _fetch_remote_videos(service, channel_ids: list, video_ids: list) -> list:
+    """channels+videos를 합쳐서 중복 제거된 영상 목록 반환.
+
+    같은 video_id가 채널 발견과 개별 지정 양쪽에 다 걸릴 수 있어(예: 이미
+    추적 중인 채널의 영상을 실수로 개별 지정에도 넣은 경우) news/blog와 같은
+    이유로 중복 제거가 필요 — 안 하면 두 번째 발생 시 중복 INSERT 시도로 에러난다.
+    """
+    seen = set()
+    videos = []
+    for channel_id in channel_ids:
+        for video in youtube_collector.fetch_channel_videos(service, channel_id):
+            if video["video_id"] not in seen:
+                seen.add(video["video_id"])
+                videos.append(video)
+    if video_ids:
+        for video in youtube_collector.fetch_specific_videos(service, video_ids):
+            if video["video_id"] not in seen:
+                seen.add(video["video_id"])
+                videos.append(video)
+    return videos
+
+
 def run(dataset_id: str, triggered_by: str) -> None:
     dataset = dcat.fetch_dcat_dataset(dataset_id)
     was_pending = _get_registry_status(dataset_id) == "pending"
     api_key = dcat.get_api_key(dataset_id, "youtube_api_key")
-    channel_ids = dataset["subjects"] if isinstance(dataset["subjects"], list) else json.loads(dataset["subjects"])
+    subjects = dataset["subjects"] if isinstance(dataset["subjects"], dict) else json.loads(dataset["subjects"])
+    channel_ids = subjects.get("channels", [])
+    video_ids = subjects.get("videos", [])
     started_at = datetime.now(timezone.utc)
 
     try:
@@ -95,37 +126,36 @@ def run(dataset_id: str, triggered_by: str) -> None:
         remote_ids = set()
         new_count, updated_count, removed_count = 0, 0, 0
 
-        for channel_id in channel_ids:
-            for video in youtube_collector.fetch_channel_videos(service, channel_id):
-                remote_ids.add(video["video_id"])
-                if video["video_id"] not in existing:
-                    meta_id = meta_youtube.insert_meta_youtube_video(dataset_id, video)
-                    meta_youtube.insert_active_meta_youtube(meta_id, video)
-                    try:
-                        transcript = youtube_transcript_collector.fetch_transcript(video["video_id"])
-                        if transcript is not None:
-                            segments, full_text, language = transcript
-                            raw_export.write_video_transcript(
-                                dataset_id, video["video_id"], segments, full_text, language
-                            )
-                            meta_youtube.mark_transcribed(meta_id, transcribed_at=datetime.now(timezone.utc))
-                    except Exception as e:
-                        logger.warning(f"트랜스크립트 처리 실패 (video_id={video['video_id']}): {e}")
-                    new_count += 1
-                else:
-                    meta_id = existing[video["video_id"]]
-                    prev = meta_youtube.get_latest_active_meta(meta_id)
-                    if prev is not None:
-                        meta_youtube.insert_active_meta_youtube(
-                            meta_id, video,
-                            delta_views=_compute_delta(prev, video, "view_count"),
-                            delta_likes=_compute_delta(prev, video, "like_count"),
-                            delta_comments=_compute_delta(prev, video, "comment_count"),
+        for video in _fetch_remote_videos(service, channel_ids, video_ids):
+            remote_ids.add(video["video_id"])
+            if video["video_id"] not in existing:
+                meta_id = meta_youtube.insert_meta_youtube_video(dataset_id, video)
+                meta_youtube.insert_active_meta_youtube(meta_id, video)
+                try:
+                    transcript = youtube_transcript_collector.fetch_transcript(video["video_id"])
+                    if transcript is not None:
+                        segments, full_text, language = transcript
+                        raw_export.write_video_transcript(
+                            dataset_id, video["video_id"], segments, full_text, language
                         )
-                    else:
-                        meta_youtube.insert_active_meta_youtube(meta_id, video)
-                    _clear_removed_flag(meta_id)  # 재등장 시 removed 해제
-                    updated_count += 1
+                        meta_youtube.mark_transcribed(meta_id, transcribed_at=datetime.now(timezone.utc))
+                except Exception as e:
+                    logger.warning(f"트랜스크립트 처리 실패 (video_id={video['video_id']}): {e}")
+                new_count += 1
+            else:
+                meta_id = existing[video["video_id"]]
+                prev = meta_youtube.get_latest_active_meta(meta_id)
+                if prev is not None:
+                    meta_youtube.insert_active_meta_youtube(
+                        meta_id, video,
+                        delta_views=_compute_delta(prev, video, "view_count"),
+                        delta_likes=_compute_delta(prev, video, "like_count"),
+                        delta_comments=_compute_delta(prev, video, "comment_count"),
+                    )
+                else:
+                    meta_youtube.insert_active_meta_youtube(meta_id, video)
+                _clear_removed_flag(meta_id)  # 재등장 시 removed 해제
+                updated_count += 1
 
         for video_id, meta_id in existing.items():
             if video_id not in remote_ids:
@@ -139,7 +169,7 @@ def run(dataset_id: str, triggered_by: str) -> None:
             agent=AGENT, triggered_by=triggered_by,
             started_at=started_at, ended_at=ended_at, status="success",
             rows_affected=new_count + updated_count,
-            params={"channel_ids": channel_ids},
+            params={"channels": channel_ids, "videos": video_ids},
             notes=f"신규 {new_count} / 갱신 {updated_count} / 삭제감지 {removed_count}",
         )
         dcat.update_data_registry(

@@ -277,6 +277,22 @@
       마이그레이션할 것(인터페이스는 유지되므로 `db.py` 내부만 바꾸면 됨).
       KubernetesExecutor(태스크=별도 Pod)로 가면 이 문제 자체가 없음 — §6.2 착수
       시점에 실행 방식 결정하며 재검토 필요
+- [x] ~~**YouTube 채널 전체 발견 + 개별 영상 큐레이션 혼합 지원**~~ — **완료
+      (2026-07-28)**. "위암수술전 환자 추천영상"처럼 여러 채널에서 영상을 하나씩
+      골라 만드는 큐레이션형 데이터셋은 기존 "채널 지속 모니터링" 모델로 표현이
+      안 되던 문제 — `dcat_dataset.subjects`를 `{"channels":[...],"videos":[...]}`로
+      확장(DB 컬럼은 이미 JSONB라 마이그레이션 불필요, 기존 3개 데이터셋의 subjects
+      값만 새 형식으로 UPDATE). `youtube_collector.py`에 `fetch_specific_videos`
+      추가(기존 `get_video_details`에 `filter_shorts` 옵션만 얹어 재사용 — 개별
+      지정 영상은 Shorts라도 제외 안 함, 명시적 선택 존중), `youtube_pipeline.py`의
+      `_fetch_remote_videos`가 채널 발견분+개별 지정분을 중복 제거해서 합침(같은
+      영상이 양쪽에 다 걸릴 수 있어 news/blog와 같은 이유로 dedup 필요),
+      `register_dataset.py`에 `--videos` 옵션 추가. 신규/기존 분기·삭제 감지·STT·
+      SeaweedFS export 로직은 영상 출처를 안 가려서 전혀 안 건드림 — 삭제 감지도
+      개별 지정 영상은 `videos.list` 직접 조회라 news/blog식 재확인 없이 기존
+      "결과에 없으면 삭제" 방식 그대로 안전하게 적용됨. 단위 테스트 6건 추가,
+      실 서버로 기존 채널 재실행(회귀 없음) + 채널 없이 개별 영상 2개만으로 신규
+      등록·재실행(신규→기존 전환 정상 확인) 검증 완료.
 - [x] ~~**SeaweedFS raw/JSON-LD 저장**~~ — 구현·검증 완료 (2026-07-27, 설계는
       [architecture/05_Object_Storage_Export.md](../architecture/05_Object_Storage_Export.md)):
       `src/storage/{s3_client,raw_export,jsonld_export}.py` 신설, `src/collectors/
