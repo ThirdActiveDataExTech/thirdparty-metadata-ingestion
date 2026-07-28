@@ -1,10 +1,9 @@
 # 02. Metadata Flow
 
-> **Last Updated:** 2026-07-10
-> **Status:** 작성 중 — 수집 코드(Collector/Preprocess/Extractor)는 아직 미작성.
-> 아래 표의 "예정"은 코드가 아니라 테이블 상태 기준이며, 대부분의 테이블은
-> 이미 스키마 생성이 끝나 있다 — 자세한 상태는
-> [datagokr_schema.md](../database/datagokr_schema.md) 참조.
+> **Last Updated:** 2026-07-28
+> **Status:** 5개 source_type(YouTube/뉴스/블로그/쇼핑/Persona) 전부 실제로 동작 중
+> (§6.1 완료, 실 서버·실 API 검증 완료). Airflow(§6.2)만 아직 없어서 `python -m
+> src.main run <dataset_id>`로 수동 트리거하는 것만 자동화가 안 된 부분이다.
 
 ---
 
@@ -13,24 +12,34 @@
 ```
 외부 API
     ↓
-Collector       raw JSON / XML                                        [⏳ 예정]
+Collector       raw JSON (src/collectors/)                          [✅ 운영 중, 5개 소스]
     ↓
-SeaweedFS       raw/{source_type}/{dataset_id}/YYYY/MM/DD/  (S3 API)  [배포 완료, 연동 코드 없음]
+SeaweedFS       raw/{source_type}/{dataset_id}/{item_key}.json|txt|csv  (S3 API)  [✅ 운영 중]
     ↓
-Preprocess      정제 / 정규화                                          [⏳ 예정]
+(Preprocess/Extractor 별도 레이어 없음 — collectors/pipelines 내부 헬퍼로 처리,
+ 03_Component_Architecture.md 참조)
     ↓
-Extractor       DCAT 메타데이터 추출                                    [⏳ 예정]
+PostgreSQL      dcat_dataset, dcat_provenance, meta_*, active_*      [✅ 운영 중, 실 수집 데이터]
     ↓
-PostgreSQL      dcat_dataset, dcat_provenance, meta_*, active_*        [✅ 스키마 운영 중, 현재는 시드 데이터]
+SeaweedFS       jsonld/{source_type}/{dataset_id}/{dataset_id}.jsonld [✅ 운영 중 — dcat_dataset+
+                아이템+active metadata 통합, architecture/05_Object_Storage_Export.md]
     ↓
-Embedding       scripts/embed_*.py                                     [✅ 운영 중]
+Embedding       scripts/embed_*.py                                   [✅ 운영 중, 수동 실행 —
+                아직 파이프라인에 자동 연결 안 됨, 증분화도 미완(NEXT_STEPS.md §4)]
     ↓
 pgvector        dcat_dataset_vec, meta_youtube_video_vec,
-                meta_naver_news_vec                                    [✅ 운영 중, 검색 테스트 완료]
+                meta_naver_news_vec, meta_naver_blog_vec              [✅ 운영 중, 검색 테스트 완료]
 ```
 
-> Collector~Extractor 코드가 없어 위 흐름은 아직 실제로 자동 실행되지 않는다.
-> PostgreSQL 이하(스키마, 시드 데이터, 임베딩)만 지금 동작하는 부분이다.
+> **YouTube만 추가 경로가 하나 더 있다**: 신규 영상 발견 시 `yt-dlp`로 오디오
+> 다운로드 → `faster-whisper`로 로컬 STT(자체, 레거시의 비공식 API 직접 호출
+> 방식은 IP 차단 확인돼 채택 안 함) → 세그먼트 JSON을 SeaweedFS raw에 저장.
+> 상세: [05_Object_Storage_Export.md](05_Object_Storage_Export.md) §4.
+
+**아직 자동 실행 안 되는 것**: 위 흐름 전체가 Airflow가 아니라 `python -m
+src.main run <dataset_id>` **수동 트리거**로만 동작한다(§6.2 미착수). 신규
+데이터셋도 `scripts/register_dataset.py`로 수동 등록해야 한다(§6.3 프론트엔드
+API 미착수). AI 생성 메타데이터(`meta_*_ai`, 아래 표)는 아직 설계 단계.
 
 ---
 
@@ -40,12 +49,15 @@ pgvector        dcat_dataset_vec, meta_youtube_video_vec,
 |--------|--------|------|------|
 | DCAT | `dcat_dataset` | 데이터셋 전반 기술 | ✅ 운영 중 |
 | PROV | `dcat_provenance` | 수집 실행 이력 | ✅ 운영 중 |
-| 운영 | `data_registry` | 저장소 경로, 운영 현황 | ✅ 운영 중 |
-| 소스별 메타 | `meta_youtube_*`, `meta_naver_*` | Schema.org 기반 | ✅ 생성 완료 (YouTube/뉴스/쇼핑/페르소나) |
-| Active Meta | `active_*` | 시계열 증감 지표 | ✅ 생성 완료 |
-| 벡터 임베딩 | `dcat_dataset_vec`, `meta_youtube_video_vec`, `meta_naver_news_vec` | pgvector 768차원 | ✅ 운영 중 |
-| AI 생성 메타 | `meta_youtube_video_ai`, `meta_naver_news_ai` | LLM 요약·키워드·개체명 | ⏳ 예정 / 미설계 |
+| 운영 | `data_registry` | 저장소 경로(`s3_raw_prefix`/`s3_jsonld_prefix` 포함), 운영 현황 | ✅ 운영 중 |
+| 소스별 메타 | `meta_youtube_video`, `meta_naver_news`, `meta_naver_blog`, `meta_naver_shopping`, `meta_naver_persona` | Schema.org 기반 | ✅ 운영 중, 실 수집 데이터 |
+| Active Meta | `active_*` | 시계열 증감 지표 | ✅ 운영 중 |
+| 벡터 임베딩 | `dcat_dataset_vec`, `meta_youtube_video_vec`, `meta_naver_news_vec`, `meta_naver_blog_vec` | pgvector 768차원 | ✅ 운영 중(수동 실행) |
+| AI 생성 메타 | `meta_youtube_video_ai`, `meta_naver_news_ai`, `meta_naver_blog_ai` | LLM 요약·키워드·개체명 등 | ⏳ 설계 단계(필드 후보만, `datagokr_schema.md` 참조) |
 
 ---
 
-*Collector/Preprocess/Extractor 코드 완성 후 실제 흐름 다이어그램으로 갱신할 것.*
+*자세한 파이프라인 실행 로직(신규/기존 분기, 삭제 감지, 스케줄링)은
+[04_Collection_Pipeline_Operations.md](04_Collection_Pipeline_Operations.md),
+SeaweedFS raw/JSON-LD 저장 상세 설계는
+[05_Object_Storage_Export.md](05_Object_Storage_Export.md) 참조.*

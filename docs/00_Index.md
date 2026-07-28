@@ -1,6 +1,6 @@
 # Metadata Ingestion — Documentation
 
-> **Last Updated:** 2026-07-22
+> **Last Updated:** 2026-07-28
 > **Project:** metadata-ingestion
 > **Purpose:** 다양한 공공데이터 및 외부 API를 수집하여 메타데이터를 정제·저장하는 플랫폼
 
@@ -34,10 +34,11 @@
 
 | # | 문서 | 설명 | 상태 |
 |---|------|------|------|
-| 2.1 | [System Architecture](architecture/01_System_Architecture.md) | 전체 시스템 구조 | 작성 중 |
-| 2.2 | [Metadata Flow](architecture/02_Metadata_Flow.md) | 수집 → 전처리 → 저장 흐름 | 작성 중 |
-| 2.3 | [Component Architecture](architecture/03_Component_Architecture.md) | 컴포넌트 역할 및 관계 | 작성 중 |
-| 2.4 | [Collection Pipeline Operations](architecture/04_Collection_Pipeline_Operations.md) | Airflow 기반 동적 수집 스케줄링, 신규 데이터셋 온보딩 흐름 | 설계안 (구현 전) |
+| 2.1 | [System Architecture](architecture/01_System_Architecture.md) | 전체 시스템 구조 | 5개 소스 Collector+SeaweedFS 완료, Airflow/프론트엔드 API 미착수 |
+| 2.2 | [Metadata Flow](architecture/02_Metadata_Flow.md) | 수집 → 저장 → 임베딩 흐름 | 완료(수동 트리거 기준), AI 메타데이터만 설계 단계 |
+| 2.3 | [Component Architecture](architecture/03_Component_Architecture.md) | 컴포넌트 역할 및 관계 | 완료 |
+| 2.4 | [Collection Pipeline Operations](architecture/04_Collection_Pipeline_Operations.md) | Airflow 기반 동적 수집 스케줄링 설계, 신규 데이터셋 온보딩 흐름, §6.1 실제 구현 로직 | 설계 완료, §6.1(Collector)은 구현·검증 완료, §6.2(Airflow)는 설계만 |
+| 2.5 | [Object Storage Export](architecture/05_Object_Storage_Export.md) | SeaweedFS raw/JSON-LD 저장 설계 및 구현(YouTube 자체 STT 포함) | 구현·검증 완료 |
 
 ---
 
@@ -60,10 +61,11 @@
 
 | 문서 | dataset_id | source_type | 상태 |
 |------|-----------|-------------|------|
-| [Naver Shopping Insight](data-sources/naver_shopping_insight.md) | `naver_shopping_insight` | shopping | 완성 |
-| [Naver Persona Insight](data-sources/naver_persona_insight.md) | `naver_persona_insight` | shopping | 완성 |
-| [YouTube](data-sources/youtube.md) | `youtube_{채널명}` | video | 작성 중 |
-| [Naver News](data-sources/naver_news.md) | `naver_news_{주제}` | news | 작성 중 |
+| [Naver Shopping Insight](data-sources/naver_shopping_insight.md) | `naver_shopping_insight` | shopping_insight | 완성 |
+| [Naver Persona Insight](data-sources/naver_persona_insight.md) | `naver_persona_insight` | persona_insight | 완성 |
+| [YouTube](data-sources/youtube.md) | `youtube_{채널명}` | video | Collector 구현·검증 완료, 문서는 갱신 필요 |
+| [Naver News](data-sources/naver_news.md) | `naver_news_{주제}` | news | Collector 구현·검증 완료, 문서는 갱신 필요 |
+| Naver Blog | `user_{제목}` 등 | blog | ⚠️ **Collector 구현·검증 완료(2026-07-28)인데 전용 문서 자체가 없음** — 새 문서 작성 필요 |
 
 ---
 
