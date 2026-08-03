@@ -114,3 +114,63 @@ LEFT JOIN LATERAL (
     ORDER BY collected_at DESC
     LIMIT 1
 ) a ON true;
+
+-- ── v_meta_naver_shopping_latest ──────────────────────────────
+-- meta_naver_shopping + active_meta_naver_shopping "최신 날짜 스냅샷"
+-- 카테고리별 max(period)의 12조합(성별 m/f × 연령 10~60)만 반환 (long 형태).
+-- youtube/news/blog 뷰의 "아이템당 최신 1행"과 달리, 여기선 카테고리당 12행이다
+-- (active가 카테고리×날짜×성별×연령 다차원 시계열이라 "최신 1행"이 성립 안 함).
+-- 전체('') 집계 행은 의도적으로 제외 — 필요해지면 이 뷰의 IN 필터만 바꾸면 됨(원본 데이터엔 그대로 있음).
+CREATE OR REPLACE VIEW v_meta_naver_shopping_latest AS
+SELECT
+    m.id,
+    m.dataset_id,
+    m.category_id,
+    m.category_name,
+    m.is_anchor,
+    a.period,
+    a.gender,
+    a.age,
+    a.pseudo_volume,
+    a.normalized_ratio
+FROM meta_naver_shopping m
+LEFT JOIN LATERAL (
+    SELECT s.period, s.gender, s.age, s.pseudo_volume, s.normalized_ratio
+    FROM active_meta_naver_shopping s
+    WHERE s.meta_id = m.id
+      AND s.gender IN ('m','f') AND s.age IN ('10','20','30','40','50','60')
+      AND s.period = (
+          SELECT max(s2.period) FROM active_meta_naver_shopping s2
+          WHERE s2.meta_id = m.id AND s2.gender IN ('m','f')
+            AND s2.age IN ('10','20','30','40','50','60')
+      )
+) a ON true;
+
+-- ── v_meta_naver_persona_latest ───────────────────────────────
+-- meta_naver_persona + active_meta_naver_persona "최신 날짜 스냅샷"
+-- 카테고리별 max(period)의 12조합(성별 m/f × 연령 10~60) persona_index (long 형태).
+-- Persona는 성별×연령이 핵심 지표(persona_index = gender_pv × age_pv)라 항상 12조합.
+CREATE OR REPLACE VIEW v_meta_naver_persona_latest AS
+SELECT
+    m.id,
+    m.dataset_id,
+    m.category_id,
+    m.category_name,
+    a.period,
+    a.gender,
+    a.age,
+    a.persona_index,
+    a.gender_pv,
+    a.age_pv
+FROM meta_naver_persona m
+LEFT JOIN LATERAL (
+    SELECT p.period, p.gender, p.age, p.persona_index, p.gender_pv, p.age_pv
+    FROM active_meta_naver_persona p
+    WHERE p.meta_id = m.id
+      AND p.gender IN ('m','f') AND p.age IN ('10','20','30','40','50','60')
+      AND p.period = (
+          SELECT max(p2.period) FROM active_meta_naver_persona p2
+          WHERE p2.meta_id = m.id AND p2.gender IN ('m','f')
+            AND p2.age IN ('10','20','30','40','50','60')
+      )
+) a ON true;
