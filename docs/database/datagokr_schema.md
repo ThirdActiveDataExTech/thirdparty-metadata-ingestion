@@ -334,6 +334,7 @@ meta_youtube_video_ai INSERT
 |---------|-----|------|
 | `v_meta_youtube_latest` | [sql/views.sql](../../sql/views.sql) | meta_youtube_video + active_meta_youtube 최신 row 결합. 영상별 현재 통계(최신 수집값 + 전회차 증감)를 한 번에 조회 |
 | `v_meta_naver_news_latest` | [sql/views.sql](../../sql/views.sql) | meta_naver_news + active_meta_naver_news 최신 row 결합. 기사별 댓글 통계(최신 수집값 + 전회차 증감)를 한 번에 조회. 외부 기사 댓글 컬럼 NULL |
+| `v_meta_naver_blog_latest` | [sql/views.sql](../../sql/views.sql) | meta_naver_blog + active_meta_naver_blog 최신 row 결합. 게시물별 반응(공감 등) 통계(최신 수집값 + 전회차 증감)를 한 번에 조회. platform≠'naver' 게시물은 반응 컬럼 NULL(ADR-006). 2026-07-31 추가 |
 
 ---
 

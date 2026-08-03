@@ -80,3 +80,37 @@ LEFT JOIN LATERAL (
     ORDER BY collected_at DESC
     LIMIT 1
 ) a ON true;
+
+-- ── v_meta_naver_blog_latest ──────────────────────────────────
+-- meta_naver_blog + active_meta_naver_blog 최신 row 결합
+-- 게시물별 현재 반응(공감 등) 통계(최신 수집값 + 전회차 대비 증감)를 한 번에 조회
+-- platform!='naver' 게시물은 반응 수집 대상이 아니라 active 행이 없어 반응 컬럼 NULL (ADR-006)
+CREATE OR REPLACE VIEW v_meta_naver_blog_latest AS
+SELECT
+    m.id,
+    m.dataset_id,
+    m.post_url,
+    m.title,
+    m.description,
+    m.content,
+    m.has_content,
+    m.blogger_name,
+    m.blogger_link,
+    m.platform,
+    m.blog_id,
+    m.log_no,
+    m.published_at,
+    m.search_keyword,
+    m.collected_at,
+    a.collected_at       AS latest_collected_at,
+    a.reaction_count     AS latest_reaction_count,
+    a.reaction_breakdown AS latest_reaction_breakdown,
+    a.delta_reactions
+FROM meta_naver_blog m
+LEFT JOIN LATERAL (
+    SELECT *
+    FROM active_meta_naver_blog
+    WHERE meta_id = m.id
+    ORDER BY collected_at DESC
+    LIMIT 1
+) a ON true;
