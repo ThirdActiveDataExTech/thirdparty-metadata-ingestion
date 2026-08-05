@@ -193,34 +193,53 @@ qrels의 각 (쿼리 q, 관련 영상 v)에 대해:
 > 표집·라벨링·규모의 근거는 [PREREGISTRATION.md](PREREGISTRATION.md)에 실험 전 고정.
 > 핵심만 요약한다.
 
-### 4.1 코퍼스 (표집 틀 = YouTube 공식 카테고리, 주관 배제)
+### 4.1 코퍼스와 평가 쿼리 (Sampling ≠ IR 평가)
 
-임의로 채널을 고르지 않는다. `videoCategories.list(regionCode='KR')`가 반환하는
-`assignable=true` 카테고리(**실측 14개**)를 표집 틀로, 각 카테고리에서 동일 규칙
-(`videoCategoryId`+공식 카테고리명 검색어+`order=viewCount`+기간 하한)으로 표집한다.
-검색어를 연구자가 고르지 않고 YouTube 공식 카테고리명을 그대로 써 주관을 배제한다.
-Shorts(≤60초)·중복·썸네일 없음은 제외.
+**코퍼스와 평가 쿼리는 서로 다른 문제다**(전자=다양한 영상 풀 확보=Sampling, 후자=검색
+성능 평가=IR). 상세 규격은 [PREREGISTRATION.md](PREREGISTRATION.md) §0에 재현 가능하게
+고정(freeze). 핵심만 요약한다.
+
+**코퍼스(§PREREG 0.1)**: `videoCategories.list(regionCode='KR')`의 `assignable=true`
+카테고리 **14개**를 표집 틀로, 각 카테고리에서 수집한다. `videoCategoryId`는 search에서
+카테고리 필터로 부적합함을 실측했으므로, **search로 수집 → `videos.list`의 `categoryId`로
+사후 필터링**한다. 표집 편향을 줄이기 위해 **정렬 3혼합(relevance+viewCount+date)**,
+채널 편향 차단을 위해 **채널당 최대 5개**, Shorts는 제외하지 않고 `duration`을 저장해
+**분석 축**으로 쓴다. 목표 카테고리당 ~100편 × 14 = **~1,400편**.
+
+**평가 쿼리(§PREREG 0.2)**: 코퍼스 Sampling과 개념이 다르며, 실제 사용자 검색어를
+반영한다. 연구자 임의 창작이 아니라 **외부 검색 어휘**(YouTube 자동완성/Google Trends/
+Naver DataLab)에서 생성하고, 14개 카테고리에 **균등 배분**한다. 영상 텍스트에서 파생하지
+않는다(KeyBERT 등 금지 — circularity). **쿼리는 retrieval 실험 전에 확정(freeze)**하며,
+성능을 보고 바꾸지 않는다. 쿼리 수는 **Pilot(§PREREG 0.6)**으로 pool 크기를 실측해 확정.
 
 | 항목 | 값 |
 |------|-----|
-| 영상 수 | `[DATA: N]` (목표 카테고리당 70 × 14 = 980) |
-| 표집 틀 | YouTube KR assignable 카테고리 14개 (§PREREG 4.1) |
-| 테스트 쿼리 | `[DATA: 50]` / Validation(α 탐색) `[DATA: 20]` |
-| 관련성 라벨링 | 상위 후보 × 2인 독립(관련/부분/무관), Cohen's κ 보고, 불일치는 평균 |
+| 영상 수 | `[DATA: N]` (목표 ~1,400 = 14 × 100) |
+| 표집 틀 | YouTube KR assignable 카테고리 14개 (§PREREG 0.1) |
+| 평가 쿼리 | `[DATA: N_q]` (Pilot으로 확정; 후보 56/84) / Validation(α) `[DATA: 20]` |
+| qrels | Text∪Visual∪Fusion 각 Top10 pooling → 2인 독립 라벨링, κ 보고, 불일치=평균 |
+| 쿼리 제거 | 관련 영상 0개 쿼리는 사전 규칙으로 제외(결과 무관, 제거 수 투명 보고) |
 | gap 계산 | 전체 자동(라벨링 없음) |
 
-### 4.2 절차
+### 4.2 절차 (§PREREG 0 순서)
 
-1. 쿼리셋 구축 및 2인 관련성 라벨링(qrels), κ 보고.
-2. Validation으로 α 그리드 탐색 → `[DATA: α*]`.
-3. 전체 영상 gap 자동 계산.
-4. Text-only/Fusion 순위 산출 → Δrank → gap과의 상관·조건별 분석.
+1. 코퍼스 수집(§0.1). 2. 평가 쿼리 생성·**Freeze**(§0.2). 3. Pilot 10쿼리로 pool 크기
+실측 → 쿼리 수 확정(§0.6). 4. 본 쿼리 pooling → 2인 라벨링 → qrels·κ·정답0 제거(§0.3).
+5. Validation으로 α\* 탐색. 6. 전체 gap 자동 계산(+인코더 sanity check §0.4).
+7. 각 시스템 순위 → Δrank → gap 상관·조건별(쿼리유형/길이/duration) 분석.
 
 ---
 
 ## 5. 평가 (Evaluation)
 
-### 5.1 지표
+### 5.1 후보 풀 구성 (Pooling)
+
+한 시스템의 상위 결과만 라벨링하면 편향된다(Text-only만→Fusion이 끌어올린 영상을 qrels가
+모름 / Fusion만→Fusion에 유리한 후보만 라벨링). 표준 pooling을 따라 **Text-only ∪
+Visual-only ∪ Late Fusion 각 Top10의 합집합**(중복 제거)을 후보 풀로 삼는다
+(§PREREG 0.3). 라벨링은 이 풀에 대해서만 수행한다.
+
+### 5.2 지표
 
 | 지표 | 대상 |
 |------|------|
@@ -228,14 +247,14 @@ Shorts(≤60초)·중복·썸네일 없음은 제외.
 | Spearman ρ(gap, Δrank) | gap의 순위개선 예측력(RQ1) |
 | Cohen's d | gap 수준별 효과 크기 |
 
-### 5.2 통계·강건성 (§PREREG 6)
+### 5.3 통계·강건성 (§PREREG 6)
 
 - H2(RQ1): Spearman 순위상관 검정. H1(RQ2): Wilcoxon signed-rank(paired).
 - **부트스트랩 95% CI**(1,000회 리샘플) + **subsampling 수렴 곡선** — "표본 수 달라지면
   결과도 달라지지 않나"에 대한 정량 방어.
 - **MDES**: 확정된 라벨링 쌍 수로 탐지 가능한 최소 ρ_min 보고.
 
-### 5.3 성공 기준 (실험 전 고정)
+### 5.4 성공 기준 (실험 전 고정)
 
 - RQ2: Late Fusion MRR@10 > Text-only + 0.05, Wilcoxon p<0.05
 - RQ1: Spearman ρ(gap,Δrank) > 0, p<0.05
