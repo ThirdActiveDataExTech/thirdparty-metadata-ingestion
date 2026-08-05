@@ -144,7 +144,13 @@ def _finalize(seeds_doc: dict, prog: dict) -> None:
 
 def main():
     seeds_doc = json.loads((DATA_DIR / "seeds.json").read_text(encoding="utf-8"))
-    svc = youtube_collector.build_service(config.require_env("YOUTUBE_API_KEY"))
+    keys = config.get_youtube_api_keys()
+    if not keys:
+        raise RuntimeError("YOUTUBE_API_KEY가 없습니다 (.env 확인)")
+    key_idx = 0
+    svc = youtube_collector.build_service(keys[key_idx])
+    print(f"API 키 {len(keys)}개 로드 (기본 + 예비 {len(keys) - 1}개). "
+          "주의: 예비키가 같은 GCP 프로젝트면 쿼터를 공유합니다.")
 
     prog = _load_progress()
     prog.setdefault("measured", {})
@@ -155,36 +161,51 @@ def main():
     print(f"진행: {done}/{total} seed 측정됨 (재개 시 기존 결과 건너뜀)")
 
     measured_this_run = 0
-    try:
-        for cid, entry in seeds_doc["categories"].items():
-            name = entry["name"]
-            prog["measured"].setdefault(cid, {})
-            for seed in entry["seeds"]:
-                if seed in prog["measured"][cid]:
-                    continue  # 이미 측정됨 → 쿼터 절약
-                res = pilot_seed(svc, seed)
-                in_cat = res["category_counts"].get(cid, 0)
-                retention = round(in_cat / res["detailed"], 3) if res["detailed"] else 0.0
-                prog["measured"][cid][seed] = {
-                    "candidates": res["candidates"],
-                    "in_category": in_cat,
-                    "retention": retention,
-                    "category_counts": res["category_counts"],
-                }
-                _save_progress(prog)  # seed마다 저장 → 429에도 진행분 보존
-                measured_this_run += 1
-                print(f"  cat {cid:>2} {name:<10} seed '{seed}': 후보 {res['candidates']:>2} "
-                      f"→ 일치 {in_cat:>2} (잔존율 {retention:.2f})")
-                time.sleep(0.1)
-    except HttpError as e:
-        if _is_quota_error(e):
-            newdone = sum(len(v) for v in prog["measured"].values())
-            print(f"\n⚠️ 쿼터 소진(429/403) — 진행분 저장됨: {newdone}/{total} seed.")
-            print("   태평양 자정 리셋 후 같은 명령으로 재실행하면 이어서 측정합니다.")
-            return
-        raise
+    quota_stop = False
+    for cid, entry in seeds_doc["categories"].items():
+        if quota_stop:
+            break
+        name = entry["name"]
+        prog["measured"].setdefault(cid, {})
+        for seed in entry["seeds"]:
+            if seed in prog["measured"][cid]:
+                continue  # 이미 측정됨 → 쿼터 절약
+            # 쿼터 소진 시 예비키로 전환하며 같은 seed 재시도
+            while True:
+                try:
+                    res = pilot_seed(svc, seed)
+                    break
+                except HttpError as e:
+                    if _is_quota_error(e) and key_idx + 1 < len(keys):
+                        key_idx += 1
+                        svc = youtube_collector.build_service(keys[key_idx])
+                        print(f"  ⚠️ 쿼터 소진 → 예비키 {key_idx + 1}/{len(keys)}로 전환")
+                        continue
+                    if _is_quota_error(e):
+                        print(f"\n⚠️ 모든 키({len(keys)}개) 쿼터 소진 — 진행분 저장됨.")
+                        quota_stop = True
+                        break
+                    raise
+            if quota_stop:
+                break
+            in_cat = res["category_counts"].get(cid, 0)
+            retention = round(in_cat / res["detailed"], 3) if res["detailed"] else 0.0
+            prog["measured"][cid][seed] = {
+                "candidates": res["candidates"],
+                "in_category": in_cat,
+                "retention": retention,
+                "category_counts": res["category_counts"],
+            }
+            _save_progress(prog)  # seed마다 저장 → 429에도 진행분 보존
+            measured_this_run += 1
+            print(f"  cat {cid:>2} {name:<10} seed '{seed}': 후보 {res['candidates']:>2} "
+                  f"→ 일치 {in_cat:>2} (잔존율 {retention:.2f})")
+            time.sleep(0.1)
 
     newdone = sum(len(v) for v in prog["measured"].values())
+    if quota_stop:
+        print(f"진행분 저장됨: {newdone}/{total} seed. 쿼터 리셋 후 재실행하면 이어서 측정합니다.")
+        return
     print(f"\n이번 실행 {measured_this_run} seed 측정, 누적 {newdone}/{total}.")
     if newdone >= total:
         _finalize(seeds_doc, prog)
