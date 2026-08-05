@@ -29,6 +29,7 @@ FREEZE된 수집 규칙을 그대로 구현한다:
 
 import json
 import time
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -180,41 +181,62 @@ def main():
     for cid, entry in seed_cats.items():
         name = entry["name"]
         seeds = entry["seeds"]
-        # 1) 카테고리의 복수 seed를 각각 3정렬 혼합 수집 → 순서 유지 병합·중복 제거
-        merged_ids = []
+        # 1) seed별 후보 id 수집(seed 내부는 3정렬 혼합). 카테고리·전역 중복 제거.
+        #    seed 출처를 보존해야 round-robin으로 균형 있게 채울 수 있다.
+        seed_to_ids = {}
         seen_local = set()
         for seed in seeds:
+            ids = []
             for vid in search_video_ids(svc, seed):
                 if vid in seen_local or vid in global_seen:
                     continue
-                seen_local.add(vid)
-                merged_ids.append(vid)
-        # 2) 상세 조회
-        details = fetch_details(svc, merged_ids)
-        # 3) 사후 필터: 실제 categoryId가 이 카테고리(cid)인 것만
-        in_category = [row for row in details.values() if row.get("category_id") == cid]
-        # 4) 채널당 최대 MAX_PER_CHANNEL, 카테고리당 TARGET까지 (균형표집)
+                seen_local.add(vid)  # 각 영상은 정확히 한 seed에만 귀속(중복 제거)
+                ids.append(vid)
+            seed_to_ids[seed] = ids
+        # 2) 상세 조회(전 seed 통합 배치)
+        all_ids = [v for ids in seed_to_ids.values() for v in ids]
+        details = fetch_details(svc, all_ids)
+        # 3) seed별 categoryId 일치 행(검색 순서 유지)
+        seed_to_rows = {
+            seed: [details[v] for v in ids if v in details and details[v].get("category_id") == cid]
+            for seed, ids in seed_to_ids.items()
+        }
+        n_in_category = sum(len(r) for r in seed_to_rows.values())
+        # 4) round-robin: seed를 교대하며 한 편씩 채택 → 단일 seed 독식 방지.
+        #    (채널당 최대 MAX_PER_CHANNEL, 카테고리당 TARGET까지)
         chan_count = {}
         kept = []
-        for row in in_category:  # 검색 순서(관련성 우선) 유지
-            ch = row.get("channel_id")
-            if chan_count.get(ch, 0) >= MAX_PER_CHANNEL:
-                continue
-            chan_count[ch] = chan_count.get(ch, 0) + 1
-            row["sampled_category_id"] = cid
-            row["sampled_category_name"] = name
-            row["sampled_seeds"] = seeds
-            row["collected_at"] = collected_at
-            kept.append(row)
-            global_seen.add(row["video_id"])
-            if len(kept) >= TARGET_PER_CATEGORY:
-                break
+        ptr = {seed: 0 for seed in seeds}
+        active = [seed for seed in seeds if seed_to_rows[seed]]
+        while len(kept) < TARGET_PER_CATEGORY and active:
+            for seed in list(active):
+                rows = seed_to_rows[seed]
+                while ptr[seed] < len(rows):
+                    row = rows[ptr[seed]]
+                    ptr[seed] += 1
+                    ch = row.get("channel_id")
+                    if chan_count.get(ch, 0) >= MAX_PER_CHANNEL:
+                        continue  # 채널 초과분은 건너뛰고 같은 seed의 다음 후보
+                    chan_count[ch] = chan_count.get(ch, 0) + 1
+                    row["sampled_category_id"] = cid
+                    row["sampled_category_name"] = name
+                    row["sampled_seed"] = seed
+                    row["sampled_seeds"] = seeds
+                    row["collected_at"] = collected_at
+                    kept.append(row)
+                    global_seen.add(row["video_id"])
+                    break  # 이 seed의 차례 종료 → 다음 seed로(round-robin)
+                if ptr[seed] >= len(rows):
+                    active.remove(seed)  # seed 소진
+                if len(kept) >= TARGET_PER_CATEGORY:
+                    break
         corpus.extend(kept)
         per_cat_counts[f"{cid}:{name}"] = len(kept)
+        dist = dict(Counter(r["sampled_seed"] for r in kept))
         print(
-            f"  cat {cid:>2} {name:<10} seed{len(seeds)} 후보 {len(merged_ids):>4} "
-            f"→ 상세 {len(details):>4} → 카테고리일치 {len(in_category):>4} "
-            f"→ 채택 {len(kept):>3} (채널 {len(chan_count)})"
+            f"  cat {cid:>2} {name:<10} seed{len(seeds)} 후보 {len(all_ids):>4} "
+            f"→ 상세 {len(details):>4} → 일치 {n_in_category:>4} → 채택 {len(kept):>3} "
+            f"(채널 {len(chan_count)}) seed분포 {dist}"
         )
 
     out_path = DATA_DIR / "corpus.jsonl"
