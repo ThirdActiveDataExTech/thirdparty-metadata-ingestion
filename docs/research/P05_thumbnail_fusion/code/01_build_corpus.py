@@ -16,17 +16,32 @@ FREEZE된 수집 규칙을 그대로 구현한다:
     duration은 기록용으로 계속 저장한다.
   - 목표: 카테고리당 100편(미달 시 확보량 그대로) 균형(층화)표집, 총 ~1,400편.
 
+  - round-robin 수집: seed를 교대로 채택해 잔존율 최고 seed(예: 강아지)가 카테고리를
+    독식하지 못하게 한다("동물=강아지" 편중을 수집 단계에서 차단).
+
+내구성:
+  - **다중 키 failover**: config.get_youtube_api_keys()의 기본→예비 키로, 쿼터(429/403)
+    소진 시 자동 전환(예비키가 별도 GCP 프로젝트일 때만 실효).
+  - **카테고리 단위 재개(resumable)**: 카테고리 완료마다 corpus.jsonl에 append +
+    corpus_progress.json에 체크포인트. 모든 키 쿼터 소진 시 우아하게 중단하고, 같은 명령으로
+    재실행하면 완료된 카테고리는 건너뛰고 이어서 수집한다.
+
 출력(모두 data/):
-  - categories.json : 수집에 쓴 카테고리 목록 스냅샷(id, 한국어명)
-  - corpus.jsonl    : 영상 1편 = 1줄. 재현성의 핵심 산출물(git 커밋 대상)
+  - categories.json      : 수집에 쓴 카테고리 목록 스냅샷(id, 한국어명)
+  - corpus.jsonl         : 영상 1편 = 1줄. 재현성의 핵심 산출물(git 커밋 대상)
+  - corpus_progress.json : 재개 체크포인트(done 카테고리 + global_seen + funnel)
+  - corpus_funnel.csv    : 수집 단계별 감소 표(검색→중복제거→상세→categoryId통과→최종),
+                           논문 Methods/Results의 코퍼스 구축 투명성 근거
 
 이 스크립트는 "최초 코퍼스 구축용"이다. 인기순/검색결과는 시간에 따라 변하므로 재실행하면
 다른 영상이 나온다 — 재현은 커밋된 corpus.jsonl로 하고, 하류 단계(02~)는 이 파일만 읽는다.
+(주의: 처음부터 새로 수집하려면 corpus_progress.json을 삭제한 뒤 실행.)
 
-실행: 저장소 루트에서
+실행: 저장소 루트에서 (쿼터 소진 시 리셋 후 같은 명령 재실행 → 이어서 수집)
   PYTHONPATH=. .venv/bin/python docs/research/P05_thumbnail_fusion/code/01_build_corpus.py
 """
 
+import csv
 import json
 import time
 from collections import Counter
@@ -49,6 +64,7 @@ MAX_PER_CHANNEL = 5                          # 채널 편향 차단
 PAGES_PER_ORDER = 2                          # 정렬당 검색 페이지 수 (50/페이지) — 쿼터 관리
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 SEEDS_PATH = DATA_DIR / "seeds_frozen.json"  # Seed Pilot 확정본(status=frozen). 후보 풀은 seeds.json.
+PROGRESS_PATH = DATA_DIR / "corpus_progress.json"  # 카테고리 단위 재개 체크포인트
 
 
 def _retry(request, tries=3, base=1.0):
@@ -154,102 +170,194 @@ def fetch_details(svc, video_ids: list) -> dict:
     return out
 
 
+def _is_quota_error(e: HttpError) -> bool:
+    status = getattr(e.resp, "status", None)
+    return status is not None and int(status) in (403, 429)
+
+
+def _load_progress() -> dict:
+    if PROGRESS_PATH.exists():
+        return json.loads(PROGRESS_PATH.read_text(encoding="utf-8"))
+    return None
+
+
+def _save_progress(prog: dict) -> None:
+    PROGRESS_PATH.write_text(json.dumps(prog, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def collect_category(svc, cid: str, name: str, seeds: list, global_seen: set) -> tuple:
+    """한 카테고리 수집. global_seen은 **읽기 전용**(쿼터 재시도 시 오염 방지) —
+    채택분의 video_id는 호출부가 성공 후 global_seen에 추가한다.
+    반환: (kept_rows, funnel_row). funnel_row는 단계별 감소 카운트."""
+    collected_at = datetime.now(timezone.utc).isoformat()
+    # 1) seed별 후보 id 수집(seed 내부 3정렬 혼합). raw = 중복제거 전 합.
+    seed_to_ids = {}
+    seen_local = set()
+    raw_hits = 0
+    for seed in seeds:
+        hits = search_video_ids(svc, seed)
+        raw_hits += len(hits)
+        ids = []
+        for vid in hits:
+            if vid in seen_local or vid in global_seen:
+                continue
+            seen_local.add(vid)  # 각 영상은 정확히 한 seed에만 귀속
+            ids.append(vid)
+        seed_to_ids[seed] = ids
+    all_ids = [v for ids in seed_to_ids.values() for v in ids]
+    # 2) 상세 조회
+    details = fetch_details(svc, all_ids)
+    # 3) seed별 categoryId 일치 행(검색 순서 유지)
+    seed_to_rows = {
+        seed: [details[v] for v in ids if v in details and details[v].get("category_id") == cid]
+        for seed, ids in seed_to_ids.items()
+    }
+    n_in_category = sum(len(r) for r in seed_to_rows.values())
+    # 4) round-robin: seed 교대 채택(단일 seed 독식 방지) + 채널당 최대 MAX_PER_CHANNEL
+    chan_count = {}
+    kept = []
+    ptr = {seed: 0 for seed in seeds}
+    active = [seed for seed in seeds if seed_to_rows[seed]]
+    while len(kept) < TARGET_PER_CATEGORY and active:
+        for seed in list(active):
+            rows = seed_to_rows[seed]
+            while ptr[seed] < len(rows):
+                row = rows[ptr[seed]]
+                ptr[seed] += 1
+                ch = row.get("channel_id")
+                if chan_count.get(ch, 0) >= MAX_PER_CHANNEL:
+                    continue
+                chan_count[ch] = chan_count.get(ch, 0) + 1
+                row["sampled_category_id"] = cid
+                row["sampled_category_name"] = name
+                row["sampled_seed"] = seed
+                row["sampled_seeds"] = seeds
+                row["collected_at"] = collected_at
+                kept.append(row)
+                break  # round-robin: 다음 seed로
+            if ptr[seed] >= len(rows):
+                active.remove(seed)
+            if len(kept) >= TARGET_PER_CATEGORY:
+                break
+    funnel_row = {
+        "category_id": cid, "name": name, "n_seeds": len(seeds),
+        "searched": raw_hits, "deduped": len(all_ids), "detailed": len(details),
+        "categoryid_pass": n_in_category, "final": len(kept),
+        "channels": len(chan_count),
+        "seed_dist": dict(Counter(r["sampled_seed"] for r in kept)),
+    }
+    return kept, funnel_row
+
+
+def _write_funnel(funnel: dict) -> None:
+    """수집 단계별 감소 표를 콘솔 출력 + CSV 저장(리뷰어 설득용)."""
+    rows = list(funnel.values())
+    hdr = ("cat", "카테고리", "검색", "중복제거후", "상세", "categoryId통과", "최종", "채널")
+    print("\n=== 수집 funnel (단계별 영상 수) ===")
+    print(f"{hdr[0]:>3} {hdr[1]:<10} {hdr[2]:>7} {hdr[3]:>9} {hdr[4]:>6} {hdr[5]:>13} {hdr[6]:>6} {hdr[7]:>5}")
+    for r in rows:
+        print(f"{r['category_id']:>3} {r['name']:<10} {r['searched']:>7} {r['deduped']:>9} "
+              f"{r['detailed']:>6} {r['categoryid_pass']:>13} {r['final']:>6} {r['channels']:>5}")
+    tot = {k: sum(r[k] for r in rows) for k in ("searched", "deduped", "detailed", "categoryid_pass", "final")}
+    print(f"{'':>3} {'합계':<10} {tot['searched']:>7} {tot['deduped']:>9} {tot['detailed']:>6} "
+          f"{tot['categoryid_pass']:>13} {tot['final']:>6}")
+    csv_path = DATA_DIR / "corpus_funnel.csv"
+    with csv_path.open("w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["category_id", "name", "n_seeds", "searched", "deduped",
+                    "detailed", "categoryid_pass", "final", "channels"])
+        for r in rows:
+            w.writerow([r[k] for k in ("category_id", "name", "n_seeds", "searched",
+                                       "deduped", "detailed", "categoryid_pass", "final", "channels")])
+    print(f"→ funnel CSV 저장: {csv_path}")
+
+
 def main():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    api_key = config.require_env("YOUTUBE_API_KEY")
-    svc = youtube_collector.build_service(api_key)
-    collected_at = datetime.now(timezone.utc).isoformat()
+    keys = config.get_youtube_api_keys()
+    if not keys:
+        raise RuntimeError("YOUTUBE_API_KEY가 없습니다 (.env 확인)")
+    key_idx = 0
+    svc = youtube_collector.build_service(keys[key_idx])
+    print(f"API 키 {len(keys)}개 로드. 주의: 예비키가 같은 GCP 프로젝트면 쿼터 공유.")
 
-    # 실측 카테고리 스냅샷(재현용) — 표집 틀 근거 기록
-    assignable = get_assignable_categories(svc)
-    (DATA_DIR / "categories.json").write_text(
-        json.dumps(
-            {"region": REGION, "collected_at": collected_at, "categories": assignable},
-            ensure_ascii=False, indent=2,
-        ),
-        encoding="utf-8",
-    )
-
-    # 확정된 복수 seed 로드 (Seed Pilot로 압축된 seeds.json)
     seeds_doc = json.loads(SEEDS_PATH.read_text(encoding="utf-8"))
     seed_cats = seeds_doc["categories"]
-    print(f"seeds.json 카테고리 {len(seed_cats)}개 (status={seeds_doc.get('_meta', {}).get('status')})")
+    if seeds_doc.get("_meta", {}).get("status") != "frozen":
+        print("⚠️ seeds_frozen.json status가 'frozen'이 아님 — 확정본인지 확인 필요.")
 
-    global_seen = set()          # 전 카테고리 통틀어 중복 video 제거
-    corpus = []
-    per_cat_counts = {}
+    # 재개 상태 로드(카테고리 단위 체크포인트)
+    prog = _load_progress()
+    corpus_path = DATA_DIR / "corpus.jsonl"
+    if prog is None:
+        prog = {"done": [], "global_seen": [], "funnel": {},
+                "collected_at": datetime.now(timezone.utc).isoformat()}
+        corpus_path.write_text("", encoding="utf-8")  # 새 실행: corpus 초기화
+        # 카테고리 스냅샷(표집 틀 근거)
+        assignable = get_assignable_categories(svc)
+        (DATA_DIR / "categories.json").write_text(
+            json.dumps({"region": REGION, "collected_at": prog["collected_at"],
+                        "categories": assignable}, ensure_ascii=False, indent=2),
+            encoding="utf-8")
+    done = set(prog["done"])
+    global_seen = set(prog["global_seen"])
+    print(f"진행: {len(done)}/{len(seed_cats)} 카테고리 완료 (재개 시 완료분 건너뜀)")
+
+    quota_stop = False
     for cid, entry in seed_cats.items():
-        name = entry["name"]
-        seeds = entry["seeds"]
-        # 1) seed별 후보 id 수집(seed 내부는 3정렬 혼합). 카테고리·전역 중복 제거.
-        #    seed 출처를 보존해야 round-robin으로 균형 있게 채울 수 있다.
-        seed_to_ids = {}
-        seen_local = set()
-        for seed in seeds:
-            ids = []
-            for vid in search_video_ids(svc, seed):
-                if vid in seen_local or vid in global_seen:
+        if cid in done:
+            continue
+        # 쿼터 소진 시 예비키로 전환하며 카테고리 재시도(부분 진행분은 버리고 재수집)
+        while True:
+            try:
+                kept, funnel_row = collect_category(svc, cid, entry["name"], entry["seeds"], global_seen)
+                break
+            except HttpError as e:
+                if _is_quota_error(e) and key_idx + 1 < len(keys):
+                    key_idx += 1
+                    svc = youtube_collector.build_service(keys[key_idx])
+                    print(f"  ⚠️ 쿼터 소진 → 예비키 {key_idx + 1}/{len(keys)}로 전환 후 cat {cid} 재시도")
                     continue
-                seen_local.add(vid)  # 각 영상은 정확히 한 seed에만 귀속(중복 제거)
-                ids.append(vid)
-            seed_to_ids[seed] = ids
-        # 2) 상세 조회(전 seed 통합 배치)
-        all_ids = [v for ids in seed_to_ids.values() for v in ids]
-        details = fetch_details(svc, all_ids)
-        # 3) seed별 categoryId 일치 행(검색 순서 유지)
-        seed_to_rows = {
-            seed: [details[v] for v in ids if v in details and details[v].get("category_id") == cid]
-            for seed, ids in seed_to_ids.items()
-        }
-        n_in_category = sum(len(r) for r in seed_to_rows.values())
-        # 4) round-robin: seed를 교대하며 한 편씩 채택 → 단일 seed 독식 방지.
-        #    (채널당 최대 MAX_PER_CHANNEL, 카테고리당 TARGET까지)
-        chan_count = {}
-        kept = []
-        ptr = {seed: 0 for seed in seeds}
-        active = [seed for seed in seeds if seed_to_rows[seed]]
-        while len(kept) < TARGET_PER_CATEGORY and active:
-            for seed in list(active):
-                rows = seed_to_rows[seed]
-                while ptr[seed] < len(rows):
-                    row = rows[ptr[seed]]
-                    ptr[seed] += 1
-                    ch = row.get("channel_id")
-                    if chan_count.get(ch, 0) >= MAX_PER_CHANNEL:
-                        continue  # 채널 초과분은 건너뛰고 같은 seed의 다음 후보
-                    chan_count[ch] = chan_count.get(ch, 0) + 1
-                    row["sampled_category_id"] = cid
-                    row["sampled_category_name"] = name
-                    row["sampled_seed"] = seed
-                    row["sampled_seeds"] = seeds
-                    row["collected_at"] = collected_at
-                    kept.append(row)
-                    global_seen.add(row["video_id"])
-                    break  # 이 seed의 차례 종료 → 다음 seed로(round-robin)
-                if ptr[seed] >= len(rows):
-                    active.remove(seed)  # seed 소진
-                if len(kept) >= TARGET_PER_CATEGORY:
+                if _is_quota_error(e):
+                    print(f"\n⚠️ 모든 키({len(keys)}개) 쿼터 소진 — cat {cid} 미완. 진행분 저장.")
+                    quota_stop = True
                     break
-        corpus.extend(kept)
-        per_cat_counts[f"{cid}:{name}"] = len(kept)
-        dist = dict(Counter(r["sampled_seed"] for r in kept))
-        print(
-            f"  cat {cid:>2} {name:<10} seed{len(seeds)} 후보 {len(all_ids):>4} "
-            f"→ 상세 {len(details):>4} → 일치 {n_in_category:>4} → 채택 {len(kept):>3} "
-            f"(채널 {len(chan_count)}) seed분포 {dist}"
-        )
+                raise
+        if quota_stop:
+            break
+        # 성공: corpus.jsonl에 append + 체크포인트 저장
+        with corpus_path.open("a", encoding="utf-8") as f:
+            for row in kept:
+                f.write(json.dumps(row, ensure_ascii=False) + "\n")
+                global_seen.add(row["video_id"])
+        done.add(cid)
+        prog["done"] = list(done)
+        prog["global_seen"] = list(global_seen)
+        prog["funnel"][cid] = funnel_row
+        _save_progress(prog)
+        print(f"  cat {cid:>2} {entry['name']:<10} seed{funnel_row['n_seeds']} "
+              f"검색{funnel_row['searched']}→중복제거{funnel_row['deduped']}→상세{funnel_row['detailed']}"
+              f"→일치{funnel_row['categoryid_pass']}→채택{funnel_row['final']} "
+              f"(채널{funnel_row['channels']}) {funnel_row['seed_dist']}")
 
-    out_path = DATA_DIR / "corpus.jsonl"
-    with out_path.open("w", encoding="utf-8") as f:
-        for row in corpus:
-            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    remaining = [c for c in seed_cats if c not in done]
+    if quota_stop or remaining:
+        print(f"\n미완료 {len(remaining)}개 카테고리 — 쿼터 리셋 후 같은 명령으로 재실행하면 이어서 수집.")
+        return
 
-    n_channels = len({r["channel_id"] for r in corpus})
-    print(f"\n총 {len(corpus)}편 / 채널 {n_channels}개 → {out_path}")
-    print("카테고리별 채택 수:", json.dumps(per_cat_counts, ensure_ascii=False))
-    short = {k: v for k, v in per_cat_counts.items() if v < TARGET_PER_CATEGORY}
+    # 전체 완료 → funnel 표 + 요약
+    _write_funnel(prog["funnel"])
+    channels = set()
+    n_total = 0
+    with corpus_path.open(encoding="utf-8") as f:
+        for line in f:
+            if line.strip():
+                n_total += 1
+                channels.add(json.loads(line).get("channel_id"))
+    short = {r["name"]: r["final"] for r in prog["funnel"].values() if r["final"] < TARGET_PER_CATEGORY}
+    print(f"\n✅ 총 {n_total}편 / 고유 채널 {len(channels)}개 → {corpus_path}")
     if short:
-        print(f"⚠️ 목표({TARGET_PER_CATEGORY}) 미달:", json.dumps(short, ensure_ascii=False))
+        print(f"희소(목표 {TARGET_PER_CATEGORY} 미달, best-effort stratified): {json.dumps(short, ensure_ascii=False)}")
 
 
 if __name__ == "__main__":
