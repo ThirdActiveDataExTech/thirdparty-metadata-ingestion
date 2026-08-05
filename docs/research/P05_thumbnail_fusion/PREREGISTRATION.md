@@ -1,13 +1,114 @@
 # P05 사전등록 (Pre-registration) + 예상 반박 대응
 
-> **작성일: 2026-08-04 — 실험 데이터를 보기 전에 작성.**
+> **작성일: 2026-08-04 / 🔒 방법론 FREEZE: 2026-08-05.**
 > 이 문서의 목적은 가설·표집·평가 기준·분석 방법을 **실험 결과를 보기 전에 고정**해,
 > "결과를 보고 표본/기준을 맞췄다"는 사후 합리화(HARKing) 의심을 원천 차단하는 것이다.
 > 실험 후 이 문서는 논문 4·5·7·8장(실험설계·평가·논의·한계)의 뼈대가 된다.
-> **실험 도중 이 문서의 사전 결정을 바꾸면, 무엇을·왜 바꿨는지 하단 "변경 이력"에 기록한다.**
+>
+> **🔒 FREEZE 선언 (2026-08-05):** 여러 라운드의 검토(사용자·동료·AI)를 거쳐 방법론이
+> 수렴했다. 이 시점 이후로는 **아이디어를 더 바꾸지 않고 구현·실험·해석에 집중**한다.
+> 이후 방법론 변경은 (1) 반드시 하단 "변경 이력"에 근거와 함께 기록하고, (2) **실험
+> 결과를 보고 나서 유리하게 바꾸는 것은 금지**한다(성능 기반 사후 조정 불가). 단,
+> "정답 0개 쿼리 제거"처럼 사전 정의된 규칙에 따른 조정은 예외가 아니다(§0.3).
 
-관련: 논문 초안 [../paper_draft_P05_thumbnail_fusion.md](../paper_draft_P05_thumbnail_fusion.md),
+관련: 논문 초안(영문 v2) [../paper_draft_P05_thumbnail_fusion.md](../paper_draft_P05_thumbnail_fusion.md),
+논문 초안(한국어 v3, Analysis 중심) [paper_draft_ko.md](paper_draft_ko.md),
 재현 가이드 [README.md](README.md), 레퍼런스 [references.md](references.md)
+
+---
+
+## 0. 데이터·평가 프로토콜 (FREEZE, 재현 가능 규격)
+
+> 아래 6절이 실험의 **정본(authoritative) 규격**이다. 누구나 그대로 재현할 수 있는
+> 수준으로 고정한다. §1~§7은 이 프로토콜의 배경·근거·방어 논리다.
+
+### 0.1 코퍼스 수집 규칙 (Corpus)
+
+- **표집 틀**: `videoCategories.list(regionCode='KR')`의 `assignable=true` 카테고리
+  **14개**(§4.1). 이는 코퍼스 **Sampling 틀**이지 평가 쿼리가 아니다(둘은 다른 개념).
+- **구현 절차 (실측 기반, §변경이력 2026-08-04/05)**: `videoCategoryId`는 search에서
+  카테고리 필터로 못 쓴다(실측). 따라서 **search.list로 수집 → videos.list로
+  `snippet.categoryId` 획득 → 원하는 14개 카테고리로 사후 필터링 → 카테고리별 목표
+  개수까지 반복**한다.
+- **정렬 혼합**: 표집 편향(viewCount만=옛날 유명 영상, date만=조회수 0 신규)을 줄이기
+  위해 `relevance` + `viewCount` + `date` **3정렬을 혼합**해 수집·중복 제거.
+- **채널 편향 차단**: **채널당 최대 5개**. (한 채널이 특정 카테고리를 지배하면 논문이
+  무너짐. 결과적으로 300~500개 이상 채널 확보 → 채널 다양성 정량 보고.)
+- **기간**: `publishedAfter` 최근 1~1.5년(예: 2025-01-01~) — 오래된 영상의 알고리즘·
+  썸네일 스타일 차이 배제, 삭제·비공개 비율↓.
+- **언어·지역**: `relevanceLanguage='ko'`, `regionCode='KR'`.
+- **Shorts**: **제외하지 않고 포함**하되 `duration`을 저장해 **분석 축**으로 쓴다
+  (short/medium/long별 효과, §변경이력 2026-08-05 — 기존 "Shorts 제외"에서 전환).
+- **목표 규모**: 카테고리당 ~100편 → **총 ~1,400편**.
+- **저장 메타데이터**: video_id, title, description, tags, categoryId, publishedAt,
+  viewCount, likeCount, commentCount, duration, thumbnail_url, channelId,
+  channelTitle, defaultLanguage, defaultAudioLanguage, liveBroadcastContent,
+  madeForKids, licensedContent, topicCategories(가능 시). (저장 비용 낮고 분석 여지 큼.)
+
+### 0.2 평가 쿼리 생성 + Freeze 규칙 (Evaluation Query)
+
+- **성격**: 코퍼스 Sampling 키워드와 **완전히 다른 개념** — 실제 검색 시스템을 평가하는
+  test query. Novelty는 gap 분석에서 나오므로 **쿼리는 화려할 필요 없이 평범·균형·
+  재현 가능**하면 된다(쿼리는 평가 대상이지 실험 대상이 아님).
+- **출처(주관 배제)**: 사람이 임의 창작하지 않고 **외부 검색 어휘**에서 생성 —
+  YouTube 자동완성(Suggest), Google Trends, Naver DataLab. "실제 사용되는 검색어군"이라
+  객관적. 🚫 **KeyBERT 등으로 영상 제목·설명에서 파생 금지** — 쿼리가 텍스트와 정합해
+  텍스트 채널이 구조적으로 유리해지고 gap 가설 검증이 편향됨(circularity, §변경이력).
+- **분포(대표성)**: 14개 카테고리에 **균등 배분**(카테고리당 동일 개수). 특정 도메인
+  (예: 기술) 쏠림 방지 → "General Korean YouTube Retrieval" 주장 유지.
+- **품질 규칙**: 쿼리 간 **주제 중복/유사 변형 금지**(예: "HBM"/"HBM 메모리"/"HBM4"를
+  각각 세지 않음). 개수보다 **다양성**이 external validity에 중요.
+- **개수 = Pilot으로 결정 (§0.6)**: 56(14×4) 또는 84(14×6)를 지금 강제하지 않고,
+  Pilot의 실측 pool 크기로 라벨링 총량을 역산해 확정. "쿼리 수는 Pilot이 정한다"는
+  **절차 자체를 freeze**한다.
+- **🔒 Freeze 순서(필수)**: **쿼리 생성 → Freeze → Retrieval → Evaluation.** 평가
+  쿼리는 **retrieval 실험을 돌리기 전에 확정**한다. 실험 결과(성능)를 보고 쿼리를
+  빼거나 바꾸지 않는다("Evaluation queries were finalized before retrieval experiments").
+
+### 0.3 Pooling + qrels 생성 절차
+
+- **Pooling(편향 차단)**: 한 시스템의 Top-K만 라벨링하면 편향(Text만→Fusion이 올린
+  영상을 모름 / Fusion만→Fusion 유리 후보만). 표준대로 **Text-only ∪ Visual-only ∪
+  Late Fusion 각 Top10을 합집합·중복 제거**해 후보 풀 생성(평균 ~20~25개/쿼리 예상,
+  Pilot으로 실측).
+- **라벨링**: 후보 풀을 **2인 독립** 라벨링(2=관련 / 1=부분관련 / 0=무관). 제목·썸네일
+  뿐 아니라 **실제 영상 내용**을 확인(시각 채널 연구라 시각 정보 반영 필수).
+- **일치도**: Cohen's κ 보고(목표 substantial ≥ 0.6). **불일치는 두 등급의 평균**(§5.3).
+- **쿼리 제거 규칙(사전 고정, 결과 무관)**: 라벨링 결과 **관련 영상(등급≥1)이 0개인
+  쿼리는 평가셋에서 제외** — IR 표준(qrels 없는 쿼리는 평가 대상 아님, MS MARCO/BEIR/
+  TREC). 단 **retrieval 성능이 아니라 qrels 존재 여부로만** 판단하므로 §0.2 Freeze와
+  모순 아님. **최종 평가 쿼리 수 + 제거된 쿼리 수를 함께 투명 보고**.
+
+### 0.4 gap 계산 절차
+
+- `gap_i = 1 - cos_sim(v_img_i, g_txt_i)` (§3.2). 라벨링 없이 전체 코퍼스 자동 계산.
+- **구현 첫 단계 sanity check(체크리스트)**: gap용 인코더(`clip-ViT-B-32-multilingual-v1`)의
+  한국어 이해를 실험 전 확인 — 비슷한 한국어 제목쌍 cosine 높고(예: "HBM 반도체"↔"HBM
+  메모리" ≈ 0.8), 무관 쌍 낮은지(예: "강아지 산책"↔"GPU 구조" ≈ 0.1). 통과 못 하면
+  다른 다국어 CLIP으로 교체. (freeze 대상이 아니라 구현 검증 항목.)
+
+### 0.5 Retrieval + 통계 분석 절차
+
+- **Retrieval 비교군**: Text-only / Visual-only / Concat / Learned / **Late Fusion(α\*)**.
+  α\*는 validation 쿼리로 그리드 탐색(§4.2).
+- **지표**: MRR@10, NDCG@10(graded relevance), Recall@10, 그리고 gap-Δrank용 Spearman ρ.
+- **통계**: H1=Wilcoxon signed-rank(paired), H2=Spearman 순위상관. **부트스트랩 95% CI**
+  (1,000회) + **subsampling 수렴 곡선** + **MDES**(§6). gap 수준별 **Cohen's d**.
+
+### 0.6 Pilot Phase (쿼리 수·라벨링 규모를 데이터로 결정)
+
+본 실험 전에 소규모 파일럿으로 **pool 크기를 실측**해 최종 규모를 정한다:
+
+```
+Pilot: 쿼리 10개(카테고리에 분산) → §0.3 pooling(Top10×3) → 라벨링
+     → 평균 pool size 실측(예: 17? 28?) + κ 예비 확인
+     → 라벨링 총량 역산 → 최종 쿼리 수 확정(56 vs 84) + 필요 시 depth(10→7) 조정
+     → 본 실험
+```
+
+이로써 "84가 가능한지 56이 맞는지"를 추측이 아니라 **숫자로** 결정한다.
+
+---
 
 ---
 
@@ -192,3 +293,23 @@ Politics), 26(Howto & Style), 27(Education), 28(Science & Technology). 나머지
   가설·평가기준·분석방법에는 영향 없음.
 - **2026-08-04**: §5.3 불일치 조정 규칙을 "평균"으로 확정, §4.2에 Shorts(≤60초) 제외
   규칙 추가(자동생성 썸네일 교란 배제).
+- **🔒 2026-08-05 (방법론 FREEZE)**: 여러 라운드 검토가 수렴. §0(데이터·평가 프로토콜)
+  신설로 정본화. 주요 변경(전부 데이터 수집 전, 결과 무관):
+  1. **코퍼스 수집 방식 전환**: "q=공식카테고리명 + videoCategoryId"에서 **"search로
+     수집 → videos.list의 categoryId로 사후 필터링"**으로. 실측상 videoCategoryId가
+     카테고리 필터로 부적합하고, 복합 카테고리명(예: "인물/블로그")이 order=viewCount와
+     만나면 결과가 붕괴(5개)함을 확인. 사후 필터링은 이 문제를 원천 회피.
+  2. **정렬 3혼합**(relevance+viewCount+date) 도입 — 단일 정렬 편향 완화 + viewCount
+     붕괴 카테고리를 relevance분이 보충.
+  3. **Shorts 제외 → 포함(+duration 분석축)**으로 전환. Shorts 제외가 숏폼 우세
+     카테고리(반려동물 등)를 굶기던 문제를, "제외" 대신 "duration을 분석 변수로"로 해결.
+  4. **채널당 최대 5개**(채널 편향 차단), **추가 메타데이터** 저장.
+  5. **Evaluation Query 프로토콜 신설**(§0.2): 코퍼스 Sampling과 개념 분리, 외부
+     검색어휘 기반, KeyBERT 등 텍스트 파생 금지(circularity), 카테고리 균등, 유사변형
+     금지, **생성→Freeze→실험 순서 고정**.
+  6. **Pooling 확정**(§0.3): Text∪Visual∪Fusion 각 Top10 합집합 → 2인 라벨링.
+     "정답 0개 쿼리 사전 제거(결과 무관, 투명 보고)" 규칙 명시.
+  7. **Pilot Phase 신설**(§0.6): 쿼리 10개로 pool 크기 실측 → 최종 쿼리 수(56 vs 84)를
+     추측이 아니라 숫자로 결정. → 쿼리 수는 "Pilot이 정한다"는 절차를 freeze.
+  8. **gap 인코더 sanity check**(§0.4): freeze 대상 아닌 구현 체크리스트로 분류.
+  이상은 search 쿼터 리셋 후 구현 착수. 이후로는 방법론을 더 바꾸지 않고 실험 품질에 집중.
