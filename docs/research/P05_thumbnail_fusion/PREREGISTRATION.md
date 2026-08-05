@@ -26,18 +26,30 @@
 
 - **표집 틀**: `videoCategories.list(regionCode='KR')`의 `assignable=true` 카테고리
   **14개**(§4.1). 이는 코퍼스 **Sampling 틀**이지 평가 쿼리가 아니다(둘은 다른 개념).
+- **🔑 categoryId = Sampling Anchor, NOT Ground Truth (핵심 선언)**: categoryId는
+  **주제 다양성 확보를 위한 표집 앵커로만** 쓴다. H1/H2 어디서도 semantic label로 쓰지
+  않는다. Seed Pilot 결과 일부 카테고리(동물·스포츠·코미디·과학기술)는 제작자가 categoryId를
+  22/24/27로 다는 경향이 커서 자기잔존율이 낮음을 **관찰**했다(§Appendix dispersion).
+  이는 categoryId가 완벽한 GT가 아님을 보여주지만, **노이즈가 있어도 주제와 상관이 있는 한
+  층화 표집으로서 다양성 확보 목적은 달성**되므로 앵커로서 유효하다. 논문 문구: *"We use
+  YouTube categoryId only as a sampling anchor to improve topical diversity; it is never
+  used as a semantic ground truth."* (리뷰어의 "categoryId를 GT로 신뢰하나?" → "We do not.")
 - **구현 절차 (실측 기반, §변경이력 2026-08-04/05/05b)**: `videoCategoryId`는 search에서
   카테고리 필터로 못 쓴다(실측). 따라서 **search.list로 수집 → videos.list로
   `snippet.categoryId` 획득 → 원하는 14개 카테고리로 사후 필터링 → 카테고리별 목표
   개수까지 반복**한다.
 - **검색어(seed) — 카테고리당 복수, 고정·문서화**: 단일 seed(공식 카테고리명)만으로는
   일부 카테고리 잔존율이 목표에 미달함을 실측(2026-08-05, 자동차 260→59 등). 따라서
-  **카테고리당 3~4개의 고정 seed**를 사용해 커버리지를 확보한다. seed는 **사람이 작성하되
-  `data/seeds.json`에 박제하고 논문 Appendix에 전문 수록**한다 — 자동 생성(mostPopular
-  제목 마이닝·Autosuggest 등)은 **재현 불가(인기 순위는 매일 변동)·비공식 API·인기 편향**
-  때문에 채택하지 않는다(§변경이력 2026-08-05b). **seed는 코퍼스 커버리지용 Sampling
-  Device일 뿐 평가에 쓰이지 않으며, 어떤 가설 변수(gap·Δrank)와도 무관**하다. 최종 seed는
-  아래 **Seed Pilot**로 잔존율을 실측해 확정(Freeze)한다.
+  **카테고리당 복수 고정 seed**로 커버리지를 확보한다. seed는 **사람이 작성하되 후보 풀은
+  `data/seeds.json`, 확정본은 `data/seeds_frozen.json`에 박제하고 논문 Appendix에 전문
+  수록**한다 — 자동 생성(mostPopular 제목 마이닝·Autosuggest 등)은 **재현 불가·비공식
+  API·인기 편향** 때문에 채택하지 않는다(§변경이력 2026-08-05b).
+- **seed 확정 규칙(Seed Pilot 후, 2026-08-05c)**: 카테고리별 **잔존율 ≥ 0.30 상위 4개까지**
+  (2개 미만이면 상위 2개 유지). 잔존율은 **순도(precision)** 지표다. **다양성(diversity)은
+  개별 seed 순도가 아니라 (복수 seed 세트 + 본 수집의 채널당 최대 5개 cap)이 담보**한다
+  (예: 교육=토익+영어공부+한국사+자격증). **coverage는 본 수집이 실측**한다(Pilot은 1페이지
+  50건 상한이라 coverage 신호 없음). **seed는 코퍼스 커버리지용 Sampling Device일 뿐 평가에
+  쓰이지 않으며 어떤 가설 변수(gap·Δrank)와도 무관**하다.
 - **정렬 혼합**: 표집 편향(viewCount만=옛날 유명 영상, date만=조회수 0 신규)을 줄이기
   위해 `relevance` + `viewCount` + `date` **3정렬을 혼합**해 수집·중복 제거.
 - **채널 편향 차단**: **채널당 최대 5개**. (한 채널이 특정 카테고리를 지배하면 논문이
@@ -49,9 +61,12 @@
   한다(§변경이력 2026-08-05b — "포함+duration 분석축"에서 재전환). 근거: Shorts는 CTR
   특성·썸네일 영향(자동생성 프레임 다수)·소비 방식·추천 알고리즘이 장편과 달라 gap 검증에
   교란요인. `duration`은 계속 저장하되(기록용) 표집은 장편으로 통일해 깔끔한 비교를 확보.
-- **목표 규모·표집 방식 — 균형(층화) 표집**: 카테고리당 **동일 목표 N**(~100편)까지 수집
-  → **총 ~1,400편**. 실제 YouTube 분포를 재현하는 확률표본이 아니라 **다양한 gap 분포를
-  확보하기 위한 카테고리 층화표본**이다(균형 표집이 gap 분포를 넓혀 H2 Spearman 검정력↑).
+- **목표 규모·표집 방식 — best-effort 층화 표집**: 카테고리당 목표 N(~100편)까지 수집
+  하되, **희소 카테고리는 억지로 100편을 맞추지 않는다**("balanced"가 아니라
+  **"best-effort category-stratified sampling"**으로 기술 — YouTube categoryId 관행상
+  일부 카테고리는 구조적으로 희소함을 인정). **카테고리별 실제 표본 수는 Results에 투명
+  보고**한다. 실제 YouTube 분포를 재현하는 확률표본이 아니라 **다양한 gap 분포 확보용
+  카테고리 층화표본**이다.
 - **대표성 주장 범위(사전 고정)**: 코퍼스를 "YouTube 전체의 대표"로 주장하지 **않는다**.
   주장 범위는 **"2025-01-01 이후 게시된 한국어 장편 YouTube 영상의 카테고리 층화표본"**으로
   좁게 규정하고, 이를 §한계에 명시한다(과대 대표성 주장 회피 = 방어력↑).
@@ -372,3 +387,16 @@ Politics), 26(Howto & Style), 27(Education), 28(Science & Technology). 나머지
   5. **Seed Pilot 신설**(§0.1): 후보 seed를 잔존율로 압축·Freeze한 뒤 본 수집. Query
      Pilot(§0.6)과 목적·대상 분리(§0.6 상단 주의 문구). 잔존율=가설 직교라 무결성 유지.
   구현 순서: seeds.json 초안 → Seed Pilot → seed Freeze → 본 수집(Long-form).
+- **🔒 2026-08-05c (Seed Pilot 완료 후 확정 — gap/retrieval 결과 보기 전, 무결성 유지)**:
+  Seed Pilot 90 seed 전수 측정 완료. 예비 API 키(별도 GCP 프로젝트) failover로 동일 회차
+  완주. 결과에 근거한 확정:
+  1. **categoryId = Sampling Anchor, NOT Ground Truth 선언**(§0.1). Pilot이 4개 카테고리
+     (동물40%·스포츠30%·코미디29%·과기21% 자기잔존)의 categoryId 희소성을 관찰 → 이를
+     한계로 숨기지 않고 **Appendix dispersion 표 + "categoryId 품질 Pilot Study"로 분석**.
+  2. **seed 확정 규칙**: 잔존율 ≥ 0.30 상위 4개(2개 미만이면 상위 2). 확정본
+     `seeds_frozen.json`(status=frozen, 총 50 seed). 다양성은 복수 seed 세트 + 채널 cap이
+     담보(순도만 최대화하지 않음 — 균질화로 gap 분산이 좁아지는 것 방지).
+  3. **best-effort 층화 표집**으로 기술, 희소 카테고리 100편 강제 안 함, 카테고리별 실제 N
+     투명 보고. coverage는 본 수집이 실측(Pilot은 50건 상한이라 coverage 신호 없음).
+  4. 본 수집(01_build_corpus.py)은 `seeds_frozen.json`을 읽음. **이 시점으로 seed 논의
+     종료** — 이후 연구 역량은 gap metric·retrieval·상관분석에 집중.

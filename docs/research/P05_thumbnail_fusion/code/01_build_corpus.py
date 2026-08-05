@@ -47,7 +47,7 @@ TARGET_PER_CATEGORY = 100
 MAX_PER_CHANNEL = 5                          # 채널 편향 차단
 PAGES_PER_ORDER = 2                          # 정렬당 검색 페이지 수 (50/페이지) — 쿼터 관리
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-SEEDS_PATH = DATA_DIR / "seeds.json"
+SEEDS_PATH = DATA_DIR / "seeds_frozen.json"  # Seed Pilot 확정본(status=frozen). 후보 풀은 seeds.json.
 
 
 def _retry(request, tries=3, base=1.0):
