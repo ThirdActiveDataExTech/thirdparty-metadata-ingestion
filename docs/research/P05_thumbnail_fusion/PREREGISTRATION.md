@@ -26,10 +26,18 @@
 
 - **표집 틀**: `videoCategories.list(regionCode='KR')`의 `assignable=true` 카테고리
   **14개**(§4.1). 이는 코퍼스 **Sampling 틀**이지 평가 쿼리가 아니다(둘은 다른 개념).
-- **구현 절차 (실측 기반, §변경이력 2026-08-04/05)**: `videoCategoryId`는 search에서
+- **구현 절차 (실측 기반, §변경이력 2026-08-04/05/05b)**: `videoCategoryId`는 search에서
   카테고리 필터로 못 쓴다(실측). 따라서 **search.list로 수집 → videos.list로
   `snippet.categoryId` 획득 → 원하는 14개 카테고리로 사후 필터링 → 카테고리별 목표
   개수까지 반복**한다.
+- **검색어(seed) — 카테고리당 복수, 고정·문서화**: 단일 seed(공식 카테고리명)만으로는
+  일부 카테고리 잔존율이 목표에 미달함을 실측(2026-08-05, 자동차 260→59 등). 따라서
+  **카테고리당 3~4개의 고정 seed**를 사용해 커버리지를 확보한다. seed는 **사람이 작성하되
+  `data/seeds.json`에 박제하고 논문 Appendix에 전문 수록**한다 — 자동 생성(mostPopular
+  제목 마이닝·Autosuggest 등)은 **재현 불가(인기 순위는 매일 변동)·비공식 API·인기 편향**
+  때문에 채택하지 않는다(§변경이력 2026-08-05b). **seed는 코퍼스 커버리지용 Sampling
+  Device일 뿐 평가에 쓰이지 않으며, 어떤 가설 변수(gap·Δrank)와도 무관**하다. 최종 seed는
+  아래 **Seed Pilot**로 잔존율을 실측해 확정(Freeze)한다.
 - **정렬 혼합**: 표집 편향(viewCount만=옛날 유명 영상, date만=조회수 0 신규)을 줄이기
   위해 `relevance` + `viewCount` + `date` **3정렬을 혼합**해 수집·중복 제거.
 - **채널 편향 차단**: **채널당 최대 5개**. (한 채널이 특정 카테고리를 지배하면 논문이
@@ -37,13 +45,39 @@
 - **기간**: `publishedAfter` 최근 1~1.5년(예: 2025-01-01~) — 오래된 영상의 알고리즘·
   썸네일 스타일 차이 배제, 삭제·비공개 비율↓.
 - **언어·지역**: `relevanceLanguage='ko'`, `regionCode='KR'`.
-- **Shorts**: **제외하지 않고 포함**하되 `duration`을 저장해 **분석 축**으로 쓴다
-  (short/medium/long별 효과, §변경이력 2026-08-05 — 기존 "Shorts 제외"에서 전환).
-- **목표 규모**: 카테고리당 ~100편 → **총 ~1,400편**.
+- **Shorts/길이 — Long-form only**: `search.list(videoDuration='long')`로 **장편만 수집**
+  한다(§변경이력 2026-08-05b — "포함+duration 분석축"에서 재전환). 근거: Shorts는 CTR
+  특성·썸네일 영향(자동생성 프레임 다수)·소비 방식·추천 알고리즘이 장편과 달라 gap 검증에
+  교란요인. `duration`은 계속 저장하되(기록용) 표집은 장편으로 통일해 깔끔한 비교를 확보.
+- **목표 규모·표집 방식 — 균형(층화) 표집**: 카테고리당 **동일 목표 N**(~100편)까지 수집
+  → **총 ~1,400편**. 실제 YouTube 분포를 재현하는 확률표본이 아니라 **다양한 gap 분포를
+  확보하기 위한 카테고리 층화표본**이다(균형 표집이 gap 분포를 넓혀 H2 Spearman 검정력↑).
+- **대표성 주장 범위(사전 고정)**: 코퍼스를 "YouTube 전체의 대표"로 주장하지 **않는다**.
+  주장 범위는 **"2025-01-01 이후 게시된 한국어 장편 YouTube 영상의 카테고리 층화표본"**으로
+  좁게 규정하고, 이를 §한계에 명시한다(과대 대표성 주장 회피 = 방어력↑).
 - **저장 메타데이터**: video_id, title, description, tags, categoryId, publishedAt,
   viewCount, likeCount, commentCount, duration, thumbnail_url, channelId,
   channelTitle, defaultLanguage, defaultAudioLanguage, liveBroadcastContent,
   madeForKids, licensedContent, topicCategories(가능 시). (저장 비용 낮고 분석 여지 큼.)
+
+**Seed Pilot (seed 확정 절차 — 본 수집 전, Query Pilot §0.6과 별개)**
+
+후보 seed를 **잔존율(categoryId 사후필터 통과율)로 압축·확정**한 뒤에 본 수집을 시작한다:
+
+```
+후보 seed(카테고리당 5~6개, seeds.json 초안)
+  → Seed Pilot: seed당 relevance 1정렬 × 1페이지(50건)만 얕게 수집 (≈100 units/seed)
+  → 각 seed의 categoryId 잔존율 측정
+  → 카테고리당 잔존율 상위 3~4개만 남겨 seeds.json 확정 → 🔒 Freeze
+  → 그 다음에 본 수집(3정렬 × 2페이지, videoDuration=long)
+```
+
+- **Freeze 무결성**: 잔존율은 **커버리지 지표이며 gap·Δrank 어떤 가설 변수와도 직교**
+  하므로, 잔존율 기준 seed 압축은 "성능 유리하게 튜닝"이 아니다("규칙을 데이터로 최적화"
+  원칙, §0.1 검색어). **seed는 gap을 보기 전에 잠긴다** → HARKing 불가.
+- **쿼터 계획**: Seed Pilot ≈ 후보 84개 × 100 = ~8,400 units(하루 가능). 본 수집은
+  살아남은 seed(카테고리당 3~4) × 3정렬 × 2페이지 = seed당 ~600 units라 **하루 1만 한도를
+  넘을 수 있음 → 2~4일 분산 수집** 또는 페이지 축소로 관리(429 방지).
 
 ### 0.2 평가 쿼리 생성 + Freeze 규칙 (Evaluation Query)
 
@@ -95,12 +129,15 @@
 - **통계**: H1=Wilcoxon signed-rank(paired), H2=Spearman 순위상관. **부트스트랩 95% CI**
   (1,000회) + **subsampling 수렴 곡선** + **MDES**(§6). gap 수준별 **Cohen's d**.
 
-### 0.6 Pilot Phase (쿼리 수·라벨링 규모를 데이터로 결정)
+### 0.6 Query Pilot Phase (쿼리 수·라벨링 규모를 데이터로 결정)
+
+> **주의**: 이 Query Pilot은 **평가 쿼리 수**를 정하는 절차다. 코퍼스 **seed**를 정하는
+> **Seed Pilot(§0.1)**과는 목적·대상·산출이 모두 다르다(혼동 금지).
 
 본 실험 전에 소규모 파일럿으로 **pool 크기를 실측**해 최종 규모를 정한다:
 
 ```
-Pilot: 쿼리 10개(카테고리에 분산) → §0.3 pooling(Top10×3) → 라벨링
+Query Pilot: 쿼리 10개(카테고리에 분산) → §0.3 pooling(Top10×3) → 라벨링
      → 평균 pool size 실측(예: 17? 28?) + κ 예비 확인
      → 라벨링 총량 역산 → 최종 쿼리 수 확정(56 vs 84) + 필요 시 depth(10→7) 조정
      → 본 실험
@@ -175,6 +212,11 @@ Politics), 26(Howto & Style), 27(Education), 28(Science & Technology). 나머지
 > 수집 시점 KR API 실제 응답이다 — 이 목록도 매니페스트에 스냅샷 저장, §4.4.)
 
 ### 4.2 카테고리별 수집 규칙 (자의성 배제, 실험 전 고정)
+
+> **정본은 §0.1**이다. 아래는 초기(2026-08-04) 설계 근거 기록으로, 일부 항목(단일 q,
+> videoCategoryId 직접 사용, N=70)은 §0.1·변경이력(2026-08-05/05b)에서 갱신됐다.
+> 현재 규칙: **복수 seed(seeds.json) + categoryId 사후필터 + 3정렬 혼합 + Long-form only
+> + 카테고리당 ~100편 균형표집.**
 
 각 카테고리에 대해 동일 규칙으로 `search.list`를 호출한다 — 파라미터 각각이 근거를 갖는다:
 - `videoCategoryId=C`: 그 카테고리 영상으로 제한(실측 검증: 반환 영상의 실제 categoryId가
@@ -313,3 +355,20 @@ Politics), 26(Howto & Style), 27(Education), 28(Science & Technology). 나머지
      추측이 아니라 숫자로 결정. → 쿼리 수는 "Pilot이 정한다"는 절차를 freeze.
   8. **gap 인코더 sanity check**(§0.4): freeze 대상 아닌 구현 체크리스트로 분류.
   이상은 search 쿼터 리셋 후 구현 착수. 이후로는 방법론을 더 바꾸지 않고 실험 품질에 집중.
+- **🔒 2026-08-05b (코퍼스 구축 규칙 확정 — 여전히 데이터(gap/retrieval) 수집 전, 결과
+  무관)**: 여러 라운드 검토가 seed 문제로 수렴. 전부 **표집 단계 조정**이라 가설 결과와
+  직교하며 무결성 영향 없음.
+  1. **단일 seed → 카테고리당 복수 seed(3~4, `seeds.json` 고정·Appendix 수록)**. 단일
+     공식 카테고리명 seed는 일부 카테고리 잔존율 미달(실측). 커버리지 확보 목적.
+  2. **자동 seed 생성(mostPopular 제목 마이닝·Autosuggest·Google Trends·PlayBoard 등)
+     기각**. 이유: 인기 순위는 매일 변동해 **재현 불가**, 비공식/유료 API는 ToS·쿼터
+     리스크, mostPopular는 **인기 편향**을 코퍼스에 주입. "자동인 척"보다 **사람이 작성한
+     고정 리스트를 정직하게 Appendix 공개**하는 것이 재현성·방어력 모두 우월(IR 관례).
+  3. **Shorts 포함(+duration 분석축) → Long-form only(`videoDuration='long'`) 재전환**.
+     Shorts는 CTR·썸네일(자동생성 프레임)·소비·추천이 달라 gap 검증 교란. duration은
+     기록용으로만 저장.
+  4. **균형(층화) 표집 명시 + 대표성 주장 범위 축소**. "YouTube 전체 대표" 주장 금지 →
+     "2025-01-01 이후 한국어 장편의 카테고리 층화표본"으로 좁게 규정(§한계).
+  5. **Seed Pilot 신설**(§0.1): 후보 seed를 잔존율로 압축·Freeze한 뒤 본 수집. Query
+     Pilot(§0.6)과 목적·대상 분리(§0.6 상단 주의 문구). 잔존율=가설 직교라 무결성 유지.
+  구현 순서: seeds.json 초안 → Seed Pilot → seed Freeze → 본 수집(Long-form).
