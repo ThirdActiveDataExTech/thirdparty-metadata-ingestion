@@ -156,10 +156,18 @@
   '순위의 의미성(construct validity) 개선'이다. 표준 이방성 제거(All-but-the-Top, Mu &
   Viswanath 2018) 인용.
 - **채택 무결성 + ablation 계획**: centered 채택은 retrieval 전에 **construct validity
-  로만** 결정(Δrank 안 봄) → HARKing 아님. RAW와 CENTERED는 gap 순위가 상당히 다르므로
-  (Spearman ρ=0.63, 실측), **H2를 raw·centered 양쪽으로 돌려 ablation으로 투명 보고**한다.
-  단 **centered가 사전등록 primary이고 raw는 비교용** — 어느 쪽 H2가 크냐로 고르지 않는다
-  (그렇게 고르면 HARKing).
+  로만** 결정(Δrank 안 봄) → HARKing 아님. **H2를 raw·centered 양쪽으로 돌려 ablation으로
+  투명 보고**하되, **centered=사전등록 primary, raw=비교용**(어느 H2가 크냐로 고르지 않음).
+- **rank preservation(실측 600편)**: raw↔centered gap 순위 **Spearman ρ=0.63, Kendall
+  τ=0.46**. ⚠️ 해석 주의 — 우리는 ρ가 **높기를** 원하는 게 아니다. centering이 construct
+  validity를 4배 개선했다는 것 자체가 "순위를 **의미 있게 재배열**했다"는 뜻이므로, ρ가
+  1에 가까우면 오히려 모순. **양수(무작위 뒤집기 아님) + 중간값(의미 있는 재배열)**이
+  정확히 기대값이다. 재배열이 **옳은 방향**임의 근거는 ρ 크기가 아니라 self-matching
+  construct validity(정답 라벨 검증)다.
+- **논문 문구(채택)**: *"We adopted mean-centering not because it improved retrieval
+  performance, but because it substantially improved the construct validity of the gap
+  measure by increasing the separation between matched and mismatched image–text pairs.
+  Raw CLIP results are additionally reported as an ablation for transparency."*
 - **강건성 실측(600편)**: (1) **µ 표본크기 안정성** — µ(300) vs µ(600)로 계산한 gap이
   Spearman ρ=0.997·평균차 0.0008 → **600→1400 확장 시 gap 안정**. (2) centered gap std
   0.107 [95% CI 0.101–0.113] vs raw 0.035 [0.032–0.037](descriptive; 검정력 근거 아님).
