@@ -159,15 +159,26 @@
   로만** 결정(Δrank 안 봄) → HARKing 아님. **H2를 raw·centered 양쪽으로 돌려 ablation으로
   투명 보고**하되, **centered=사전등록 primary, raw=비교용**(어느 H2가 크냐로 고르지 않음).
 - **rank preservation(실측 600편)**: raw↔centered gap 순위 **Spearman ρ=0.63, Kendall
-  τ=0.46**. ⚠️ 해석 주의 — 우리는 ρ가 **높기를** 원하는 게 아니다. centering이 construct
-  validity를 4배 개선했다는 것 자체가 "순위를 **의미 있게 재배열**했다"는 뜻이므로, ρ가
-  1에 가까우면 오히려 모순. **양수(무작위 뒤집기 아님) + 중간값(의미 있는 재배열)**이
-  정확히 기대값이다. 재배열이 **옳은 방향**임의 근거는 ρ 크기가 아니라 self-matching
-  construct validity(정답 라벨 검증)다.
-- **논문 문구(채택)**: *"We adopted mean-centering not because it improved retrieval
-  performance, but because it substantially improved the construct validity of the gap
-  measure by increasing the separation between matched and mismatched image–text pairs.
-  Raw CLIP results are additionally reported as an ablation for transparency."*
+  τ=0.46**. ρ는 **안정성(stability) 지표**이지 좋고/나쁨이 아니다 — preprocessing이 순위를
+  얼마나 바꿨는지만 나타낸다(≈1 거의 유지, ≈0 새 순위, <0 뒤집음). ρ=0.63 = **적절한
+  재배열(유지도 반전도 아님)**.
+  ⚠️ **정정(2026-08-06, AI 리뷰 반영)**: 이전 판의 "construct validity 4배 개선 ⟹ ρ가
+  낮아야 함"은 **논리적 과잉**이라 철회. construct validity(평균 match vs mismatch)와
+  ρ(600개 전체 순위)는 **일대일 관계가 없다** — 상위 일부만 재배열돼도 separation은 크게
+  오르고 ρ는 높게 유지될 수 있다. 따라서 ρ를 좋다/나쁘다로 해석하지 않으며, **재배열의
+  정당성은 ρ 크기가 아니라 self-matching 과제 하의 construct validity(match>mismatch,
+  R@1 향상)로만** 주장한다("객관적 정답"이 아니라 "self-matching 과제 하 대응 반영").
+- **논문 문구(채택)**: 두 문장을 함께 쓴다.
+  (1) *"We adopted mean-centering not because it improved retrieval performance, but
+  because it substantially improved the construct validity of the gap measure by
+  increasing the separation between matched and mismatched image–text pairs. Raw CLIP
+  results are additionally reported as an ablation for transparency."*
+  (2) *"Mean-centering produced a moderate reordering of similarities (Spearman ρ=0.63),
+  indicating that the preprocessing neither preserved the original ranking unchanged nor
+  arbitrarily distorted it. This reordering consistently improved construct validity, as
+  evidenced by higher self-matching accuracy and substantially greater separation between
+  matched and mismatched image–text pairs. Therefore, the modified ranking is justified by
+  an external validation criterion rather than by retrieval performance."*
 - **강건성 실측(600편)**: (1) **µ 표본크기 안정성** — µ(300) vs µ(600)로 계산한 gap이
   Spearman ρ=0.997·평균차 0.0008 → **600→1400 확장 시 gap 안정**. (2) centered gap std
   0.107 [95% CI 0.101–0.113] vs raw 0.035 [0.032–0.037](descriptive; 검정력 근거 아님).
