@@ -247,11 +247,21 @@
 
 ### 0.5 Retrieval + 통계 분석 절차
 
-- **Retrieval 비교군**: Text-only / Visual-only / Concat / Learned / **Late Fusion(α\*)**.
-  α\*는 validation 쿼리로 그리드 탐색(§4.2).
+- **Retrieval 비교군**: Text-only / Visual-only / **Late Fusion**. Fusion score =
+  α·minmax(text) + (1−α)·minmax(visual)(쿼리별 min-max 정규화).
+- **🔒 α 처리 확정(2026-08-07c, 결과 보기 전)**: **primary operating point = α=0.5**
+  — retrieval 결과를 참조하지 않고 사전에 고른 **대칭 equal-weight 지점**(*"α=0.5 was
+  selected a priori as the symmetric equal-weight operating point, without reference to
+  retrieval performance"*). 전체 **α grid = {0.0, 0.1, 0.2, …, 1.0}**(고정)에 대한 성능은
+  **sensitivity analysis**로 보고(robustness라 부르지 않음 — α가 바뀌면 융합 모델 자체가
+  바뀜). **최고점 α를 "optimal fusion"으로 선택·주장하지 않는다**(test leakage 금지).
 - **지표**: MRR@10, NDCG@10(graded relevance), Recall@10, 그리고 gap-Δrank용 Spearman ρ.
 - **통계**: H1=Wilcoxon signed-rank(paired), H2=Spearman 순위상관. **부트스트랩 95% CI**
   (1,000회) + **subsampling 수렴 곡선** + **MDES**(§6). gap 수준별 **Cohen's d**.
+- **🔒 H1 계산 단위 확정(2026-08-07c)**: primary는 **Fusion(α=0.5) vs Text-only**.
+  ① 쿼리별 **reciprocal rank@10**(Text RR, Fusion RR) 계산 → **paired Wilcoxon signed-rank**
+  (p<0.05), ② **aggregate MRR@10 차이 = mean(Fusion RR) − mean(Text RR) > +0.05**.
+  **두 조건 모두** 충족 시 H1 성공(§2). NDCG@10·Recall@10도 동일 쌍대 검정으로 보조 보고.
 - **🔒 Δrank 정의 고정(2026-08-07, 결과 보기 전)**: `Δrank = rank_text − rank_fusion`
   → **양수 = fusion이 순위 개선**, 음수 = 악화. H2 = "**centered gap이 클수록 Δrank가
   증가**(Spearman ρ>0)". 이 정의를 04/05 코드·문서에 박는다.
