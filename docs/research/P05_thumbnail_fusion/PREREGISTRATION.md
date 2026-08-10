@@ -578,6 +578,14 @@ Politics), 26(Howto & Style), 27(Education), 28(Science & Technology). 나머지
      evaluation 코퍼스는 새 840편. embedding·gap·retrieval·H2는 최종 코퍼스로 재수행
      (gap 방법론=centered는 freeze 유지, µ만 새 코퍼스로 재계산).
   기타 검증(채널 cap≤5·날짜≥2025-01-01·videoId 중복0)은 dev에서 전부 통과 확인.
+  **✅ eval 840편 무결성 검증(2026-08-07)**: 14×60 균형·videoId 840 고유·채널 cap 최대 5·
+  Shorts 0·날짜 하한 준수. **duration 분포 = ≤60초 0 / 1~4분 168 / 4~20분 346 / >20분 326**
+  (median 918s) → **4~20분 영상이 정상 유입**되어 duration 수정이 의도대로 작동함을 실증
+  (dev는 전부 >20분이었음). seed allocation은 round-robin+availability 결과(예: 코미디
+  개그=4는 개그 seed의 categoryId-23 통과분이 적어 소진된 것 — 규칙 위반 아님).
+  **표현 원칙**: 채널 549개는 "cap으로 집중 완화 결과"로 기술(‘최고 다양성’ 과장 금지);
+  3개 API 키는 **failover 구성**으로 기술(별도 프로젝트가 아니면 쿼터 3배 아님); 60편은
+  "카테고리별 표본 수 동일 유지"로 기술(‘과학적 최적’ 주장 금지).
 - **🔒 2026-08-07b (평가/분석 프로토콜 확정 — Δrank 보기 전, AI 리뷰 3차 반영)**:
   1. **쿼리 소스 = YouTube Suggest + seed-독립 trigger + freeze**(§0.2). "전역 로그" 단정
      철회 → "공개 관찰 가능한 검색 제안". trigger 목록 사전 고정·Appendix 공개.
