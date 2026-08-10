@@ -152,6 +152,24 @@
   (예: 기술) 쏠림 방지 → "General Korean YouTube Retrieval" 주장 유지.
 - **품질 규칙**: 쿼리 간 **주제 중복/유사 변형 금지**(예: "HBM"/"HBM 메모리"/"HBM4"를
   각각 세지 않음). 개수보다 **다양성**이 external validity에 중요.
+- **🔒 쿼리 선별(curation) 규칙 (2026-08-08, retrieval 前 freeze)**: raw 560 후보에 아래
+  분류를 적용하고 **후보마다 decision+reason을 전부 기록**(exclusion log → Appendix funnel).
+  "정보성" 단일 기준의 주관성을 줄이기 위해 다축 분류:
+  - **EXCLUDE:navigational** — 특정 채널/크리에이터/프로그램/브랜드를 찾는 쿼리(과학쿠키,
+    뉴스타파, 자동차보험 차통령). ⚠️ **고유명사 유무가 아니라 의도로 판정**(손흥민 경기분석=keep).
+  - **EXCLUDE:category_mismatch** — 실제 주제가 카테고리와 다름(동물의숲=게임, 자동차 게임/
+    장난감/노래/다이캐스트).
+  - **EXCLUDE:non_content_service** — 콘텐츠가 아니라 상품/서비스/도구 검색(자동차보험·담보대출,
+    스포츠토토·가방, 음악 다운로드 앱, 헤드셋/스피커).
+  - **FLAG:too_broad** — 사실상 카테고리/trigger 단어(자동차, 게임, 공부). **제외하지 않고
+    flag** → Query Pilot에서 pool 크기·relevance 보고 사전 규칙으로 처리.
+  - **KEEP:topical** — 해당 카테고리 콘텐츠를 찾는 구체적 정보요구 쿼리(자동차 배터리 교체,
+    과학 감수분열, 게임 추천).
+  - **REVIEW:ambiguous** — 경계 사례 → 사람이 재검토(14 카테고리 간 기준 일관성 확인).
+  - **navigational 제외의 H2 근거**: 고유명사 exact-match 쿼리는 텍스트 매칭 우위를 재게 되어
+    fusion의 semantic 효과 측정을 흐림 → 제외가 H2 construct와 정합(단순 '정리'가 아님).
+  - 순서: 규칙 freeze → 560 전수 적용(사유 기록) → 사람이 REVIEW·경계 재검토 → Query Pilot →
+    최종 수 freeze. **사람이 '좋아 보이는 것'을 고르는 게 아니라 명시 규칙의 경계만 처리.**
 - **개수 = 56부터 시작, Pilot으로 확정 (§0.6, 2026-08-07)**: **14×4=56을 1차 목표**로,
   Pilot의 실측 pool 크기·라벨링 부담을 보고 필요 시 70~84로 조정. **84로 무조건 늘리지
   않는다** — 코퍼스(1,397/최종 840)는 이미 충분하고 병목은 평가설계·qrels 품질이다. "라벨
