@@ -48,23 +48,42 @@ def fetch_suggest(term: str) -> list:
         return []
 
 
+# 검색 '의도'가 아니라 매체를 가리키는 일반 접미어 — 이것만 붙은 변형은 같은 의도로 본다.
+# (예: "강아지 영상" ≡ "강아지"). 반면 "축구 하이라이트"는 의도가 다르므로 보존한다.
+GENERIC_TAILS = ["영상", "동영상", "유튜브", "채널", "쇼츠", "shorts", "모음", "영상모음"]
+
+
 def _norm(q: str) -> str:
     return re.sub(r"\s+", " ", q.strip()).lower()
 
 
+def _canon(q: str) -> str:
+    """일반 접미어를 제거한 표준형(의도 동일성 비교용). **공백으로 구분된 말미 토큰만**
+    제거한다 — '강아지 동영상'→'강아지'(OK), 그러나 '동영상'의 '영상'만 잘라 '동'을
+    만드는 오류를 방지."""
+    c = _norm(q)
+    changed = True
+    while changed:
+        changed = False
+        for t in GENERIC_TAILS:
+            if c.endswith(" " + t):
+                c = c[: -(len(t) + 1)].strip()
+                changed = True
+                break
+    return c
+
+
 def _is_near_dup(cand: str, kept: list) -> bool:
-    """유사변형 제거: 정규화 후 한쪽이 다른쪽을 포함하거나 토큰 자카드>=0.6이면 중복 취급."""
-    cn = _norm(cand)
-    ct = set(cn.split())
+    """보수적 dedup: (a) 정규화 완전일치, (b) 일반 접미어만 다른 경우만 중복 취급.
+    ⚠️ substring/토큰유사도로 제거하지 않는다 — '축구' vs '축구 하이라이트'처럼
+    검색 의도가 다른 변형을 보존하기 위함. 미세한 의도 중복은 query freeze 시 사람이
+    수동 검토로 제거(공개)."""
+    cn, cc = _norm(cand), _canon(cand)
     for k in kept:
-        kn = _norm(k)
-        if cn == kn or cn in kn or kn in cn:
+        if cn == _norm(k):
             return True
-        kt = set(kn.split())
-        if ct and kt:
-            j = len(ct & kt) / len(ct | kt)
-            if j >= 0.6:
-                return True
+        if cc and cc == _canon(k):
+            return True
     return False
 
 
