@@ -230,18 +230,25 @@
 - **🔒 Δrank 정의 고정(2026-08-07, 결과 보기 전)**: `Δrank = rank_text − rank_fusion`
   → **양수 = fusion이 순위 개선**, 음수 = 악화. H2 = "**centered gap이 클수록 Δrank가
   증가**(Spearman ρ>0)". 이 정의를 04/05 코드·문서에 박는다.
-- **🔒 H2 분석 구조 확정(2026-08-07, 카테고리+반복측정 교란 선제 차단)**: gap은 **video-level**
-  (쿼리 무관, 영상당 1개)이므로 H2 효과는 본질적으로 between-video다. 또 같은 영상이 여러
-  쿼리에 등장(반복측정)해 순진한 all-pairs Spearman은 유의성을 부풀린다. 따라서:
-  - **Primary**: 영상당 **median Δrank**(극단값 방어) 집계 → **Spearman(centered gap,
-    median Δrank)**. gap이 video-level이라 이 단위가 자연스럽고 사전등록 Spearman과 연속.
-  - **Secondary(반복측정 보존)**: query-video 원자료로 `Δrank ~ gap + category + query`,
-    **video 클러스터-robust SE**(또는 query 랜덤효과 mixed model). 정보 손실 없이 강건성.
-  - **Secondary(교란 통제)**: **카테고리 내 Spearman**(stratified).
-  - **Descriptive**: 14개 중 양(+) 상관 카테고리 비율(검정으로 승격 금지 — 카테고리별 N
-    작으면 불안정).
-  집계 방식(median)·모델·Δrank 방향 전부 **분포 보기 전 확정**(HARKing 방지). raw·centered
-  gap 양쪽으로 primary를 돌려 §0.4 ablation과 결합.
+- **🔒 H2 분석 구조 확정(2026-08-07b, 카테고리+반복측정 교란 선제 차단)**: gap은 **video-level
+  에서 정의**되므로 H2의 기본 연관성은 **video-level 분석에서 직접 검증**한다. 같은 영상이
+  여러 쿼리에 반복 관측되므로 순진한 all-pairs Spearman은 유의성을 부풀린다. 구조:
+  - **Primary — video-level Spearman**: 영상별 **aggregate Δrank(사전등록 = median,** 극단값
+    방어) → **Spearman(centered gap, aggregate Δrank)**. ⚠️ 이는 **설계 선택**이다 — 각
+    영상이 관측치 1개(관련 쿼리가 1개든 8개든 동일 가중). "video-level 예측변수라 median이
+    유일 정답"이라 **주장하지 않으며**, 이 집계의 장단점(쿼리별 개선/악화 정보 손실)을 명시한다.
+  - **Secondary 1 — query-video 반복측정 보존(robustness)**: 원자료 `(query, video, gap,
+    Δrank)`로 gap 효과 추정. **video와 query가 모두 반복되는 crossed 구조**이므로, 이를
+    반영한 **사전 지정 모델**(video·query 교차 랜덤효과 mixed model, 또는 double-clustered
+    robust SE)을 쓴다. **정확한 모델식은 구현 전에 하나로 freeze**(결과 보고 모델 선택 금지).
+  - **Secondary 2 — category robustness**: **카테고리별 Spearman(stratified)** 을 사전 지정
+    secondary로 수행("필요시"가 아니라 항상). 카테고리 내부에서도 관계가 유지되는지 확인.
+  - **Descriptive**: 14개 중 양(+) 상관 카테고리 비율(방향 일관성 시각화 — 검정 승격 금지,
+    카테고리별 N 작으면 불안정).
+  - **Sensitivity**: **raw gap vs centered gap**으로 primary 재실행(§0.4). centered는
+    construct validity로 사전 선택, raw는 **측정 선택의 영향을 보는 sensitivity**이지 H2
+    성능으로 고른 게 아님.
+  집계(median)·모델식·Δrank 방향 전부 **분포 보기 전 확정**(HARKing 방지).
 
 ### 0.6 Query Pilot Phase (쿼리 수·라벨링 규모를 데이터로 결정)
 
@@ -391,7 +398,9 @@ Politics), 26(Howto & Style), 27(Education), 28(Science & Technology). 나머지
 - **불일치 조정 규칙(사전 고정)**: 두 등급이 다르면 **두 등급의 평균을 최종 등급으로**
   한다(2026-08-04 확정). 제3자 중재 방식 대비 (1) 추가 인력 불필요, (2) 규칙이
   단순명료해 재현·방어가 쉬움. NDCG는 graded relevance를 지원하므로 평균으로 생긴
-  0.5·1.5 같은 중간 등급도 그대로 사용 가능.
+  0.5·1.5 같은 중간 등급도 그대로 사용 가능. 모든 불일치 쌍(0↔1, 1↔2, **0↔2**)에 동일
+  적용(0↔2→1.0). **심각 불일치(0↔2) 비율은 별도 보고**(κ와 함께 라벨 신뢰성 지표) —
+  값이 높으면 성문 기준(§5.2) 재점검(2026-08-07b 추가).
 
 ### 5.4 방어 근거 요약
 
@@ -546,3 +555,10 @@ Politics), 26(Howto & Style), 27(Education), 28(Science & Technology). 나머지
      클러스터-robust 회귀 + 카테고리 내 Spearman, descriptive=양상관 카테고리 비율.
      gap이 video-level이라 primary를 video-level로 잡음(반복측정·카테고리 교란 선제 차단).
   6. **라벨링 = 2인 독립 + κ + skim(제목+썸네일+짧은 재생)**(§0.3·§5).
+- **🔒 2026-08-07c (H2 프레이밍 정밀화 — AI 리뷰 4차, 여전히 Δrank 전)**: (1) "gap이
+  video-level이라 median이 필연"이라는 과한 논리 완화 → **video-level 집계는 설계 선택**
+  (각 영상=관측치 1개, 관련 쿼리 수 무관)이며 장단점 명시. (2) Secondary는 video·query가
+  모두 반복되는 **crossed 구조**를 반영한 **사전지정 모델**(교차 랜덤효과/double-clustered)
+  — 구현 전 모델식 1개로 freeze. (3) 카테고리 stratified는 "필요시"가 아니라 **항상 secondary**.
+  (4) 불일치 0↔2(심각) 비율 별도 보고(§5.3). 쿼리 trigger의 seed-coupling은 "제거"가 아니라
+  "직접 coupling 방지"로 표현(§0.2).
