@@ -127,12 +127,16 @@
   Appendix에 전부 공개**(쿼리 본 뒤 trigger 추가 금지). 🚫 **KeyBERT 등으로 우리 코퍼스
   영상 제목·설명에서 파생 금지**(circularity — 쿼리가 코퍼스 텍스트와 정합해 텍스트 채널이
   구조적으로 유리). Naver DataLab=도메인 불일치, Google Trends=재현 불가로 미채택.
-- **trigger 성격·검수(2026-08-07c)**: trigger는 **"category-level, seed-independent query
-  trigger"**로 정의하며 **정확한 카테고리 GT를 주장하지 않는다**(categoryId=Sampling Anchor
-  철학과 일치). 각 trigger 검수 3원칙: ① frozen seed 구와 직접 겹치지 않음, ② 특정 seed의
-  검색 의도를 재현하지 않음(예: '강의','꿀팁'은 seed 의도 재현 → 제외), ③ 카테고리 검색
-  공간을 과도하게 좁히는 형식어 회피(예: '게임 방송'→'게임'). **Suggest 결과 수·품질을 보고
-  trigger를 사후 수정하지 않는다**(기록).
+- **trigger 성격·검수(2026-08-07c, freeze)**: trigger는 **"category-level, seed-independent
+  query trigger"**로 정의하며 **정확한 카테고리 GT를 주장하지 않는다**(categoryId=Sampling
+  Anchor 철학과 일치). trigger는 Suggest에 넣는 seed 문자열이고 최종 쿼리는 **관찰 가능한
+  Suggest 결과에서 수집**한다(⚠️ "Suggest가 사용자 의도를 그대로 반영" 단정 금지 — 우리가
+  쿼리를 창작 안 했다까지만 주장). 검수 3원칙: ① seed 구와 직접 겹치지 않음, ② 특정 seed
+  검색의도 재현 안 함('강의'·'꿀팁' 제외), ③ 형식어로 검색공간 과협착 회피('게임 방송'→'게임').
+  **Suggest 결과 보고 trigger 사후 수정 금지.** 음절 sweep은 **모든 카테고리 동일 고정 목록**
+  (카테고리별 상이/사후변경 금지). **trigger 개수는 카테고리마다 2개로 강제하지 않음**(순수
+  동의어 중복 회피 — 동물·게임은 1개). 한계: People&Blogs는 형식성이 남음(명시). 확정본
+  `query_triggers.json` status=frozen.
 - **유사변형 제거 규칙(2026-08-07c)**: lexical 유사도(substring/토큰 자카드)로 제거하지
   **않는다** — '축구' vs '축구 하이라이트'처럼 **검색 의도가 다른 변형을 보존**해야 한다.
   자동 제거는 **완전일치 + 매체 일반접미어('영상','동영상','유튜브','채널','쇼츠','모음')만
