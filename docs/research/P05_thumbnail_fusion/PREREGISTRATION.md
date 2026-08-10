@@ -34,6 +34,9 @@
   층화 표집으로서 다양성 확보 목적은 달성**되므로 앵커로서 유효하다. 논문 문구: *"We use
   YouTube categoryId only as a sampling anchor to improve topical diversity; it is never
   used as a semantic ground truth."* (리뷰어의 "categoryId를 GT로 신뢰하나?" → "We do not.")
+  ⚠️ **용어**: funnel의 categoryId 통과율(예: 게임 93% vs 동물 28%)은 **category retention
+  = sampling efficiency**(seed 검색결과와 categoryId 일치율)일 뿐, **영상 "품질"이나
+  "카테고리 정확도"가 아니다**. "게임=좋은 카테고리, 동물=나쁜 카테고리" 식 해석 금지.
 - **구현 절차 (실측 기반, §변경이력 2026-08-04/05/05b)**: `videoCategoryId`는 search에서
   카테고리 필터로 못 쓴다(실측). 따라서 **search.list로 수집 → videos.list로
   `snippet.categoryId` 획득 → 원하는 14개 카테고리로 사후 필터링 → 카테고리별 목표
@@ -138,14 +141,26 @@
 - `gap_i = 1 - cos_sim(centered(v_img_i), centered(g_txt_i))` (§3.2). 라벨링 없이 전체
   코퍼스 자동 계산. **centered = 모달별 코퍼스 평균 차감 후 재정규화**(이미지·텍스트 각각의
   평균 벡터를 빼 이방성/modality-gap offset 제거). 근거는 아래 sanity check 실측(2026-08-06).
+  - **gap 범위**: cos∈[−1,1]이므로 gap∈[0,2]. centering 후 일부 쌍의 cos가 음수가 될 수
+    있어 **gap>1이 정상**(실측 최대 1.142). 버그 아님 — 논문에 범위·해석 명시.
+  - **µ 고정**: µ_img·µ_gtxt는 **최종 다중모달 평가 코퍼스(1,396편)**로 1회 계산해
+    `gap.npz`에 저장하고, 이후 retrieval·분석 전 단계에 **동일 µ를 재사용**한다(재계산 금지).
 - **sanity check(구현 검증, freeze 대상 아님 — 2026-08-05 실측 반영)**: 두 단계로 본다.
   1. **텍스트 이해(완료·PASS)**: gap용 인코더(`clip-ViT-B-32-multilingual-v1`)의 한국어
      구분력 확인(`code/sanity_gap_encoder.py`). ⚠️ **주의: raw cosine은 이방성(anisotropy)
      으로 전부 0.9+에 뭉쳐 의미 분리가 안 보인다**(영어도 동일 → 인코더 결함 아님, CLIP
      텍스트 임베딩의 알려진 성질). **평균중심화(centering) 후 측정**하면 유사쌍(평균 +0.53)
      과 무관쌍(평균 −0.09)이 깔끔히 분리됨을 확인 → 인코더는 한국어 의미를 제대로 구분한다.
-  2. **gap 타당성(교차모달, 코퍼스 후)**: gap은 이미지-텍스트이므로, 썸네일 확보 후
-     **정합 (썸네일, 제목)이 비정합보다 gap이 낮은지 + gap 분산이 충분한지**를 실측한다.
+  2. **gap 타당성(교차모달, 완료·PASS)**: 최종 1,396편 실측 — CENTERED 정합-비정합 분리
+     **+0.135**(raw +0.033), 자기매칭 **R@1 7.95%**(랜덤 0.07%의 ~114배, raw 5.1%).
+     600편(분리 +0.147, R@1 9.8%)과 **같은 방향으로 재현** → centering 선택이 특정 pilot
+     표본에 의존한 게 아님. (후보 수 2.3배 증가로 R@1이 소폭 낮아진 것은 정상.)
+- **Corpus vs 다중모달 평가 코퍼스 (N 구분, 논문 필수)**: 수집 corpus **N=1,397**. 그중
+  썸네일 다운로드 실패 **1편**(`8sTbIc4zDIU`, 코미디/개그 seed)을 제외한 **N=1,396**이
+  이미지-텍스트 gap·다중모달 평가 대상이다. **retrieval 평가도 1,396편으로** 수행하고,
+  썸네일 없는 1편은 **평가에서 제외**한다(Text-only로만 넣으면 fusion 비교가 불공정 →
+  제외가 깔끔, feedback 채택). 논문 표기: *"1,397 videos were collected; 1,396 had
+  downloadable thumbnails and constitute the multimodal evaluation corpus."*
 - **이방성 대응 — centered 임베딩을 전처리로 채택(2026-08-06 실측, construct validity 근거)**:
   RAW 교차모달 cos가 좁게 뭉쳐(600편 정합 0.249 vs 비정합 0.211) 순위가 이방성 노이즈에
   지배됨. **모달별 mean-centering** 후 정합-비정합 분리가 +0.038→**+0.147**(≈4배), 자기매칭
@@ -192,6 +207,12 @@
 - **지표**: MRR@10, NDCG@10(graded relevance), Recall@10, 그리고 gap-Δrank용 Spearman ρ.
 - **통계**: H1=Wilcoxon signed-rank(paired), H2=Spearman 순위상관. **부트스트랩 95% CI**
   (1,000회) + **subsampling 수렴 곡선** + **MDES**(§6). gap 수준별 **Cohen's d**.
+- **⚠️ H2 카테고리 교란 처리 (결정 필요 — Δrank 보기 전 확정)**: 카테고리마다 gap 분포가
+  다르므로(동물 0.79 ~ 엔터 0.91), category가 gap·Δrank 양쪽에 영향을 줘 **spurious
+  correlation** 가능. 전체 Spearman(gap, Δrank) 하나만 쓰면 리뷰어가 지적한다. 대응 후보:
+  (A) **카테고리 내 Spearman** 후 방향 일관성 확인, (B) category **residualization** 후
+  상관, (C) **회귀** `Δrank ~ centered_gap + category`. **어느 것을 primary로 할지 지금
+  결정해 freeze**한다(결과 보고 유리한 모형 고르면 HARKing). *현재 미확정 — 사용자 결정 대기.*
 
 ### 0.6 Query Pilot Phase (쿼리 수·라벨링 규모를 데이터로 결정)
 
