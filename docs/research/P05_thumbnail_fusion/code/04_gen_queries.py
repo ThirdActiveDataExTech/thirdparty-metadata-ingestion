@@ -13,8 +13,13 @@ YouTube의 공개 검색 제안(Suggest) 메커니즘에서 평가 쿼리를 생
 circularity 방지: trigger는 코퍼스 seed 구가 아니라 카테고리 수준 단어이며, 쿼리를 우리
 코퍼스 텍스트에서 파생하지 않는다.
 
+파이프라인: trigger → Suggest → 정규화 → (매체변형)dedup → **카테고리 귀속** → 균형 후보
+  → (Query Pilot + 사람 최종 검수) → query freeze. 한 쿼리가 여러 카테고리 trigger에서
+  나오면 억지로 분류하지 않고 drop(ambiguous)한다.
+
 출력(data/):
-  - query_candidates.json : 카테고리별 후보 쿼리 + 출처 trigger(재현·Appendix용)
+  - query_candidates.json : 카테고리별 후보 + provenance(출처 trigger) + _meta(생성 시각,
+    dedup_rule_version, 귀속 규칙, ambiguous drop 수) + ambiguous_dropped 목록(Appendix 추적용)
 
 실행: 저장소 루트에서 (query_triggers.json을 먼저 검수·freeze한 뒤)
   PYTHONPATH=. .venv/bin/python docs/research/P05_thumbnail_fusion/code/04_gen_queries.py
@@ -25,6 +30,8 @@ import re
 import time
 import urllib.parse
 import urllib.request
+from collections import defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -34,6 +41,7 @@ OUT_PATH = DATA_DIR / "query_candidates.json"
 SUGGEST_URL = "https://suggestqueries.google.com/complete/search"
 MIN_LEN = 2                # 너무 짧은 완성어 제외(글자 수)
 MAX_PER_CATEGORY = 40      # 카테고리별 후보 상한(Pilot 전 넉넉히)
+DEDUP_RULE_VERSION = "v2-conservative-2026-08-07c"  # 완전일치 + 매체접미어만 병합
 
 
 def fetch_suggest(term: str) -> list:
@@ -92,49 +100,64 @@ def main():
     if doc.get("_meta", {}).get("status") != "frozen":
         print("⚠️ query_triggers.json status가 'frozen'이 아님 — 검수·확정 후 실행 권장.")
     sweep = doc["_meta"].get("syllable_sweep", [])
+    ts = datetime.now(timezone.utc).isoformat()
+    cat_name = {cid: e["name"] for cid, e in doc["categories"].items()}
 
+    # 1) 전역 수집: (완성어, 출처 카테고리, 출처 trigger)
+    raw = []
+    for cid, entry in doc["categories"].items():
+        for trig in entry["triggers"]:
+            for t in [trig] + [f"{trig} {s}" for s in sweep]:
+                for sug in fetch_suggest(t):
+                    if len(sug.replace(" ", "")) >= MIN_LEN:
+                        raw.append({"query": sug, "category": cid, "trigger": trig})
+                time.sleep(0.15)
+        print(f"  수집 cat {cid:>2} {entry['name']} 누적 raw {len(raw)}")
+
+    # 2) 정규화(canon)로 그룹핑 → 유사(매체)변형 병합
+    groups = defaultdict(list)
+    for r in raw:
+        groups[_canon(r["query"])].append(r)
+
+    # 3) 카테고리 귀속: 단일 카테고리에서만 나온 쿼리만 귀속. 여러 카테고리 → 애매 → drop.
+    assigned = defaultdict(list)   # cid -> [{query, trigger}]
+    ambiguous = []
+    for canon, entries in groups.items():
+        cats = sorted(set(e["category"] for e in entries))
+        rep = min((e["query"] for e in entries), key=len)  # 가장 짧은(일반) 형태 대표
+        if len(cats) == 1:
+            cid = cats[0]
+            trig = next(e["trigger"] for e in entries)
+            assigned[cid].append({"query": rep, "source_trigger": trig})
+        else:
+            ambiguous.append({"query": rep, "categories": cats})
+
+    # 4) 카테고리별 상한 적용 + 출력 구성
     out = {"_meta": {
         "source": "YouTube publicly observable search suggestions (client=firefox, ds=yt, hl=ko)",
-        "note": "후보 pool. 최종 쿼리 수·선택은 Query Pilot(§0.6) 후 freeze.",
+        "note": "후보 pool. 최종 쿼리 수·선택은 Query Pilot(§0.6) + 사람 최종 검수 후 freeze.",
+        "generation_timestamp": ts, "dedup_rule_version": DEDUP_RULE_VERSION,
         "min_len": MIN_LEN, "max_per_category": MAX_PER_CATEGORY,
-    }, "categories": {}}
+        "assignment_rule": "쿼리는 단일 카테고리 trigger에서만 나온 경우 그 카테고리에 귀속; 복수 카테고리에서 나오면 억지 분류 없이 drop(ambiguous).",
+        "n_ambiguous_dropped": len(ambiguous),
+    }, "categories": {}, "ambiguous_dropped": ambiguous}
 
     total = 0
-    for cid, entry in doc["categories"].items():
-        name = entry["name"]
-        raw = []           # (완성어, 출처 trigger)
-        seen_terms = set()
-        for trig in entry["triggers"]:
-            terms = [trig] + [f"{trig} {s}" for s in sweep]
-            for t in terms:
-                for sug in fetch_suggest(t):
-                    if sug not in seen_terms:
-                        seen_terms.add(sug)
-                        raw.append((sug, trig))
-                time.sleep(0.15)
-        # 정제: 길이 필터 + 유사변형 제거(등장 순서 유지)
-        kept, prov = [], {}
-        for sug, trig in raw:
-            if len(sug.replace(" ", "")) < MIN_LEN:
-                continue
-            if _is_near_dup(sug, kept):
-                continue
-            kept.append(sug)
-            prov[sug] = trig
-            if len(kept) >= MAX_PER_CATEGORY:
-                break
+    for cid in doc["categories"]:
+        items = assigned.get(cid, [])[:MAX_PER_CATEGORY]
         out["categories"][cid] = {
-            "name": name,
-            "candidates": kept,
-            "provenance": prov,   # 쿼리 → 출처 trigger(재현/Appendix)
-            "n_raw": len(raw), "n_kept": len(kept),
+            "name": cat_name[cid],
+            "candidates": [it["query"] for it in items],
+            "provenance": {it["query"]: it["source_trigger"] for it in items},
+            "n_kept": len(items),
         }
-        total += len(kept)
-        print(f"cat {cid:>2} {name:<10} raw {len(raw):>3} → 정제 {len(kept):>2} : {kept[:6]}{'…' if len(kept)>6 else ''}")
+        total += len(items)
+        prev = [it["query"] for it in items][:6]
+        print(f"cat {cid:>2} {cat_name[cid]:<10} 귀속 {len(items):>2} : {prev}{'…' if len(items)>6 else ''}")
 
     OUT_PATH.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"\n총 후보 {total}개 → {OUT_PATH}")
-    print("다음: Query Pilot(§0.6)로 pool 크기 확인 후 카테고리당 최종 개수(≈4) 선택·freeze.")
+    print(f"\n총 후보 {total}개, 애매(복수 카테고리)로 drop {len(ambiguous)}개 → {OUT_PATH}")
+    print("다음: Query Pilot(§0.6) + 사람 최종 검수로 카테고리당 최종 개수(≈4) 선택·freeze.")
 
 
 if __name__ == "__main__":
