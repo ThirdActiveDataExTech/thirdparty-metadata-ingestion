@@ -177,6 +177,19 @@
   - **경계 판정 원칙(자동차 worked example 확정)**: 시장·가격·소유/행정 정보는 topical KEEP
     (자동차 가격, 명의이전); 상품·서비스·거래·금융은 non_content_service EXCLUDE(보험·대출·
     가방·앱); 사운드/ASMR·'강의' 등 소비형식/broad는 REVIEW 유지.
+  - **🔒 사람 검수 discipline(cherry-pick 방지, 2026-08-08)**: KEEP/EXCLUDE/REVIEW 재검수는
+    **"좋다/별로다" 품질 판단 금지**. 오직 **frozen rule 위반 여부**만 보고, 변경 시 **기존
+    reason_code**(NAVIGATIONAL / CATEGORY_MISMATCH / NON_CONTENT_SERVICE / TOO_BROAD /
+    AMBIGUOUS)로 **사유를 기록**한다. 즉 사람은 규칙의 경계를 적용할 뿐 선호로 고르지 않는다.
+    EXCLUDE도 audit(자동 substring 과잉 오탐 복원 — 예: '리스'가 '플레이리스트'를 오매치한
+    4건). navigational은 고유명사 유무가 아니라 **의도**로 판정.
+  - **🔒 최종 sampling 규칙(Pilot 전 freeze, 2026-08-08)**: clean eligible pool에서 **seed-
+    독립 deterministic 표본추출**(고정 seed)로 **카테고리별 동일 N** 선정. **Pilot 결과(성능/
+    relevance)를 보고 쿼리를 고르거나 빼지 않는다**(HARKing). Query Pilot은 **pool feasibility·
+    라벨링 부담·broad 처리** 판단에만 쓴다. 최종 N은 Pilot의 pool 크기로 역산해 확정.
+  - **분류기 v2(루프 검수 후 적용)**: SERVICE_TERMS substring 과잉 완화('리스' 등 짧은 term
+    단어경계화/제거, 구매·가입·할인류는 auto-EXCLUDE 대신 REVIEW로 강등). 검수 중인 현재
+    query_curation.json은 그대로 두고 검수 반영 시 함께 재생성.
 - **개수 = 56부터 시작, Pilot으로 확정 (§0.6, 2026-08-07)**: **14×4=56을 1차 목표**로,
   Pilot의 실측 pool 크기·라벨링 부담을 보고 필요 시 70~84로 조정. **84로 무조건 늘리지
   않는다** — 코퍼스(1,397/최종 840)는 이미 충분하고 병목은 평가설계·qrels 품질이다. "라벨
