@@ -33,7 +33,9 @@ P05_thumbnail_fusion/
 
 - Python 3.9 (repo `.venv`)
 - 주요 의존: `sentence-transformers`(clip-ViT-B-32 / clip-ViT-B-32-multilingual-v1 포함),
-  `torch`, `Pillow`, `scikit-learn`, `scipy`, `numpy` — 모두 repo에 이미 설치됨
+  `torch`, `Pillow`, `requests`(썸네일·Suggest), `scikit-learn`(Cohen's κ), `scipy`
+  (Spearman/Wilcoxon), `statsmodels`+`pandas`(07 클러스터-robust 회귀), `numpy` — 모두
+  repo `.venv`에 설치됨. (04 쿼리생성은 YouTube Data API 쿼터를 쓰지 않음.)
 - 실행: 저장소 루트에서 `PYTHONPATH=. .venv/bin/python docs/research/P05_thumbnail_fusion/code/0X_*.py`
 
 ## 재현성 원칙
