@@ -65,16 +65,26 @@
 - **기간**: `publishedAfter` 최근 1~1.5년(예: 2025-01-01~) — 오래된 영상의 알고리즘·
   썸네일 스타일 차이 배제, 삭제·비공개 비율↓.
 - **언어·지역**: `relevanceLanguage='ko'`, `regionCode='KR'`.
-- **Shorts/길이 — Long-form only**: `search.list(videoDuration='long')`로 **장편만 수집**
-  한다(§변경이력 2026-08-05b — "포함+duration 분석축"에서 재전환). 근거: Shorts는 CTR
-  특성·썸네일 영향(자동생성 프레임 다수)·소비 방식·추천 알고리즘이 장편과 달라 gap 검증에
-  교란요인. `duration`은 계속 저장하되(기록용) 표집은 장편으로 통일해 깔끔한 비교를 확보.
-- **목표 규모·표집 방식 — best-effort 층화 표집**: 카테고리당 목표 N(~100편)까지 수집
-  하되, **희소 카테고리는 억지로 100편을 맞추지 않는다**("balanced"가 아니라
-  **"best-effort category-stratified sampling"**으로 기술 — YouTube categoryId 관행상
-  일부 카테고리는 구조적으로 희소함을 인정). **카테고리별 실제 표본 수는 Results에 투명
-  보고**한다. 실제 YouTube 분포를 재현하는 확률표본이 아니라 **다양한 gap 분포 확보용
-  카테고리 층화표본**이다.
+- **Shorts 제외(실제 길이 기준, §변경이력 2026-08-07)**: search에 duration 제한을 두지 않고,
+  videos.list의 `contentDetails.duration`으로 **60초 초과만** 남긴다(라이브/예정=길이 0도 제외).
+  ⚠️ 이전 `videoDuration='long'`은 YouTube API에서 **"20분 초과"**를 의미해 4~20분 일반 영상까지
+  배제됨을 dev 코퍼스에서 실측 → 제거. 근거: Shorts는 CTR·썸네일(자동생성 프레임)·소비·추천이
+  달라 gap 교란이나, 4~20분 일반 영상은 배제할 이유 없음. (search가 Shorts를 다수 반환하므로
+  후처리로 거른다 — 페이지당 유효 수율은 낮아지나 PAGES=2로 흡수.)
+- **목표 규모·표집 방식 — best-effort 층화 표집 (2026-08-07 Freeze)**: 카테고리당 목표
+  **N=60**까지 수집(14×60=**840편 사전 Freeze**). **희소 카테고리는 억지로 60편을 맞추지
+  않는다**("balanced"가 아니라 **"best-effort category-stratified sampling"**). N=100→60
+  으로 낮춘 근거는 quota가 아니라(우리 코드에선 목표가 search quota를 줄이지 않음) **균형
+  개선**(100편에선 과기 97 미달 → 60이면 더 많은 카테고리가 깔끔히 충원) + 840은 retrieval
+  pool로 충분. **수집 결과를 보고 N을 늘리지 않는다**(sample-size HARKing 금지). 카테고리별
+  실제 표본 수는 Results에 투명 보고. 확률표본이 아니라 **gap 분포 확보용 층화표본**.
+- **🔬 dev / evaluation 코퍼스 분리 (2026-08-07)**: duration 오류로 만든 기존 1,397편
+  (>20분 편중)은 **버리지 않고 development/validation 코퍼스**로 보존한다 —
+  Seed Pilot·categoryId anchor·category dispersion·gap 인코더 이방성·centered gap을 이미
+  실증한 방법론 검증 데이터다(`*_dev.*`로 보존). **최종 evaluation 코퍼스는 duration>60
+  으로 새로 수집한 840편**이며, embedding·gap·retrieval·H2는 전부 이 최종 코퍼스로 한다.
+  이 dev/eval 분리는 "방법론을 별도 데이터로 사전 검증한 뒤 최종 코퍼스를 구축"한 2단계
+  설계로 논문에 기술한다.
 - **대표성 주장 범위(사전 고정)**: 코퍼스를 "YouTube 전체의 대표"로 주장하지 **않는다**.
   주장 범위는 **"2025-01-01 이후 게시된 한국어 장편 YouTube 영상의 카테고리 층화표본"**으로
   좁게 규정하고, 이를 §한계에 명시한다(과대 대표성 주장 회피 = 방어력↑).
@@ -494,3 +504,15 @@ Politics), 26(Howto & Style), 27(Education), 28(Science & Technology). 나머지
   4. **µ 안정성 확인**: µ(300) vs µ(600) gap Spearman ρ=0.997 → 600→1400 확장에 안정.
   판단은 Δrank(H2 DV) 없이 construct validity로만 → 무결성 유지. (본 수집은 6/14 완료 후
   양키 쿼터 소진, 나머지 8개 익일 재개.)
+- **🔒 2026-08-07 (duration 수정 + 코퍼스 재수집 — retrieval/H2 전, dev/eval 분리)**:
+  dev 코퍼스(1,397편) 검증 중 `videoDuration='long'`이 "20분 초과"라 4~20분 일반 영상까지
+  배제됨을 실측(min 1200s, 중앙값 32분). 의도는 "Shorts 제외"였으므로 수정:
+  1. `videoDuration` 제거 + **실제 duration>60초 후처리 필터**(라이브/예정=0도 제외).
+     스모크 실측: 무제한 검색 시 Shorts가 다수 유입되나 필터가 정확히 제거(≤60초 0건 확인).
+  2. **목표 100→60/카테고리(840 Freeze)** — 근거는 quota가 아니라 균형 개선(과기류 미달↓)
+     + 840은 pool로 충분. 수집 후 N 상향 금지(HARKing).
+  3. **PAGES_PER_ORDER=2 유지**(안전, ~2일). 목표는 search quota와 무관.
+  4. **dev/eval 코퍼스 분리**: 기존 1,397편은 방법론 검증 데이터(`*_dev.*`)로 보존, 최종
+     evaluation 코퍼스는 새 840편. embedding·gap·retrieval·H2는 최종 코퍼스로 재수행
+     (gap 방법론=centered는 freeze 유지, µ만 새 코퍼스로 재계산).
+  기타 검증(채널 cap≤5·날짜≥2025-01-01·videoId 중복0)은 dev에서 전부 통과 확인.

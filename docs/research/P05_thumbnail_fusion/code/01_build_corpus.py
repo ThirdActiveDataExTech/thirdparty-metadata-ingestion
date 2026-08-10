@@ -12,9 +12,10 @@ FREEZE된 수집 규칙을 그대로 구현한다:
   - 정렬 3혼합: relevance + viewCount + date를 섞어 표집 편향 완화(단일 정렬 편향 방지 +
     viewCount 붕괴 카테고리를 relevance분이 보충).
   - 채널당 최대 5개: 채널 편향 차단.
-  - Long-form only: search에 videoDuration='long'을 적용해 장편만 수집(Shorts 제외).
-    duration은 기록용으로 계속 저장한다.
-  - 목표: 카테고리당 100편(미달 시 확보량 그대로) 균형(층화)표집, 총 ~1,400편.
+  - Shorts 제외(실제 길이 기준): search는 duration 제한 없이 하고, videos.list의
+    contentDetails.duration으로 **60초 초과만** 남긴다(라이브/예정=길이 0도 제외).
+    ※ videoDuration='long'은 "20분 초과"라 일반 영상까지 배제됨을 확인 → 제거(§변경이력 2026-08-07).
+  - 목표: 카테고리당 60편(미달 시 확보량 그대로) 균형(층화)표집, **총 840편(사전 Freeze)**.
 
   - round-robin 수집: seed를 교대로 채택해 잔존율 최고 seed(예: 강아지)가 카테고리를
     독식하지 못하게 한다("동물=강아지" 편중을 수집 단계에서 차단).
@@ -57,9 +58,9 @@ from src.common import config
 REGION = "KR"
 RELEVANCE_LANG = "ko"
 PUBLISHED_AFTER = "2025-01-01T00:00:00Z"   # 기간 하한 (재현성)
-VIDEO_DURATION = "long"                     # Long-form only (Shorts 제외)
+MIN_DURATION_SEC = 60                       # Shorts 제외: 실제 길이 60초 초과만(후처리)
 ORDERS = ["relevance", "viewCount", "date"]  # 3정렬 혼합
-TARGET_PER_CATEGORY = 100
+TARGET_PER_CATEGORY = 60                     # 카테고리당 목표(사전 Freeze, 14×60=840)
 MAX_PER_CHANNEL = 5                          # 채널 편향 차단
 PAGES_PER_ORDER = 2                          # 정렬당 검색 페이지 수 (50/페이지) — 쿼터 관리
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -100,8 +101,7 @@ def search_video_ids(svc, query: str) -> list:
                 svc.search().list(
                     part="id", type="video", q=query, order=order,
                     relevanceLanguage=RELEVANCE_LANG, regionCode=REGION,
-                    publishedAfter=PUBLISHED_AFTER, videoDuration=VIDEO_DURATION,
-                    maxResults=50, pageToken=page_token,
+                    publishedAfter=PUBLISHED_AFTER, maxResults=50, pageToken=page_token,
                 )
             )
             for it in resp.get("items", []):
@@ -141,9 +141,12 @@ def fetch_details(svc, video_ids: list) -> dict:
             status = it.get("status", {})
             topics = it.get("topicDetails", {})
             duration = content.get("duration", "PT0S")
+            dur_sec = youtube_collector.parse_duration_seconds(duration)
+            if dur_sec <= MIN_DURATION_SEC:
+                continue  # Shorts(≤60초) 및 라이브/예정(길이 0) 제외 — 실제 길이 기준 후처리
             thumb = _pick_thumbnail(snip.get("thumbnails", {}))
             if not thumb:
-                continue  # 썸네일 없음 제외 (Shorts는 search videoDuration='long'으로 이미 배제)
+                continue  # 썸네일 없음 제외
             out[it["id"]] = {
                 "video_id": it["id"],
                 "title": snip.get("title", ""),
@@ -154,7 +157,7 @@ def fetch_details(svc, video_ids: list) -> dict:
                 "channel_id": snip.get("channelId"),
                 "channel_title": snip.get("channelTitle"),
                 "duration": duration,
-                "duration_seconds": youtube_collector.parse_duration_seconds(duration),
+                "duration_seconds": dur_sec,
                 "thumbnail_url": thumb,
                 "view_count": int(stats["viewCount"]) if "viewCount" in stats else None,
                 "like_count": int(stats["likeCount"]) if "likeCount" in stats else None,
