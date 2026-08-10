@@ -170,6 +170,13 @@
     fusion의 semantic 효과 측정을 흐림 → 제외가 H2 construct와 정합(단순 '정리'가 아님).
   - 순서: 규칙 freeze → 560 전수 적용(사유 기록) → 사람이 REVIEW·경계 재검토 → Query Pilot →
     최종 수 freeze. **사람이 '좋아 보이는 것'을 고르는 게 아니라 명시 규칙의 경계만 처리.**
+  - **broad 처리 규칙(Pilot 전 사전등록)**: FLAG:too_broad 쿼리는 KEEP:topical 후보로 카테고리
+    목표 N을 못 채울 때만 fallback으로 쓰되, **Query Pilot에서 그 broad 쿼리의 pooled 후보 수가
+    per-query 라벨링 상한(=Pilot 중앙값 pool의 1.5배로 사전 확정)을 넘으면 제외**한다. 성능이
+    아니라 pool 크기로만 판단(HARKing 방지).
+  - **경계 판정 원칙(자동차 worked example 확정)**: 시장·가격·소유/행정 정보는 topical KEEP
+    (자동차 가격, 명의이전); 상품·서비스·거래·금융은 non_content_service EXCLUDE(보험·대출·
+    가방·앱); 사운드/ASMR·'강의' 등 소비형식/broad는 REVIEW 유지.
 - **개수 = 56부터 시작, Pilot으로 확정 (§0.6, 2026-08-07)**: **14×4=56을 1차 목표**로,
   Pilot의 실측 pool 크기·라벨링 부담을 보고 필요 시 70~84로 조정. **84로 무조건 늘리지
   않는다** — 코퍼스(1,397/최종 840)는 이미 충분하고 병목은 평가설계·qrels 품질이다. "라벨
