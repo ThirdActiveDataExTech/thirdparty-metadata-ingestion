@@ -117,23 +117,33 @@
 - **성격**: 코퍼스 Sampling 키워드와 **완전히 다른 개념** — 실제 검색 시스템을 평가하는
   test query. Novelty는 gap 분석에서 나오므로 **쿼리는 화려할 필요 없이 평범·균형·
   재현 가능**하면 된다(쿼리는 평가 대상이지 실험 대상이 아님).
-- **출처(주관 배제)**: 사람이 임의 창작하지 않고 **외부 검색 어휘**에서 생성 —
-  YouTube 자동완성(Suggest), Google Trends, Naver DataLab. "실제 사용되는 검색어군"이라
-  객관적. 🚫 **KeyBERT 등으로 영상 제목·설명에서 파생 금지** — 쿼리가 텍스트와 정합해
-  텍스트 채널이 구조적으로 유리해지고 gap 가설 검증이 편향됨(circularity, §변경이력).
+- **출처 확정(2026-08-07) — YouTube Suggest + seed-독립 trigger + freeze**: 사람이 임의
+  창작하지 않고 **YouTube의 공개적으로 관찰 가능한 검색 제안(search-suggestion) 메커니즘**
+  에서 생성한다(⚠️ "전역 검색 로그"라 단정 금지 — 내부 메커니즘 미공개. "실제 제공되는
+  검색 제안어를 사용"이 정확). 절차: **카테고리 + seed와 독립적인 고정 trigger**(예:
+  "음악 "+초성 ㄱ/ㄴ/ㄷ… 스윕; frozen seed 구 전체는 trigger로 쓰지 않음 → 코퍼스 sampling과
+  평가의 coupling 최소화) → Suggest 수집 → 중복/유사어 제거 → 14 카테고리 층화 배분 →
+  Query Pilot → **최종 쿼리셋 freeze·커밋**. **trigger 목록은 쿼리를 보기 전에 고정하고
+  Appendix에 전부 공개**(쿼리 본 뒤 trigger 추가 금지). 🚫 **KeyBERT 등으로 우리 코퍼스
+  영상 제목·설명에서 파생 금지**(circularity — 쿼리가 코퍼스 텍스트와 정합해 텍스트 채널이
+  구조적으로 유리). Naver DataLab=도메인 불일치, Google Trends=재현 불가로 미채택.
 - **분포(대표성)**: 14개 카테고리에 **균등 배분**(카테고리당 동일 개수). 특정 도메인
   (예: 기술) 쏠림 방지 → "General Korean YouTube Retrieval" 주장 유지.
 - **품질 규칙**: 쿼리 간 **주제 중복/유사 변형 금지**(예: "HBM"/"HBM 메모리"/"HBM4"를
   각각 세지 않음). 개수보다 **다양성**이 external validity에 중요.
-- **개수 = Pilot으로 결정 (§0.6)**: 56(14×4) 또는 84(14×6)를 지금 강제하지 않고,
-  Pilot의 실측 pool 크기로 라벨링 총량을 역산해 확정. "쿼리 수는 Pilot이 정한다"는
-  **절차 자체를 freeze**한다.
+- **개수 = 56부터 시작, Pilot으로 확정 (§0.6, 2026-08-07)**: **14×4=56을 1차 목표**로,
+  Pilot의 실측 pool 크기·라벨링 부담을 보고 필요 시 70~84로 조정. **84로 무조건 늘리지
+  않는다** — 코퍼스(1,397/최종 840)는 이미 충분하고 병목은 평가설계·qrels 품질이다. "라벨
+  품질 떨어질 규모로 키우기보다 56을 제대로." "쿼리 수는 Pilot이 정한다"는 절차를 freeze.
 - **🔒 Freeze 순서(필수)**: **쿼리 생성 → Freeze → Retrieval → Evaluation.** 평가
   쿼리는 **retrieval 실험을 돌리기 전에 확정**한다. 실험 결과(성능)를 보고 쿼리를
   빼거나 바꾸지 않는다("Evaluation queries were finalized before retrieval experiments").
 
 ### 0.3 Pooling + qrels 생성 절차
 
+- **🔒 Pooling 절차 사전 고정(2026-08-07)**: **Top-K와 pooling 대상 시스템을 결과 보기 전에
+  고정**한다 — 나중에 "Fusion Top20 추가", "Visual Top15까지" 같은 사후 변경 금지. Fusion이
+  찾은 영상도 pooling으로 qrels에 포함되는 것은 **IR 표준(정상)** 이며 논문에 명시한다.
 - **Pooling(편향 차단)**: 한 시스템의 Top-K만 라벨링하면 편향(Text만→Fusion이 올린
   영상을 모름 / Fusion만→Fusion 유리 후보만). 표준대로 **Text-only ∪ Visual-only ∪
   Late Fusion 각 Top10을 합집합·중복 제거**해 후보 풀 생성(평균 ~20~25개/쿼리 예상,
@@ -217,12 +227,21 @@
 - **지표**: MRR@10, NDCG@10(graded relevance), Recall@10, 그리고 gap-Δrank용 Spearman ρ.
 - **통계**: H1=Wilcoxon signed-rank(paired), H2=Spearman 순위상관. **부트스트랩 95% CI**
   (1,000회) + **subsampling 수렴 곡선** + **MDES**(§6). gap 수준별 **Cohen's d**.
-- **⚠️ H2 카테고리 교란 처리 (결정 필요 — Δrank 보기 전 확정)**: 카테고리마다 gap 분포가
-  다르므로(동물 0.79 ~ 엔터 0.91), category가 gap·Δrank 양쪽에 영향을 줘 **spurious
-  correlation** 가능. 전체 Spearman(gap, Δrank) 하나만 쓰면 리뷰어가 지적한다. 대응 후보:
-  (A) **카테고리 내 Spearman** 후 방향 일관성 확인, (B) category **residualization** 후
-  상관, (C) **회귀** `Δrank ~ centered_gap + category`. **어느 것을 primary로 할지 지금
-  결정해 freeze**한다(결과 보고 유리한 모형 고르면 HARKing). *현재 미확정 — 사용자 결정 대기.*
+- **🔒 Δrank 정의 고정(2026-08-07, 결과 보기 전)**: `Δrank = rank_text − rank_fusion`
+  → **양수 = fusion이 순위 개선**, 음수 = 악화. H2 = "**centered gap이 클수록 Δrank가
+  증가**(Spearman ρ>0)". 이 정의를 04/05 코드·문서에 박는다.
+- **🔒 H2 분석 구조 확정(2026-08-07, 카테고리+반복측정 교란 선제 차단)**: gap은 **video-level**
+  (쿼리 무관, 영상당 1개)이므로 H2 효과는 본질적으로 between-video다. 또 같은 영상이 여러
+  쿼리에 등장(반복측정)해 순진한 all-pairs Spearman은 유의성을 부풀린다. 따라서:
+  - **Primary**: 영상당 **median Δrank**(극단값 방어) 집계 → **Spearman(centered gap,
+    median Δrank)**. gap이 video-level이라 이 단위가 자연스럽고 사전등록 Spearman과 연속.
+  - **Secondary(반복측정 보존)**: query-video 원자료로 `Δrank ~ gap + category + query`,
+    **video 클러스터-robust SE**(또는 query 랜덤효과 mixed model). 정보 손실 없이 강건성.
+  - **Secondary(교란 통제)**: **카테고리 내 Spearman**(stratified).
+  - **Descriptive**: 14개 중 양(+) 상관 카테고리 비율(검정으로 승격 금지 — 카테고리별 N
+    작으면 불안정).
+  집계 방식(median)·모델·Δrank 방향 전부 **분포 보기 전 확정**(HARKing 방지). raw·centered
+  gap 양쪽으로 primary를 돌려 §0.4 ablation과 결합.
 
 ### 0.6 Query Pilot Phase (쿼리 수·라벨링 규모를 데이터로 결정)
 
@@ -516,3 +535,14 @@ Politics), 26(Howto & Style), 27(Education), 28(Science & Technology). 나머지
      evaluation 코퍼스는 새 840편. embedding·gap·retrieval·H2는 최종 코퍼스로 재수행
      (gap 방법론=centered는 freeze 유지, µ만 새 코퍼스로 재계산).
   기타 검증(채널 cap≤5·날짜≥2025-01-01·videoId 중복0)은 dev에서 전부 통과 확인.
+- **🔒 2026-08-07b (평가/분석 프로토콜 확정 — Δrank 보기 전, AI 리뷰 3차 반영)**:
+  1. **쿼리 소스 = YouTube Suggest + seed-독립 trigger + freeze**(§0.2). "전역 로그" 단정
+     철회 → "공개 관찰 가능한 검색 제안". trigger 목록 사전 고정·Appendix 공개.
+  2. **쿼리 수 56부터**(§0.2), 84 무조건 확대 금지. Pilot이 확정.
+  3. **Pooling 절차 사전 고정**(§0.3): Top-K·대상 시스템 결과 전 고정, 사후 변경 금지.
+     Fusion 발견 영상의 qrels 포함은 IR 표준으로 명시.
+  4. **Δrank = rank_text − rank_fusion(+ = 개선) 고정**(§0.5).
+  5. **H2 구조 확정**(§0.5): primary=영상당 median Δrank Spearman, secondary=query-video
+     클러스터-robust 회귀 + 카테고리 내 Spearman, descriptive=양상관 카테고리 비율.
+     gap이 video-level이라 primary를 video-level로 잡음(반복측정·카테고리 교란 선제 차단).
+  6. **라벨링 = 2인 독립 + κ + skim(제목+썸네일+짧은 재생)**(§0.3·§5).
