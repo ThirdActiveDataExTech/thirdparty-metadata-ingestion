@@ -199,6 +199,24 @@
     ④ product(제품 탐색)와 how-to(방법/리뷰 콘텐츠) 구분 — how-to는 KEEP.
     ⑤ navigational은 고유명사 유무가 아니라 **intent**로(손흥민 경기분석=KEEP).
     ⑥ **KEEP을 '좋은 query' 기준으로 재선별 금지** — rule 위반만 본다.
+  - **🔒 04e 최종 adjudication 규칙(2026-08-11, REVIEW 100 종결 · retrieval 前 freeze)**:
+    REVIEW 100건**만** 대상(KEEP 341·EXCLUDE 106·FLAG 13 불변). intent를 **A(navigational)/
+    B(topical-content)/C(ambiguous)** 로 기록하되 **최종 decision은 반드시 KEEP/EXCLUDE 이진**
+    (C는 판정 과정의 중간 상태일 뿐 최종 pool에 남기지 않는다). 기준:
+    - **KEEP**: query 자체에서 해당 카테고리의 YouTube **content 탐색의 합리적 dominant
+      intent**를 식별할 수 있는 경우("100% 확실"이 아니라 "합리적 dominant intent"—
+      음악감상·게임스토리·동물원은 KEEP).
+    - **EXCLUDE**: navigational(특정 채널·프로그램·매체·인물·사업체 entity 지칭) / category
+      mismatch / non-content·service / **또는 content-search intent를 충분히 식별할 수 없는
+      경우**(`INSUFFICIENT_CONTENT_INTENT` — 예: 자동차 낙엽, 음악 나무).
+    - **판정 사유는 "이상해 보여서"가 아니라 "content 탐색 intent 식별 불가"** 로 기록
+      (reviewer 방어: "연구자 취향 제거"가 아님).
+    - **웹 확인은 "이 문자열이 특정 entity를 지칭하는가"에만** 사용(품질·좋은쿼리 판단 금지).
+      웹 확인 후에도 근거 불충분한 C는 EXCLUDE(`INSUFFICIENT_CONTENT_INTENT`).
+    - 산출: `query_curation_adjudicated.json`(auto/reviewed/final/adjudicated 4+층 보존 +
+      intent_class + evidence). exclusion funnel에 `INSUFFICIENT_CONTENT_INTENT` 추가.
+    - **노하우* 대량 채널명 생성은 query-generation의 구조적 현상으로 audit 기록**(카테고리
+      제거·sampling 페널티 금지). 최종 pool 확정 후 14 카테고리별 eligible 크기·제외율 비교.
 - **개수 = 56부터 시작, Pilot으로 확정 (§0.6, 2026-08-07)**: **14×4=56을 1차 목표**로,
   Pilot의 실측 pool 크기·라벨링 부담을 보고 필요 시 70~84로 조정. **84로 무조건 늘리지
   않는다** — 코퍼스(1,397/최종 840)는 이미 충분하고 병목은 평가설계·qrels 품질이다. "라벨
@@ -651,3 +669,18 @@ Politics), 26(Howto & Style), 27(Education), 28(Science & Technology). 나머지
   — 구현 전 모델식 1개로 freeze. (3) 카테고리 stratified는 "필요시"가 아니라 **항상 secondary**.
   (4) 불일치 0↔2(심각) 비율 별도 보고(§5.3). 쿼리 trigger의 seed-coupling은 "제거"가 아니라
   "직접 coupling 방지"로 표현(§0.2).
+- **🔒 2026-08-08 (쿼리 curation 다축 규칙 — retrieval 前)**: raw 560 → 자동분류(04b)
+  → reviewed(04c: navigational 공백형·product) → semantic override(04d: content-search
+  기준, 71건). auto/reviewed/final 3층 audit 보존. ambiguous는 강제 EXCLUDE 대신 REVIEW.
+- **🔒 2026-08-11 (REVIEW 6원칙 §0.2)**: REVIEW 100 판정을 6원칙으로만(표기차 무시,
+  애매→AMBIGUOUS_INTENT, mismatch/target 구분, product/how-to 구분, intent 기반 nav,
+  KEEP 재선별 금지). curation drift 방지.
+- **🔒 2026-08-11b (04e 최종 adjudication 규칙 §0.2 — REVIEW 100 종결, retrieval 前)**:
+  REVIEW 100만 대상(KEEP/EXCLUDE/FLAG 불변). intent A/B/C 기록하되 **최종은 KEEP/EXCLUDE
+  이진**. KEEP=합리적 dominant content intent 식별 가능(과잉 엄격 금지: 음악감상·동물원 KEEP);
+  EXCLUDE=nav/mismatch/service **또는 content intent 식별 불가**(`INSUFFICIENT_CONTENT_INTENT`).
+  웹 확인은 entity 지칭 여부에만 국한. 근거 불충분 C는 EXCLUDE. `query_curation_adjudicated.json`
+  산출 + funnel에 사유 추가. 노하우* 채널 대량생성은 audit 기록(카테고리 페널티 금지).
+  선택지 비교(positive content-intent vs conservative-KEEP vs 잔여 REVIEW)에서 **positive
+  content-intent + abstain(근거없음→EXCLUDE)** 채택 — construct validity(평가 가능한 명확한
+  information need) 우선, pool 최대화보다 qrels 품질 우선.
