@@ -44,37 +44,39 @@ OVERRIDES = {
     "스탠드업 코미디 가프리": ("REVIEW", "MAYBE_NAVIGATIONAL_PERSON"),
     "스탠딩 코미디 가브리엘": ("REVIEW", "MAYBE_NAVIGATIONAL_PERSON"),
     "취미는 과학 나폴리": ("REVIEW", "MAYBE_NAVIGATIONAL"), "과학 남궁원": ("REVIEW", "MAYBE_NAVIGATIONAL"),
-    # ── 놓친 product → EXCLUDE:service ──
-    "자동차 가습기": ("EXCLUDE", "NON_CONTENT_SERVICE"),
-    "스포츠 나시 추천": ("EXCLUDE", "NON_CONTENT_SERVICE"),
-    # ── semantic mismatch / 애매 → REVIEW ──
-    "자동차 강아지": ("REVIEW", "SEMANTIC_MISMATCH"), "자동차 가족": ("REVIEW", "SEMANTIC_MISMATCH"),
-    "자동차 날개": ("REVIEW", "SEMANTIC_MISMATCH"), "자동차 낙엽": ("REVIEW", "SEMANTIC_MISMATCH"),
-    "자동차 납치": ("REVIEW", "SEMANTIC_MISMATCH"), "자동차 강의": ("REVIEW", "TOO_BROAD_OR_SEED"),
+    # ── 놓친 product → EXCLUDE:NON_CONTENT_PRODUCT (service와 분리) ──
+    "자동차 가습기": ("EXCLUDE", "NON_CONTENT_PRODUCT"),
+    "스포츠 나시 추천": ("EXCLUDE", "NON_CONTENT_PRODUCT"),
+    # ── 명백한 cross-domain → EXCLUDE:CATEGORY_MISMATCH (다른 콘텐츠 도메인 지시) ──
+    "자동차 만화": ("EXCLUDE", "CATEGORY_MISMATCH"),
+    "동물 나오는 영화": ("EXCLUDE", "CATEGORY_MISMATCH"), "동물 나오는 애니": ("EXCLUDE", "CATEGORY_MISMATCH"),
+    "동물 나오는 웹툰": ("EXCLUDE", "CATEGORY_MISMATCH"), "동물 나루토 춤": ("EXCLUDE", "CATEGORY_MISMATCH"),
+    "공부 날씨의 아이": ("EXCLUDE", "CATEGORY_MISMATCH"),
+    # ── product vs how-to 애매(제품인지 방법인지) → REVIEW ──
+    "자동차 나노 코팅제": ("REVIEW", "PRODUCT_VS_HOWTO"), "자동차 가죽시트 클리너": ("REVIEW", "PRODUCT_VS_HOWTO"),
+    "스포츠 나시": ("REVIEW", "PRODUCT_VS_TOPIC"),
+    # ── 의도 애매(카테고리 콘텐츠일 수도) → REVIEW:AMBIGUOUS_INTENT (mismatch 단정 아님) ──
+    "자동차 강아지": ("REVIEW", "AMBIGUOUS_INTENT"), "자동차 가족": ("REVIEW", "AMBIGUOUS_INTENT"),
+    "자동차 날개": ("REVIEW", "AMBIGUOUS_INTENT"), "자동차 낙엽": ("REVIEW", "AMBIGUOUS_INTENT"),
+    "자동차 납치": ("REVIEW", "AMBIGUOUS_INTENT"), "자동차 강의": ("REVIEW", "TOO_BROAD_OR_SEED"),
     "자동차 달인": ("REVIEW", "MAYBE_NAVIGATIONAL"), "자동차 달리는 소리": ("REVIEW", "SOUND_ASMR"),
-    "자동차 나노 코팅제": ("REVIEW", "PRODUCT_OR_HOWTO"), "자동차 가죽시트 클리너": ("REVIEW", "PRODUCT_OR_HOWTO"),
-    "자동차 만화": ("REVIEW", "SEMANTIC_MISMATCH_KIDS"),
-    "게임 운동": ("REVIEW", "SEMANTIC_MISMATCH"), "게임 남자친구": ("REVIEW", "SEMANTIC_MISMATCH"),
-    "게임 남친": ("REVIEW", "SEMANTIC_MISMATCH"), "게임 남편": ("REVIEW", "SEMANTIC_MISMATCH"),
-    "게임 남모": ("REVIEW", "SEMANTIC_MISMATCH"), "게임 납치": ("REVIEW", "SEMANTIC_MISMATCH"),
-    "뉴스 강아지": ("REVIEW", "SEMANTIC_MISMATCH"), "뉴스 감기": ("REVIEW", "SEMANTIC_MISMATCH"),
-    "뉴스 닥스훈트": ("REVIEW", "SEMANTIC_MISMATCH"), "뉴스 강아지 산책": ("REVIEW", "SEMANTIC_MISMATCH"),
-    "뉴스 가족": ("REVIEW", "SEMANTIC_MISMATCH"),
-    "여행 다이소": ("REVIEW", "SEMANTIC_MISMATCH_SHOP"), "여행 다이소 꿀템": ("REVIEW", "SEMANTIC_MISMATCH_SHOP"),
-    "여행 다이소 필수템": ("REVIEW", "SEMANTIC_MISMATCH_SHOP"), "여행 다꾸": ("REVIEW", "SEMANTIC_MISMATCH"),
-    "여행 다이어리 꾸미기": ("REVIEW", "SEMANTIC_MISMATCH"), "여행 남자키": ("REVIEW", "SEMANTIC_MISMATCH"),
-    "여행 남자 코디": ("REVIEW", "SEMANTIC_MISMATCH"), "여행 남사친": ("REVIEW", "SEMANTIC_MISMATCH"),
-    "여행 다리미": ("REVIEW", "SEMANTIC_MISMATCH"), "여행 다이어트": ("REVIEW", "SEMANTIC_MISMATCH"),
-    "공부 다이소 꿀템": ("REVIEW", "SEMANTIC_MISMATCH_SHOP"), "공부 남돌": ("REVIEW", "SEMANTIC_MISMATCH"),
-    "공부 날씨의 아이": ("REVIEW", "SEMANTIC_MISMATCH_MOVIE"), "공부 남과 비교": ("REVIEW", "SEMANTIC_MISMATCH"),
-    "공부 담배": ("REVIEW", "SEMANTIC_MISMATCH"),
-    "음악 나오는 사탕": ("REVIEW", "SEMANTIC_MISMATCH"), "음악 나오는 캔디": ("REVIEW", "SEMANTIC_MISMATCH"),
-    "음악 나오는 도로": ("REVIEW", "SEMANTIC_MISMATCH"), "음악 다이어트": ("REVIEW", "SEMANTIC_MISMATCH"),
-    "음악 나이": ("REVIEW", "SEMANTIC_MISMATCH"), "음악 나무": ("REVIEW", "SEMANTIC_MISMATCH"),
-    "동물 나오는 영화": ("REVIEW", "SEMANTIC_MISMATCH"), "동물 나오는 애니": ("REVIEW", "SEMANTIC_MISMATCH"),
-    "동물 나오는 웹툰": ("REVIEW", "SEMANTIC_MISMATCH"), "동물 나루토 춤": ("REVIEW", "SEMANTIC_MISMATCH"),
-    "스포츠 다운펌": ("REVIEW", "SEMANTIC_MISMATCH"), "스포츠 나시": ("REVIEW", "PRODUCT_OR_TOPIC"),
-    "스포츠 나우": ("REVIEW", "SEMANTIC_MISMATCH"),
+    "게임 운동": ("REVIEW", "AMBIGUOUS_INTENT"), "게임 남자친구": ("REVIEW", "AMBIGUOUS_INTENT"),
+    "게임 남친": ("REVIEW", "AMBIGUOUS_INTENT"), "게임 남편": ("REVIEW", "AMBIGUOUS_INTENT"),
+    "게임 남모": ("REVIEW", "AMBIGUOUS_INTENT"), "게임 납치": ("REVIEW", "AMBIGUOUS_INTENT"),
+    "뉴스 강아지": ("REVIEW", "AMBIGUOUS_INTENT"), "뉴스 감기": ("REVIEW", "AMBIGUOUS_INTENT"),
+    "뉴스 닥스훈트": ("REVIEW", "AMBIGUOUS_INTENT"), "뉴스 강아지 산책": ("REVIEW", "AMBIGUOUS_INTENT"),
+    "뉴스 가족": ("REVIEW", "AMBIGUOUS_INTENT"),
+    "여행 다이소": ("REVIEW", "AMBIGUOUS_SHOP"), "여행 다이소 꿀템": ("REVIEW", "AMBIGUOUS_SHOP"),
+    "여행 다이소 필수템": ("REVIEW", "AMBIGUOUS_SHOP"), "여행 다꾸": ("REVIEW", "AMBIGUOUS_INTENT"),
+    "여행 다이어리 꾸미기": ("REVIEW", "AMBIGUOUS_INTENT"), "여행 남자키": ("REVIEW", "AMBIGUOUS_INTENT"),
+    "여행 남자 코디": ("REVIEW", "AMBIGUOUS_INTENT"), "여행 남사친": ("REVIEW", "AMBIGUOUS_INTENT"),
+    "여행 다리미": ("REVIEW", "AMBIGUOUS_INTENT"), "여행 다이어트": ("REVIEW", "AMBIGUOUS_INTENT"),
+    "공부 다이소 꿀템": ("REVIEW", "AMBIGUOUS_SHOP"), "공부 남돌": ("REVIEW", "AMBIGUOUS_INTENT"),
+    "공부 남과 비교": ("REVIEW", "AMBIGUOUS_INTENT"), "공부 담배": ("REVIEW", "AMBIGUOUS_INTENT"),
+    "음악 나오는 사탕": ("REVIEW", "AMBIGUOUS_INTENT"), "음악 나오는 캔디": ("REVIEW", "AMBIGUOUS_INTENT"),
+    "음악 나오는 도로": ("REVIEW", "AMBIGUOUS_INTENT"), "음악 다이어트": ("REVIEW", "AMBIGUOUS_INTENT"),
+    "음악 나이": ("REVIEW", "AMBIGUOUS_INTENT"), "음악 나무": ("REVIEW", "AMBIGUOUS_INTENT"),
+    "스포츠 다운펌": ("REVIEW", "AMBIGUOUS_INTENT"), "스포츠 나우": ("REVIEW", "AMBIGUOUS_INTENT"),
 }
 
 
@@ -83,7 +85,9 @@ def main():
     out = {"_meta": {
         "base": "query_curation_reviewed.json (04c)",
         "note": "semantic override 레이어. auto/reviewed 보존 + semantic final. content-search 기준. "
-                "명백/준명백만 override, 나머지 borderline은 KEEP 유지 → 루프 최종 감사.",
+                "명백한 rule violation(navigational/cross-domain/product-service)은 EXCLUDE로 override, "
+                "의미가 경계에 있는 후보는 REVIEW(AMBIGUOUS_INTENT)로 라우팅. 정상 topical/how-to는 KEEP 유지. "
+                "→ 남은 REVIEW/잔여 KEEP·14 카테고리 일관성은 루프 최종 감사.",
         "n_overrides": len(OVERRIDES),
     }, "categories": {}}
     applied = Counter()
