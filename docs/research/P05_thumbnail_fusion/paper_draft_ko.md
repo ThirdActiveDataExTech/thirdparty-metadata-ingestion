@@ -1,11 +1,15 @@
 # [논문 초안 · 한국어 · Analysis 중심 리라이팅]
 # 썸네일은 언제 검색에 도움이 되는가: 한국어 YouTube에서 시각-텍스트 의미 격차 분석
 
-> **버전**: v3 (2026-08-04) — v2(영문 `../paper_draft_P05_thumbnail_fusion.md`)를
-> **"Fusion 기술" 프레임에서 "When Does It Help? 분석" 프레임으로 무게중심 이동**.
-> 데이터·모델·실험 파이프라인은 그대로, 메시지·제목·기여점·결과 구성만 재배치.
-> **원본 v2 초안은 보존**(비교/롤백용).
-> **상태**: 초안 (실험 미실시) — `[DATA: ...]`는 실험 후 실수치로 교체.
+> **버전**: v3.2 (2026-08-11) — 방법론 섹션(§3~5)을 [PREREGISTRATION.md](PREREGISTRATION.md)의
+> 확정 결정에 동기화. 주요 반영: **gap = centered**(이방성 제거 전처리), **eval 코퍼스 840편
+> (14×60, Shorts만 제외 duration>60)**, **dev/eval 코퍼스 분리**, **categoryId=Sampling
+> Anchor(not GT)**, **쿼리 = YouTube Suggest + seed-독립 trigger + curation**, **융합 α=0.5
+> primary + α grid sensitivity**(Concat/Learned·best-α 선택 없음), **H2 다층 구조**(영상당
+> median Δrank primary / 카테고리 stratified·query-video cluster-robust secondary / raw
+> sensitivity), **qrels 불일치 = 경미 평균·0↔2 합의**. 프레임(When-does-it-help 분석)은 유지.
+> **원본 v2(영문) 초안 보존**(비교/롤백용).
+> **상태**: 초안 (결과 §6~9는 실험 후) — `[DATA: ...]`는 실험 후 실수치로 교체.
 > **분량 목표**: 학술대회 단편, **최대 5페이지**.
 > **설계 고정**: 가설·표집·평가·분석 방법은 [PREREGISTRATION.md](PREREGISTRATION.md)에
 > 실험 전 고정됨.
@@ -36,7 +40,7 @@ YouTube 영상 검색은 제목·설명·태그 등 텍스트 메타데이터에
 결합 공간에서 잰 **시각-텍스트 의미 격차(gap)**다. 우리는 CLIP 이미지 임베딩과 다국어
 텍스트 임베딩의 late fusion을 **성능 향상 자체가 아니라 영상별 기여도를 측정하는
 도구**로 사용하고, gap이 이 기여도(순위 개선폭)를 예측하는지 검증한다. 한국어 YouTube
-`[DATA: N]`편(YouTube 공식 카테고리 14개에서 규칙 표집)과 `[DATA: 50]`개 쿼리로
+**840편**(YouTube 공식 카테고리 14개 × 60, 규칙 표집)과 `[DATA: N_q]`개 쿼리로
 평가한 결과, 융합은 text-only 대비 MRR@10을 `[DATA: Δ]` 향상시키며(Wilcoxon,
 `[DATA: p]`), **gap은 융합에 의한 순위 개선을 예측하는 유의한 변수**로 나타난다
 (Spearman ρ=`[DATA]`, `[DATA: p]`; gap 상위군 Cohen's d=`[DATA]`). 나아가 쿼리
@@ -141,7 +145,7 @@ RQ2(성능)는 시각 채널이 "전반적으로" 유효함을 확인하는 기�
 ```
 [검색용 — RQ2 측정 도구]
 썸네일 → CLIP ViT-B/32 (이미지 인코더) → 512-dim  v_img
-제목+설명 → paraphrase-multilingual-mpnet-base-v2 → 768-dim → PCA 512-dim  v_txt
+제목  → paraphrase-multilingual-mpnet-base-v2 → 768-dim  ret_txt   (검색 텍스트 채널)
 
 [gap 계산용 — RQ1 핵심, 검색 파이프라인과 별개]
 제목 → clip-ViT-B-32-multilingual-v1 (CLIP 이미지 공간에 정렬된 다국어 텍스트 인코더)
@@ -157,34 +161,63 @@ RQ2(성능)는 시각 채널이 "전반적으로" 유효함을 확인하는 기�
 ### 3.2 시각-텍스트 의미 격차 (gap) — 본 연구의 핵심 지표
 
 ```
-gap_i = 1 - cos_sim(v_img_i, g_txt_i)     # 0(완전 중복) ~ 1(완전 무관)
+gap_i = 1 - cos_sim( center(v_img_i), center(g_txt_i) )   # center = 모달별 코퍼스 평균 차감 후 재정규화
+       # cos∈[-1,1] → gap∈[0,2]; centering 후 일부 cos<0라 gap>1도 정상
 ```
 
 **왜 코사인 기반(1−cos)인가**: 이미지-텍스트 의미 정합성을 CLIP 결합 공간의 코사인
 유사도로 재는 것은 CLIPScore(Hessel et al., 2021) 이후 표준화된 방식이다. gap은 그
 정합성의 **여집합**(1−정합성)을 취해 "얼마나 어긋나는가 = 시각 채널이 보완할 여지"로
 해석한 것이다. 즉 새 수식을 발명한 게 아니라, **검증된 CLIPScore 계산을 검색 기여도
-예측이라는 다른 목적에 재사용**한다 — 원 논문은 캡션 품질 평가에, 본 연구는 "썸네일이
-제목에 없는 정보를 얼마나 담는가"를 재는 데 쓴다. 라벨링 없이 전체 코퍼스에 자동
-적용되며 임베딩 추출의 부산물이라 추가 비용이 없다.
+예측이라는 다른 목적에 재사용**한다. 라벨링 없이 전체 코퍼스에 자동 적용되며 임베딩
+추출의 부산물이라 추가 비용이 없다.
+
+**왜 mean-centering인가 (전처리)**: CLIP 임베딩은 이방성(anisotropy)이 강해 raw 코사인이
+좁은 대역에 뭉친다(우리 코퍼스 실측: raw gap std ≈ 0.03). 이를 그대로 쓰면 영상 간
+차이가 노이즈에 지배된다. 모달별 평균 벡터를 차감(mean-centering; Mu & Viswanath, 2018)
+하면 이방성·modality-gap offset이 제거되어 **정합(제목↔자기 썸네일)과 비정합의 분리가
+크게 개선**된다(자기매칭 R@1이 raw 대비 상승, §5). ⚠️ **표현 주의**: centering은 "정답
+gap"이 아니라 **construct validity를 높이는 전처리**이며(CLIPScore가 raw인 것과 이 점만
+다름), **retrieval 성능이 아니라 정합-비정합 construct validity를 근거로 실험 전에
+선택**했다(HARKing 아님). raw gap 결과도 sensitivity로 함께 보고한다(§5.3, §6.2). µ는
+최종 평가 코퍼스로 1회 계산해 이후 전 단계에 동일 적용한다.
+
+> **인코더 두 개(§3.1) 재확인**: gap은 반드시 같은 CLIP 결합 공간에서 재야 하므로 이미지
+> `clip-ViT-B-32`와 그 공간에 distillation 정렬된 다국어 텍스트 인코더
+> `clip-ViT-B-32-multilingual-v1`을 쓴다. 검색용 텍스트(mpnet)와 **역할을 섞지 않는다**.
 
 ### 3.3 융합 (RQ2 측정 도구)
 
 ```
-Late Fusion:   score = α·sim(q_img,d_img) + (1-α)·sim(q_txt,d_txt),  α ∈ {0.1,…,0.9}
-비교군:        Text-only / Visual-only / Concat(1024-dim) / Learned(α* 학습)
+Text-only  : sim = cos(mpnet(q), ret_txt_d)
+Visual-only: sim = cos(clip_mtxt(q), v_img_d)          # 텍스트 쿼리 ↔ 썸네일 교차모달
+Late Fusion: score = α·minmax(sim_text) + (1-α)·minmax(sim_visual),  α ∈ {0.0, 0.1, …, 1.0}
+             # 두 채널 스케일이 달라 쿼리별 min-max 정규화 후 가중합
 ```
 
+**α 처리(사전 고정, 결과 보기 전)**: **primary operating point = α=0.5** — retrieval 결과를
+참조하지 않고 사전에 고른 **대칭 equal-weight 지점**이다(*"selected a priori as the
+symmetric equal-weight operating point, without reference to retrieval performance"*).
+전체 α grid는 **sensitivity analysis**로 곡선만 보고하며, **최고점 α를 "optimal fusion"
+으로 고르지 않는다**(test leakage 금지 — α가 바뀌면 융합 모델 자체가 바뀌므로 robustness가
+아니라 sensitivity라 부른다).
+
 융합은 성능 향상 자체가 목적이 아니라, **영상별 순위 개선폭(Δrank)을 만들어 gap과의
-관계(RQ1)를 측정하기 위한 도구**다.
+관계(RQ1)를 측정하기 위한 도구**다. retrieval 점수는 raw cosine을 쓴다(gap 전용 centering과
+분리).
 
 ### 3.4 gap 가설 (RQ1)
 
 ```
 qrels의 각 (쿼리 q, 관련 영상 v)에 대해:
-  Δrank(v,q) = rank_text(v|q) - rank_fusion(v|q)     # 양수 = 융합으로 순위 개선
-가설: Δrank는 그 영상의 gap과 양의 상관 (Spearman ρ(gap, Δrank) > 0)
+  Δrank(v,q) = rank_text(v|q) - rank_fusion(v|q)     # 융합은 α=0.5. 양수 = 순위 개선
+가설: gap이 큰 영상일수록 Δrank가 크다 (Spearman ρ > 0)
 ```
+
+gap은 **영상 수준(video-level)** 지표(쿼리 무관, 영상당 1개)이고 Δrank는 (쿼리, 영상)
+쌍마다 생기므로, **primary 분석은 영상당 Δrank를 median 집계**해 `Spearman(gap_v,
+median Δrank_v)`로 본다(§5.3). 카테고리마다 gap 분포가 달라 생길 수 있는 **허위 상관
+(카테고리 교란)**과 **반복측정** 구조는 secondary 분석으로 통제한다(§5.3).
 
 ---
 
@@ -200,33 +233,49 @@ qrels의 각 (쿼리 q, 관련 영상 v)에 대해:
 고정(freeze). 핵심만 요약한다.
 
 **코퍼스(§PREREG 0.1)**: `videoCategories.list(regionCode='KR')`의 `assignable=true`
-카테고리 **14개**를 표집 틀로, 각 카테고리에서 수집한다. `videoCategoryId`는 search에서
-카테고리 필터로 부적합함을 실측했으므로, **search로 수집 → `videos.list`의 `categoryId`로
-사후 필터링**한다. 표집 편향을 줄이기 위해 **정렬 3혼합(relevance+viewCount+date)**,
-채널 편향 차단을 위해 **채널당 최대 5개**, Shorts는 제외하지 않고 `duration`을 저장해
-**분석 축**으로 쓴다. 목표 카테고리당 ~100편 × 14 = **~1,400편**.
+카테고리 **14개**를 표집 틀로 쓴다. ⚠️ **categoryId는 Sampling Anchor이지 semantic ground
+truth가 아니다** — 주제 다양성 확보용 층화 도구로만 쓰고 H1/H2 어디서도 레이블로 쓰지
+않는다(제작자가 categoryId를 22/24/27로 다는 경향이 커 일부 카테고리는 categoryId 잔존율이
+낮음을 Pilot로 관찰; 이를 Appendix dispersion으로 보고). 절차: `videoCategoryId`가 search
+필터로 부적합함을 실측했으므로 **search로 수집 → `videos.list`의 `categoryId`로 사후
+필터링**한다. **카테고리당 복수 seed(Appendix 수록)**로 커버리지를 확보하고 **정렬 3혼합
+(relevance+viewCount+date)**, **채널당 최대 5개**, **seed 간 round-robin**(단일 seed 독식
+방지)으로 채운다. **Shorts 제외**: `duration` 실측 **60초 초과만** 남긴다(`videoDuration=
+'long'`은 20분 초과라 일반 영상을 배제해 미채택). **카테고리당 60편 × 14 = 840편**(사전
+고정, best-effort 층화; 확률표본 아님). 수집 단계별 감소는 funnel 표로 투명 보고한다.
 
-**평가 쿼리(§PREREG 0.2)**: 코퍼스 Sampling과 개념이 다르며, 실제 사용자 검색어를
-반영한다. 연구자 임의 창작이 아니라 **외부 검색 어휘**(YouTube 자동완성/Google Trends/
-Naver DataLab)에서 생성하고, 14개 카테고리에 **균등 배분**한다. 영상 텍스트에서 파생하지
-않는다(KeyBERT 등 금지 — circularity). **쿼리는 retrieval 실험 전에 확정(freeze)**하며,
-성능을 보고 바꾸지 않는다. 쿼리 수는 **Pilot(§PREREG 0.6)**으로 pool 크기를 실측해 확정.
+**평가 쿼리(§PREREG 0.2)**: 코퍼스 Sampling과 개념이 다르며 실제 사용자 검색어를 반영한다.
+연구자 임의 창작이 아니라 **YouTube의 공개 관찰 가능한 검색 제안(Suggest)** 에서 생성한다
+(Google Trends=재현 불가, Naver DataLab=도메인 불일치로 미채택). **코퍼스 seed와 독립적인
+고정 trigger**(카테고리 수준, seed 구 재사용 금지)로 Suggest를 촉발해 후보를 모으고,
+**사전 등록된 curation 규칙으로 navigational(채널/프로그램)·category mismatch·상품·서비스
+쿼리를 제외**한다(후보마다 decision+reason을 전량 기록 → Appendix exclusion funnel).
+영상 텍스트에서 파생하지 않는다(KeyBERT 금지 — circularity). **쿼리는 retrieval 실험 전에
+확정(freeze)**하고 성능을 보고 바꾸지 않는다. 14개 카테고리 동일 N, 최종 수는 **Query
+Pilot(§PREREG 0.6)**의 pool 크기·라벨링 부담으로 확정(56부터).
 
 | 항목 | 값 |
 |------|-----|
-| 영상 수 | `[DATA: N]` (목표 ~1,400 = 14 × 100) |
-| 표집 틀 | YouTube KR assignable 카테고리 14개 (§PREREG 0.1) |
-| 평가 쿼리 | `[DATA: N_q]` (Pilot으로 확정; 후보 56/84) / Validation(α) `[DATA: 20]` |
-| qrels | Text∪Visual∪Fusion 각 Top10 pooling → 2인 독립 라벨링, κ 보고, 불일치=평균 |
-| 쿼리 제거 | 관련 영상 0개 쿼리는 사전 규칙으로 제외(결과 무관, 제거 수 투명 보고) |
-| gap 계산 | 전체 자동(라벨링 없음) |
+| 영상 수 | **840** (14 × 60, 균형; 최종 다중모달 평가 코퍼스) |
+| 표집 틀 | YouTube KR assignable 카테고리 14개, categoryId=Sampling Anchor (§PREREG 0.1) |
+| 길이 | **Long-form 아님 — Shorts(≤60초)만 제외**(실측: ≤60초 0 / 1–4분 168 / 4–20분 346 / >20분 326) |
+| 평가 쿼리 | YouTube Suggest + seed-독립 trigger + curation, `[DATA: N_q]`(Pilot 확정; 56부터) |
+| qrels | Text∪Visual∪Fusion 각 Top10 pooling → **2인 blind·독립** 라벨링, κ 보고; 불일치 |=1|=평균, **0↔2=합의** |
+| 쿼리 제거 | **최종 qrels에서 관련(등급≥1) 0개** 쿼리 제외(결과 무관, 제거 수 투명 보고) |
+| gap 계산 | 전체 자동(라벨링 없음), centered |
 
 ### 4.2 절차 (§PREREG 0 순서)
 
-1. 코퍼스 수집(§0.1). 2. 평가 쿼리 생성·**Freeze**(§0.2). 3. Pilot 10쿼리로 pool 크기
-실측 → 쿼리 수 확정(§0.6). 4. 본 쿼리 pooling → 2인 라벨링 → qrels·κ·정답0 제거(§0.3).
-5. Validation으로 α\* 탐색. 6. 전체 gap 자동 계산(+인코더 sanity check §0.4).
-7. 각 시스템 순위 → Δrank → gap 상관·조건별(쿼리유형/길이/duration) 분석.
+1. 코퍼스 수집(§0.1) — 840편.
+2. 임베딩(이미지/gap텍스트/검색텍스트) → **centered gap** 자동 계산(+인코더 sanity check §0.4).
+3. **trigger freeze → Suggest 생성 → curation(navigational/mismatch/service 제외, audit log)
+   → Query Pilot로 pool 크기 실측 → 쿼리 수·쿼리셋 Freeze**(§0.2·0.6).
+4. 본 쿼리 pooling → **2인 blind·독립** 라벨링 → qrels·κ·불일치(합의)·정답0 제거(§0.3).
+5. retrieval: Text/Visual/Late Fusion(**α=0.5 primary + α grid sensitivity**, best-α 선택 없음).
+6. (쿼리, 관련영상) Δrank 산출.
+7. H1(Fusion α=0.5 vs Text: MRR@10 차>0.05 & paired Wilcoxon) / H2(영상당 median Δrank vs
+   gap Spearman; secondary=카테고리 stratified + query-video cluster-robust; sensitivity=raw
+   vs centered).
 
 ---
 
@@ -236,8 +285,11 @@ Naver DataLab)에서 생성하고, 14개 카테고리에 **균등 배분**한다
 
 한 시스템의 상위 결과만 라벨링하면 편향된다(Text-only만→Fusion이 끌어올린 영상을 qrels가
 모름 / Fusion만→Fusion에 유리한 후보만 라벨링). 표준 pooling을 따라 **Text-only ∪
-Visual-only ∪ Late Fusion 각 Top10의 합집합**(중복 제거)을 후보 풀로 삼는다
-(§PREREG 0.3). 라벨링은 이 풀에 대해서만 수행한다.
+Visual-only ∪ Late Fusion 각 Top10의 합집합**(중복 제거)을 후보 풀로 삼는다(§PREREG 0.3;
+Top-K·pooling 대상 시스템은 결과 보기 전 고정, 사후 변경 금지). 라벨링 시트는 **어느
+시스템이 뽑았는지 표시하지 않고(blind) 쿼리별로 셔플**하며, **두 라벨러가 상호 라벨을 볼
+수 없는 독립 파일**로 작업한다(§PREREG 0.3). Fusion이 찾은 영상이 pooling으로 qrels에
+포함되는 것은 IR 표준이다.
 
 ### 5.2 지표
 
@@ -247,17 +299,25 @@ Visual-only ∪ Late Fusion 각 Top10의 합집합**(중복 제거)을 후보 �
 | Spearman ρ(gap, Δrank) | gap의 순위개선 예측력(RQ1) |
 | Cohen's d | gap 수준별 효과 크기 |
 
-### 5.3 통계·강건성 (§PREREG 6)
+### 5.3 통계·강건성 (§PREREG 0.5·6)
 
-- H2(RQ1): Spearman 순위상관 검정. H1(RQ2): Wilcoxon signed-rank(paired).
-- **부트스트랩 95% CI**(1,000회 리샘플) + **subsampling 수렴 곡선** — "표본 수 달라지면
-  결과도 달라지지 않나"에 대한 정량 방어.
-- **MDES**: 확정된 라벨링 쌍 수로 탐지 가능한 최소 ρ_min 보고.
+**H1(RQ2)**: Fusion(α=0.5) vs Text-only — 쿼리별 reciprocal rank@10에 **paired Wilcoxon
+signed-rank**(p<0.05) **그리고** aggregate MRR@10 차 > +0.05(두 조건 모두).
+
+**H2(RQ1)** — 카테고리 교란·반복측정을 선제 차단하는 다층 구조(§PREREG 0.5):
+- **primary**: 영상당 **median Δrank** → `Spearman(centered gap, median Δrank)` (gap이
+  video-level이라 이 단위가 자연스러움; median으로 극단값 방어).
+- **secondary**: (1) query-video 원자료 `Δrank ~ gap + category`에 **video 클러스터-robust
+  SE**(반복측정 보존), (2) **카테고리 내(stratified) Spearman**.
+- **descriptive**: 14개 중 양(+) 상관 카테고리 비율(검정 승격 아님).
+- **sensitivity**: **raw gap vs centered gap**으로 primary 재실행(centering은 construct
+  validity로 사전 선택했고 raw는 측정 선택의 영향을 보는 것이지 성능으로 고른 게 아님).
+- **부트스트랩 95% CI**(1,000회) + subsampling 수렴 곡선 + **MDES**(탐지 가능한 최소 ρ_min).
 
 ### 5.4 성공 기준 (실험 전 고정)
 
-- RQ2: Late Fusion MRR@10 > Text-only + 0.05, Wilcoxon p<0.05
-- RQ1: Spearman ρ(gap,Δrank) > 0, p<0.05
+- RQ2(H1): Fusion(α=0.5) MRR@10 > Text-only + 0.05 **그리고** paired Wilcoxon p<0.05
+- RQ1(H2): primary Spearman ρ(centered gap, median Δrank) > 0, p<0.05
 - 결과가 위에 못 미쳐도 §PREREG 3(결과 분기 매트릭스)에 따라 조건부/부정 결과로 서술.
 
 ---
@@ -272,20 +332,23 @@ Visual-only ∪ Late Fusion 각 Top10의 합집합**(중복 제거)을 후보 �
 |------|--------|---------|-----------|
 | Text-only | `[DATA]` | `[DATA]` | `[DATA]` |
 | Visual-only | `[DATA]` | `[DATA]` | `[DATA]` |
-| Concat / Learned | `[DATA]` | `[DATA]` | `[DATA]` |
-| **Late Fusion (α=`[DATA]`)** | **`[DATA]`** | **`[DATA]`** | **`[DATA]`** |
+| **Late Fusion (α=0.5, primary)** | **`[DATA]`** | **`[DATA]`** | **`[DATA]`** |
 
-Wilcoxon (Fusion vs Text-only): `[DATA: stat, p]` (부트스트랩 95% CI: `[DATA]`)
+Wilcoxon (Fusion α=0.5 vs Text-only, 쿼리별 RR@10): `[DATA: stat, p]` (부트스트랩 95% CI:
+`[DATA]`). **α sensitivity 곡선**(α∈{0.0..1.0}별 MRR/NDCG/Recall@10): `[DATA: 곡선]`
+(최고점 α를 "최적"으로 주장하지 않음 — sensitivity로만 보고).
 
 ### 6.2 gap과 순위 개선 (RQ1, 핵심)
 
 | 통계량 | 값 |
 |--------|-----|
-| Spearman ρ(gap, Δrank) | `[DATA]` (95% CI `[DATA]`) |
-| p-value | `[DATA]` |
-| 표본(쿼리-영상 쌍) / MDES ρ_min | `[DATA]` / `[DATA]` |
+| **primary** Spearman ρ(centered gap, 영상당 median Δrank) | `[DATA]` (95% CI `[DATA]`) |
+| p-value / 표본(영상 수) / MDES ρ_min | `[DATA]` / `[DATA]` / `[DATA]` |
+| **sensitivity** ρ(raw gap, median Δrank) | `[DATA]` |
+| **secondary** 카테고리 stratified: 양(+) 상관 카테고리 비율 | `[DATA]` (예 12/14) |
+| **secondary** 회귀 `Δrank~gap+category`(video 클러스터-robust) gap 계수/p | `[DATA]` |
 
-`[DATA: gap(x) vs Δrank(y) 산점도 + 회귀선]`
+`[DATA: centered gap(x) vs median Δrank(y) 산점도 + 회귀선]`
 
 **gap 수준별 효과 크기 (Cohen's d):** gap을 3등분해 상·하위군의 평균 순위 개선과 두 군
 간 효과 크기(Cohen's d)를 함께 보고한다. 아래는 형식 예시이며 실수치로 교체한다.
@@ -361,12 +424,18 @@ Wilcoxon (Fusion vs Text-only): `[DATA: stat, p]` (부트스트랩 95% CI: `[DAT
 
 ## 8. 한계 (Limitations)
 
-- 테스트 쿼리 `[DATA: 50]`·평가자 2인 — 검정력 한계(MDES로 정량 보고).
-- gap은 정렬된 다국어 CLIP 텍스트 인코더의 한국어 품질에 의존.
+- 테스트 쿼리 `[DATA: N_q]`·평가자 2인 — 검정력 한계(MDES로 정량 보고).
+- gap은 정렬된 다국어 CLIP 텍스트 인코더의 한국어 품질에 의존하며, **mean-centering
+  전처리**(이방성 제거)를 쓴다 — centered는 raw CLIPScore와 다르므로 raw 결과를 sensitivity로
+  병기했으나, 전처리 선택이 완전히 자유롭지 않음은 한계다.
 - gap은 제목-썸네일 정합성만 측정(설명·영상 내용과의 정합성 미반영).
-- 상관은 인과가 아님(채널 인기도 등 교란 가능성).
-- 코퍼스는 카테고리 대표성이 아니라 **gap 분산 확보를 위한 다양성 표집**(§PREREG 4.3);
-  일부 카테고리는 API 제약으로 표집량이 적을 수 있다(확보량 그대로 보고).
+- 상관은 인과가 아님(채널 인기도 등 교란 가능성; 카테고리 교란은 §5.3 secondary로 통제).
+- **평가 코퍼스는 확률표본이 아니라 gap 분산 확보용 카테고리 층화표본**(14×60): 대표성
+  주장은 **"2025-01-01 이후 게시된 한국어 non-Shorts YouTube 영상의 카테고리 층화표본"**
+  으로 좁게 규정한다(YouTube 전체 대표 주장 아님). categoryId 관행상 일부 카테고리는
+  categoryId 잔존율이 낮으나 복수 seed·깊은 표집으로 60편을 충원함.
+- 평가 쿼리는 YouTube Suggest에서 수집·curation한 것으로, Suggest가 실제 사용자 의도를
+  그대로 반영한다고까지 주장하지 않는다(내부 메커니즘 미공개).
 
 ## 9. 결론 (Conclusion) — ⟪실험 후 작성⟫
 
@@ -390,20 +459,21 @@ Wilcoxon (Fusion vs Text-only): `[DATA: stat, p]` (부트스트랩 95% CI: `[DAT
 
 전체 서지정보·확인 경로는 [references.md](references.md) 유지. 본문 인용:
 Radford+2021(CLIP), Hessel+2021(CLIPScore), Fang+2021(CLIP2Video), Reimers&Gurevych2019
-(SBERT), Li+2022(BLIP), Gao+2022(M2HF), ThumbnailTruth 2025(arXiv:2509.04714, 서지 미완).
+(SBERT), Li+2022(BLIP), Gao+2022(M2HF), ThumbnailTruth 2025(arXiv:2509.04714, 서지 미완),
+**Mu&Viswanath 2018(All-but-the-Top, gap centering 근거)**, Ethayarajh 2019(임베딩 이방성).
 
 ---
 
 ## 데이터 삽입 체크리스트 (작업용)
 
-- [ ] 4.1 코퍼스 규모 N, 쿼리 수 확정 (쿼터 리셋 후 재수집)
-- [ ] 4.2 α* 확정
-- [ ] 6.1 전체 성능표 + Wilcoxon + 부트스트랩 CI
-- [ ] 6.2 Spearman ρ + 산점도 + gap 수준별 Cohen's d + MDES
-- [ ] 6.3 쿼리 유형별 표
-- [ ] 6.4 쿼리 길이별 표
-- [ ] 6.5 정성 사례 1~3
-- [ ] 6.6 연산 비용
+- [x] 4.1 코퍼스 규모 N=**840**(14×60) 확보 · 임베딩 · centered gap 산출 완료
+- [ ] 4.1 쿼리 수 확정 (curation → Query Pilot 진행 중)
+- [ ] 6.1 전체 성능표(Text/Visual/Fusion α=0.5) + Wilcoxon + 부트스트랩 CI + **α sensitivity 곡선**
+- [ ] 6.2 primary Spearman ρ(centered gap, median Δrank) + 산점도 + Cohen's d + MDES
+      + **raw sensitivity** + **카테고리 stratified·회귀**
+- [ ] 6.3 쿼리 유형별 표 · 6.4 쿼리 길이별 표
+- [ ] 6.5 정성 사례 1~3 · 6.6 연산 비용
 - [ ] 7~9장 작성, Abstract [DATA] 전부 실수치 교체
 - [ ] 참고문헌 7번 서지 완성, novelty 재검색(§2.1)
+- [ ] Appendix: **seed 목록 · trigger 목록 · 쿼리 curation exclusion funnel · categoryId dispersion · 수집 funnel** 표
 - [ ] **5페이지 분량 확인** (초과 시 §2 관련연구·§6.6·부록 우선 축약)
