@@ -190,6 +190,15 @@
   - **분류기 v2(루프 검수 후 적용)**: SERVICE_TERMS substring 과잉 완화('리스' 등 짧은 term
     단어경계화/제거, 구매·가입·할인류는 auto-EXCLUDE 대신 REVIEW로 강등). 검수 중인 현재
     query_curation.json은 그대로 두고 검수 반영 시 함께 재생성.
+  - **🔒 REVIEW 최종 판정 6원칙(2026-08-11, 마지막 curation 단계)**: REVIEW 100건을
+    아래 규칙으로만 판정하고 종료(추가 대규모 필터링 금지 — curation drift 방지).
+    ① 표기(띄어쓰기) 차이만으로 다른 판정 금지('음악감상'≡'음악 감상' → 동일 KEEP).
+    ② 애매하면 SEMANTIC_MISMATCH 단정 대신 AMBIGUOUS_INTENT.
+    ③ category **mismatch**(다른 도메인 그 자체: 자동차 게임)와 **target ambiguity**
+    ('X 나오는 영화': 카테고리 콘텐츠일 수도)를 구분 — 후자는 REVIEW.
+    ④ product(제품 탐색)와 how-to(방법/리뷰 콘텐츠) 구분 — how-to는 KEEP.
+    ⑤ navigational은 고유명사 유무가 아니라 **intent**로(손흥민 경기분석=KEEP).
+    ⑥ **KEEP을 '좋은 query' 기준으로 재선별 금지** — rule 위반만 본다.
 - **개수 = 56부터 시작, Pilot으로 확정 (§0.6, 2026-08-07)**: **14×4=56을 1차 목표**로,
   Pilot의 실측 pool 크기·라벨링 부담을 보고 필요 시 70~84로 조정. **84로 무조건 늘리지
   않는다** — 코퍼스(1,397/최종 840)는 이미 충분하고 병목은 평가설계·qrels 품질이다. "라벨

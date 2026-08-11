@@ -47,11 +47,13 @@ OVERRIDES = {
     # ── 놓친 product → EXCLUDE:NON_CONTENT_PRODUCT (service와 분리) ──
     "자동차 가습기": ("EXCLUDE", "NON_CONTENT_PRODUCT"),
     "스포츠 나시 추천": ("EXCLUDE", "NON_CONTENT_PRODUCT"),
-    # ── 명백한 cross-domain → EXCLUDE:CATEGORY_MISMATCH (다른 콘텐츠 도메인 지시) ──
-    "자동차 만화": ("EXCLUDE", "CATEGORY_MISMATCH"),
-    "동물 나오는 영화": ("EXCLUDE", "CATEGORY_MISMATCH"), "동물 나오는 애니": ("EXCLUDE", "CATEGORY_MISMATCH"),
-    "동물 나오는 웹툰": ("EXCLUDE", "CATEGORY_MISMATCH"), "동물 나루토 춤": ("EXCLUDE", "CATEGORY_MISMATCH"),
-    "공부 날씨의 아이": ("EXCLUDE", "CATEGORY_MISMATCH"),
+    # ── target 범위 애매('X가 나오는 Y': 카테고리 콘텐츠일 수도) → REVIEW:AMBIGUOUS_TARGET ──
+    # (query가 '명백히 다른 도메인 그 자체'인 경우만 EXCLUDE. 'X 나오는 영화'는 target 범위
+    #  문제라 단정 EXCLUDE 대신 REVIEW — 두 번째 AI 리뷰의 더 보수적 판단 채택.)
+    "자동차 만화": ("REVIEW", "AMBIGUOUS_TARGET"),
+    "동물 나오는 영화": ("REVIEW", "AMBIGUOUS_TARGET"), "동물 나오는 애니": ("REVIEW", "AMBIGUOUS_TARGET"),
+    "동물 나오는 웹툰": ("REVIEW", "AMBIGUOUS_TARGET"), "동물 나루토 춤": ("REVIEW", "AMBIGUOUS_TARGET"),
+    "공부 날씨의 아이": ("REVIEW", "AMBIGUOUS_TARGET"),
     # ── product vs how-to 애매(제품인지 방법인지) → REVIEW ──
     "자동차 나노 코팅제": ("REVIEW", "PRODUCT_VS_HOWTO"), "자동차 가죽시트 클리너": ("REVIEW", "PRODUCT_VS_HOWTO"),
     "스포츠 나시": ("REVIEW", "PRODUCT_VS_TOPIC"),
