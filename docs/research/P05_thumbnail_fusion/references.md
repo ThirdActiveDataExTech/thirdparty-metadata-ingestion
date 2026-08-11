@@ -26,7 +26,7 @@
 |---|---|---|
 | 썸네일 이미지 인코더 | `sentence-transformers/clip-ViT-B-32` | 512-dim |
 | gap용 정렬 텍스트 인코더 | `sentence-transformers/clip-ViT-B-32-multilingual-v1` | CLIP 이미지 공간 정렬(distillation), 512-dim |
-| 검색용 텍스트 인코더 | `paraphrase-multilingual-mpnet-base-v2` | 768-dim → PCA 512 (운영 파이프라인과 동일) |
+| 검색용 텍스트 인코더 | `paraphrase-multilingual-mpnet-base-v2` | 768-dim (평가 파이프라인은 PCA 없이 사용; 운영 플랫폼은 512로 PCA) |
 
 ## 재검색 로그 (제출 전)
 
