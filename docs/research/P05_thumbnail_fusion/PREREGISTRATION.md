@@ -695,3 +695,11 @@ Politics), 26(Howto & Style), 27(Education), 28(Science & Technology). 나머지
   유지(일관성). 결과: **REVIEW 100 → KEEP 32/EXCLUDE 68, clean eligible pool 373**
   (최소 category 자동차 18 → N≤252 균형표집 가능). `query_curation_qa_table.csv`(category별
   raw→eligible funnel) 생성 = Appendix 재현성 증빙. **쿼리 curation 종료**, 다음은 05 retrieval.
+- **🔒 2026-08-12b (쿼리 표집·Pilot·FREEZE 완료 — retrieval 前 마지막)**:
+  1. **04f deterministic 표집**: eligible 373 → 순서 md5(SALT+query) 사전식(코퍼스 seed 독립,
+     nested) → 카테고리별 4개 = **56**.
+  2. **04g Query Pilot(§0.6)**: pool size만 실측(성능 미측정). Top-10 평균 pool **23.6**
+     (17~32, PREREG 예상 ~20~25 부합), Top-7 17.2.
+  3. **04h FREEZE 확정**: **N=56 / pool Top-10**(§0.6 '56을 제대로', §0.3 depth 10 유지).
+     `queries_frozen.json`(q00~q55, 14×4) 동결 — **retrieval 이후 변경 금지**.
+  이후 05 retrieval → 06 라벨링 → qrels → 07 분석은 이 frozen 쿼리로만 수행한다.

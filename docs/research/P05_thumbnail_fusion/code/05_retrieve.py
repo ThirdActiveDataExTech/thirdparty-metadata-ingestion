@@ -66,7 +66,8 @@ def main():
     img = _norm_rows(d["img"].astype(np.float64))
     ret = _norm_rows(d["ret_txt"].astype(np.float64))
 
-    queries = json.loads(QUERIES_PATH.read_text(encoding="utf-8"))  # [{query_id, query, category}]
+    raw = json.loads(QUERIES_PATH.read_text(encoding="utf-8"))      # {_meta, queries:[...]} 또는 [...]
+    queries = raw["queries"] if isinstance(raw, dict) else raw       # [{query_id, query, category}]
     q_texts = [q["query"] for q in queries]
 
     # 쿼리 인코딩 — 각 채널의 코퍼스 인코더와 '같은 공간'으로
