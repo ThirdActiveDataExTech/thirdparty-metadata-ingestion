@@ -207,8 +207,11 @@
       intent**를 식별할 수 있는 경우("100% 확실"이 아니라 "합리적 dominant intent"—
       음악감상·게임스토리·동물원은 KEEP).
     - **EXCLUDE**: navigational(특정 채널·프로그램·매체·인물·사업체 entity 지칭) / category
-      mismatch / non-content·service / **또는 content-search intent를 충분히 식별할 수 없는
-      경우**(`INSUFFICIENT_CONTENT_INTENT` — 예: 자동차 낙엽, 음악 나무).
+      mismatch / non-content·service / **content-search intent를 충분히 식별할 수 없는
+      경우**(`INSUFFICIENT_CONTENT_INTENT` — 예: 자동차 낙엽, 음악 나무) / **query가 다른
+      카테고리의 매체를 명시해 sampling stratum과 불일치**(`CROSS_DOMAIN` — 예: 동물 나오는
+      영화, 자동차 만화; 매체 명시 기준. 단 '여행 남자코디'류 카테고리-프레임 라이프스타일은
+      KEEP 유지 — '여행 다이소 꿀템'과 동일 구조라 일관).
     - **판정 사유는 "이상해 보여서"가 아니라 "content 탐색 intent 식별 불가"** 로 기록
       (reviewer 방어: "연구자 취향 제거"가 아님).
     - **웹 확인은 "이 문자열이 특정 entity를 지칭하는가"에만** 사용(품질·좋은쿼리 판단 금지).
@@ -684,3 +687,11 @@ Politics), 26(Howto & Style), 27(Education), 28(Science & Technology). 나머지
   선택지 비교(positive content-intent vs conservative-KEEP vs 잔여 REVIEW)에서 **positive
   content-intent + abstain(근거없음→EXCLUDE)** 채택 — construct validity(평가 가능한 명확한
   information need) 우선, pool 최대화보다 qrels 품질 우선.
+- **🔒 2026-08-12 (04e cross-domain 종결 + Appendix QA — retrieval 前)**: 마지막 피드백
+  (9.5/10, "더 필터링 아닌 재현성·편향 통제")의 category-consistency 지적 반영. 이진 종결
+  freeze 유지를 위해 REVIEW 복귀 대신 **CROSS_DOMAIN EXCLUDE**로 처리. 범위는 **query가
+  다른 카테고리 매체를 명시한 4건만**(동물 나오는 영화/애니/웹툰, 자동차 만화); 여행-프레임
+  라이프스타일 3건(남자코디/다꾸/다이어리꾸미기)은 '여행 다이소 꿀템'과 동일 구조라 KEEP
+  유지(일관성). 결과: **REVIEW 100 → KEEP 32/EXCLUDE 68, clean eligible pool 373**
+  (최소 category 자동차 18 → N≤252 균형표집 가능). `query_curation_qa_table.csv`(category별
+  raw→eligible funnel) 생성 = Appendix 재현성 증빙. **쿼리 curation 종료**, 다음은 05 retrieval.

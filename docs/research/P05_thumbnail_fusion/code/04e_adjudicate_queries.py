@@ -58,10 +58,6 @@ ADJ = {
     "여행 남자 코디": ("B", "KEEP", "TOPICAL_CONTENT", "여행 남성 코디(여행룩) 콘텐츠 장르"),
     "여행 다꾸": ("B", "KEEP", "TOPICAL_CONTENT", "여행 다이어리 꾸미기(다꾸) 콘텐츠 장르"),
     "여행 다이어리 꾸미기": ("B", "KEEP", "TOPICAL_CONTENT", "다이어리 꾸미기 콘텐츠 장르"),
-    "자동차 만화": ("B", "KEEP", "TOPICAL_CONTENT", "차량 소재 만화/애니 콘텐츠(명확한 content intent)"),
-    "동물 나오는 영화": ("B", "KEEP", "TOPICAL_CONTENT", "동물 등장 영화 콘텐츠 탐색"),
-    "동물 나오는 애니": ("B", "KEEP", "TOPICAL_CONTENT", "동물 등장 애니 콘텐츠 탐색"),
-    "동물 나오는 웹툰": ("B", "KEEP", "TOPICAL_CONTENT", "동물 등장 웹툰 콘텐츠 탐색"),
     "여행 플레이리스트": ("B", "KEEP", "TOPICAL_CONTENT", "여행 플레이리스트(consumption intent 명확)"),
     "공부 플레이리스트": ("B", "KEEP", "TOPICAL_CONTENT", "공부 플레이리스트(확립된 장르)"),
     "공부 남돌 플레이리스트": ("B", "KEEP", "TOPICAL_CONTENT", "공부 플레이리스트(남돌 곡) 콘텐츠 장르"),
@@ -148,6 +144,12 @@ ADJ = {
     "자동차 달인": ("C", "EXCLUDE", "INSUFFICIENT_CONTENT_INTENT", "'달인' 프로그램/일반 불명확, content intent 약함"),
     "과학 남궁원": ("C", "EXCLUDE", "INSUFFICIENT_CONTENT_INTENT", "인물명-like(미검증), content intent 불명확"),
 
+    # ══════════════════ C → EXCLUDE (CROSS_DOMAIN, 다른 카테고리 매체 명시, 4) ══════════════════
+    "자동차 만화": ("C", "EXCLUDE", "CROSS_DOMAIN", "만화 매체 명시 → 애니/키즈 카테고리 콘텐츠(자동차 stratum과 불일치)"),
+    "동물 나오는 영화": ("C", "EXCLUDE", "CROSS_DOMAIN", "영화 매체 명시 → 영화 카테고리 콘텐츠(동물 stratum과 불일치)"),
+    "동물 나오는 애니": ("C", "EXCLUDE", "CROSS_DOMAIN", "애니 매체 명시 → 애니 카테고리 콘텐츠"),
+    "동물 나오는 웹툰": ("C", "EXCLUDE", "CROSS_DOMAIN", "웹툰 매체 명시 → 웹툰 카테고리 콘텐츠"),
+
     # ══════════════════ C → EXCLUDE (NON_CONTENT_PRODUCT, 3) ══════════════════
     "자동차 가죽시트 클리너": ("C", "EXCLUDE", "NON_CONTENT_PRODUCT", "제품명(사용법/리뷰 marker 없음)"),
     "자동차 나노 코팅제": ("C", "EXCLUDE", "NON_CONTENT_PRODUCT", "제품명(사용법/리뷰 marker 없음)"),
@@ -231,19 +233,48 @@ def main():
     print(f"  KEEP 사유: {dict(keep_reason)}")
     print(f"  EXCLUDE 사유: {dict(excl_reason)}")
 
-    print("\n=== 카테고리별 최종 eligible pool (adjudication 반영) ===")
-    print(f"  {'category':<12} {'KEEP':>4} {'EXCL':>5} {'FLAG':>4} | {'제외율%':>7}")
-    tot_keep = tot_excl = tot_flag = 0
+    # ── Appendix QA 표: category별 raw→최종 funnel (재현성 증빙) ──
+    raw_ct = Counter()          # category별 raw(=전체 후보) 수
+    fromrev_ct = Counter()      # REVIEW → KEEP 복귀 수
+    for cid, c in d["categories"].items():
+        for it in c["items"]:
+            raw_ct[c["name"]] += 1
+            if it["final_decision"] == "REVIEW":
+                dec = ADJ.get(it["query"], ("C", "EXCLUDE", "", ""))[1]
+                if dec == "KEEP":
+                    fromrev_ct[c["name"]] += 1
+
+    print("\n=== Appendix QA 표: category별 raw→eligible funnel ===")
+    hdr = f"  {'category':<12} {'raw':>4} {'KEEP':>5} {'←REV':>5} {'EXCL':>5} {'FLAG':>4} {'제외율%':>7}"
+    print(hdr)
+    rows = []
+    tot_keep = tot_excl = tot_flag = tot_raw = 0
     for name in sorted(percat):
         k = percat[name]["KEEP"]; e = percat[name]["EXCLUDE"]; f = percat[name]["FLAG"]
-        tot_keep += k; tot_excl += e; tot_flag += f
-        denom = k + e
-        rate = (e / denom * 100) if denom else 0
-        print(f"  {name:<12} {k:>4} {e:>5} {f:>4} | {rate:>6.1f}")
-    print(f"  {'TOTAL':<12} {tot_keep:>4} {tot_excl:>5} {tot_flag:>4} | "
-          f"{tot_excl/(tot_keep+tot_excl)*100:>6.1f}")
-    print(f"\n✅ clean eligible pool(KEEP) = {tot_keep}편  → 다음: seed-독립 deterministic sampling")
+        r = raw_ct[name]; fr = fromrev_ct[name]
+        tot_keep += k; tot_excl += e; tot_flag += f; tot_raw += r
+        rate = (e / (k + e) * 100) if (k + e) else 0
+        print(f"  {name:<12} {r:>4} {k:>5} {fr:>5} {e:>5} {f:>4} {rate:>6.1f}")
+        rows.append((name, r, k, fr, e, f, round(rate, 1)))
+    print(f"  {'TOTAL':<12} {tot_raw:>4} {tot_keep:>5} {sum(fromrev_ct.values()):>5} "
+          f"{tot_excl:>5} {tot_flag:>4} {tot_excl/(tot_keep+tot_excl)*100:>6.1f}")
+
+    min_n = min(percat[name]["KEEP"] for name in percat)
+    min_cat = min(percat, key=lambda n: percat[n]["KEEP"])
+    qa_path = DATA_DIR / "query_curation_qa_table.csv"
+    with qa_path.open("w", encoding="utf-8") as fp:
+        fp.write("category,raw,keep_eligible,returned_from_review,exclude,flag,exclude_rate_pct\n")
+        for row in rows:
+            fp.write(",".join(str(x) for x in row) + "\n")
+        fp.write(f"TOTAL,{tot_raw},{tot_keep},{sum(fromrev_ct.values())},{tot_excl},{tot_flag},"
+                 f"{round(tot_excl/(tot_keep+tot_excl)*100,1)}\n")
+        fp.write(f"# min eligible category: {min_cat} (n={min_n}); "
+                 f"No category fell below n={min_n} — feasible for N<=14*{min_n}={14*min_n}\n")
+
+    print(f"\n✅ clean eligible pool(KEEP) = {tot_keep}편  "
+          f"(최소 category = {min_cat} {min_n}편 → N<={14*min_n}까지 균형표집 가능)")
     print(f"저장: {OUT_PATH}")
+    print(f"저장: {qa_path}")
 
 
 if __name__ == "__main__":
