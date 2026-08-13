@@ -717,3 +717,15 @@ Politics), 26(Howto & Style), 27(Education), 28(Science & Technology). 나머지
   (완전 3인), 늦으면 불일치만(심판 모드). 완전/심판 결정은 **완료율 기준**(라벨 값 아님).
   scripts: 06_make_sheets(3시트), 06b_checkpoint(신규), 06_merge_qrels(median-of-3+Fleiss κ).
   기존 2인 규칙(|차이|1 평균·0↔2 합의)은 **C 미커버 잔여용 백스톱**으로만 잔존.
+- **🔒 2026-08-14 (표집 방법 amendment: md5-hash → greedy k-medoid — 라벨 생성 前, HARKing 아님)**:
+  초기 deterministic hash 표집(md5)은 재현성은 확보했으나 category 내 query diversity·pool
+  coverage를 함께 고려하지 못했다(예: 자동차가 detailing에 쏠림, 대표 쿼리 밀림). sampling
+  audit(04i/j/k 진단 + 04f2/f3 비교)에서 **MD5 / farthest-first / cluster-medoid**를 사전 정의
+  **representative+diverse** 기준으로 비교한 결과, **greedy k-medoid**가 coverage 0.455(최고)·
+  diversity −0.174(최고)·centrality −0.033(md5와 동률)로 최선 → 최종 채택(04f_final_medoid.py).
+  **결정성**: clustering·threshold·RNG 없음, k=4 고정, 인코더 mpnet 고정, 동점 md5 tie-break,
+  임베딩 npz 캐시(재현 보강). 2회 실행 동일 검증 통과. 이전 md5 표본은 queries_frozen_v1.json 보존.
+  query 생성(sweep)은 불변 — **표집 단계만** 변경. 재retrieval(pool 23.9)·재시트(1,336쌍) 갱신.
+  **한계 기록**: 자동차 등 일부 category의 detailing 편중은 **eligible pool(=generation 특성)**
+  이며 어떤 표집으로도 제거 불가(sampling ≠ generation 문제). sweep 채택 근거는 04l(추천검색어는
+  navigational/상품 오염 더 큼). **이로써 query generation·curation·sampling 재론 종료 → 라벨링.**
