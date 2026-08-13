@@ -26,10 +26,12 @@ DATA = Path(__file__).resolve().parent.parent / "data"
 SALT = "P05-query-sample-v1"
 POOL_TOPK = 10
 NEAR = 0.5
+K = 5   # 카테고리당 쿼리 수 (14×5 = 70, §0.6 범위 내 확대)
 
 META = ["디렉터", "대본", "녹음 프로그램", "만드는 프로그램", "녹화 프로그램", "데스크 셋업", " 셋업",
         "편집 프로그램", "기자 연결", "리뷰 유튜버", " 유튜버", "닉네임", "제작자", "로드맵", "공모전",
-        "롱폼", "릴스 찍는법", "릴스 만드는법", "녹음하는법", "리믹스 하는법", "유튜버"]
+        "롱폼", "릴스 찍는법", "릴스 만드는법", "녹음하는법", "리믹스 하는법", "유튜버",
+        "분석가", "나레이션"]
 NAV = ["뉴스타파", "뉴스데스크", "뉴스공장", "뉴스하이킥", "뉴스토마토", "뉴스룸", "뉴스바사삭", "음악중심",
        "동물농장", "동물의왕국", "게임오버", "과학드림", "과학쿠키", "과학을보다", "리뷰엉이", "데프콘",
        "노하우톡톡", "노하우플러스", "부산도배", "공부돼지", "스포츠니어스", "코미디빅리그", "취미는과학",
@@ -70,15 +72,15 @@ def main():
             if any(sim[pos[q]][pos[s]] >= NEAR for s in sel):   # near-duplicate 건너뜀
                 continue
             sel.append(q)
-            if len(sel) == 4:
+            if len(sel) == K:
                 break
-        # 혹시 4개 못 채우면(필터 과도) near-dup 조건만 완화해 보충
-        if len(sel) < 4:
+        # 혹시 K개 못 채우면(필터 과도) near-dup 조건만 완화해 보충
+        if len(sel) < K:
             for q in qs:
                 if q in sel or bad(q):
                     continue
                 sel.append(q)
-                if len(sel) == 4:
+                if len(sel) == K:
                     break
         selections[name] = sel
 

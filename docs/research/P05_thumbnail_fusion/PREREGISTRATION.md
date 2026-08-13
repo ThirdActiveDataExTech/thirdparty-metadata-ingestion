@@ -741,3 +741,9 @@ Politics), 26(Howto & Style), 27(Education), 28(Science & Technology). 나머지
   오염** → 기각. **최종 = 초성 sweep + MD5+content-filter, 56 freeze**(재retrieval pool 22.3·재시트).
   세 generation(음절/초성/bare) × 세 sampling(MD5/farthest/medoid) 전수 비교 완료.
   **query 재론 완전 종료 — 이후 라벨링만.**
+- **🔒 2026-08-14c (N 56→70 확대 — 라벨 생성 前, §0.6 범위 내)**: 카테고리당 4→**5개(14×5=70)**.
+  §0.6이 허용한 56~84 범위 내 조정(라벨 전이라 HARKing 아님). 5번째 픽의 약한 meta(스포츠
+  데이터 분석가·브이로그 나레이션 등)는 필터 보강(META에 '분석가'·'나레이션' 추가)으로 정리 →
+  스포츠 레전드·브이로그 롯데월드 등으로 교체. 재retrieval(pool 22.7)·재시트(**1,587쌍/인**).
+  통계적 이득은 marginal이나 (쿼리,관련영상) 쌍·robustness 확보 목적. 잔여 약쿼리(게임 낙원 등)는
+  zero-relevance가 사후 정리.
