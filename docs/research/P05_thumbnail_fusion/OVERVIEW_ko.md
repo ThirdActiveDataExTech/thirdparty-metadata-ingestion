@@ -204,6 +204,8 @@ YouTube에서 영상을 검색하면, 시스템은 대부분 **제목·설명·�
 
 ## 더 볼 문서
 
+- **[METHODOLOGY_ko.md](METHODOLOGY_ko.md)** — 코퍼스·쿼리 결정 논리 + 지표 정의 + 통계 검정
+  (Wilcoxon·Spearman 등)을 우리 데이터 예시로 자세히.
 - **[paper_draft_ko.md](paper_draft_ko.md)** — 정식 논문 초안(초록·방법·평가 전체).
 - **[PREREGISTRATION.md](PREREGISTRATION.md)** — 실험 전에 고정한 설계·가설·분석 방법 원본.
 - **[references.md](references.md)** — 인용 문헌 목록과 각 문헌의 용도.
