@@ -1,14 +1,14 @@
 # [논문 초안 · 한국어 · Analysis 중심 리라이팅]
 # 썸네일은 언제 검색에 도움이 되는가: 한국어 YouTube에서 시각-텍스트 의미 격차 분석
 
-> **버전**: v3.2 (2026-08-11) — 방법론 섹션(§3~5)을 [PREREGISTRATION.md](PREREGISTRATION.md)의
-> 확정 결정에 동기화. 주요 반영: **gap = centered**(이방성 제거 전처리), **eval 코퍼스 840편
-> (14×60, Shorts만 제외 duration>60)**, **dev/eval 코퍼스 분리**, **categoryId=Sampling
-> Anchor(not GT)**, **쿼리 = YouTube Suggest + seed-독립 trigger + curation**, **융합 α=0.5
-> primary + α grid sensitivity**(Concat/Learned·best-α 선택 없음), **H2 다층 구조**(영상당
-> median Δrank primary / 카테고리 stratified·query-video cluster-robust secondary / raw
-> sensitivity), **qrels 불일치 = 경미 평균·0↔2 합의**. 프레임(When-does-it-help 분석)은 유지.
-> **원본 v2(영문) 초안 보존**(비교/롤백용).
+> **버전**: v3.3 (2026-08-14) — v3.2 이후 [PREREGISTRATION.md](PREREGISTRATION.md) 갱신 반영.
+> v3.2 반영: **gap = centered**, 코퍼스 840(14×60, Shorts만 제외), dev/eval 분리,
+> categoryId=Sampling Anchor, 융합 α=0.5 primary + α grid, H2 다층 구조.
+> **v3.3 추가 갱신**: (1) **쿼리 생성 = 초성(jamo) sweep**(음절 sweep의 단일모음 coverage 결함
+> 수정, §PREREG 2026-08-14b) → **카테고리별 MD5+content-filter 표집**(3-way audit로 medoid 대비
+> 선택), (2) **평가 쿼리 N=70(14×5)**, (3) **라벨링 3인 median-of-3**(Cohen κ + 완전3인시
+> Fleiss κ; 기존 2인·합의 규칙은 백스톱), (4) **한계에 OCR 미수행(썸네일 한국어 자막 미판독)** 추가.
+> 프레임(When-does-it-help 분석)은 유지. **원본 v2(영문) 초안 보존**(비교/롤백용).
 > **상태**: 초안 (결과 §6~9는 실험 후) — `[DATA: ...]`는 실험 후 실수치로 교체.
 > **분량 목표**: 학술대회 단편, **최대 5페이지**.
 > **설계 고정**: 가설·표집·평가·분석 방법은 [PREREGISTRATION.md](PREREGISTRATION.md)에
@@ -247,20 +247,25 @@ truth가 아니다** — 주제 다양성 확보용 층화 도구로만 쓰고 H
 **평가 쿼리(§PREREG 0.2)**: 코퍼스 Sampling과 개념이 다르며 실제 사용자 검색어를 반영한다.
 연구자 임의 창작이 아니라 **YouTube의 공개 관찰 가능한 검색 제안(Suggest)** 에서 생성한다
 (Google Trends=재현 불가, Naver DataLab=도메인 불일치로 미채택). **코퍼스 seed와 독립적인
-고정 trigger**(카테고리 수준, seed 구 재사용 금지)로 Suggest를 촉발해 후보를 모으고,
-**사전 등록된 curation 규칙으로 navigational(채널/프로그램)·category mismatch·상품·서비스
-쿼리를 제외**한다(후보마다 decision+reason을 전량 기록 → Appendix exclusion funnel).
-영상 텍스트에서 파생하지 않는다(KeyBERT 금지 — circularity). **쿼리는 retrieval 실험 전에
-확정(freeze)**하고 성능을 보고 바꾸지 않는다. 14개 카테고리 동일 N, 최종 수는 **Query
-Pilot(§PREREG 0.6)**의 pool 크기·라벨링 부담으로 확정(56부터).
+고정 trigger**(카테고리 수준, seed 구 재사용 금지)로 Suggest를 촉발해 후보를 모은다. 촉발은
+**초성(jamo) sweep** — category term에 초성 ㄱ/ㄴ/ㄷ…을 이어 붙여 해당 초성으로 시작하는
+넓은 완성어를 수집한다(음절 sweep 가/나/다…는 사실상 ㅏ모음만 탐색해 거/게/고/기 등을
+구조적으로 누락하는 coverage 결함이 확인됨; §PREREG 2026-08-14b). 이어 **사전 등록된 curation
+규칙으로 navigational(채널/프로그램)·category mismatch·상품·서비스 쿼리를 제외**한다(후보마다
+decision+reason 전량 기록 → Appendix exclusion funnel). 영상 텍스트에서 파생하지 않는다
+(KeyBERT 금지 — circularity). eligible pool에서 **카테고리별로 MD5 해시 순 + content-filter
+(META/NAV/product/near-duplicate skip) 결정적 표집**으로 카테고리당 동일 N을 뽑는다(3-way audit
+[MD5/farthest/medoid]에서 MD5가 META/NAV 최소·재현성 최고로 선택; §PREREG 2026-08-14b).
+**쿼리는 retrieval 실험 전에 확정(freeze)**하고 성능을 보고 바꾸지 않는다. 14개 카테고리
+동일 N, 최종 **N=70(14×5)**(§PREREG 0.6·2026-08-14c).
 
 | 항목 | 값 |
 |------|-----|
 | 영상 수 | **840** (14 × 60, 균형; 최종 다중모달 평가 코퍼스) |
 | 표집 틀 | YouTube KR assignable 카테고리 14개, categoryId=Sampling Anchor (§PREREG 0.1) |
 | 길이 | **Long-form 아님 — Shorts(≤60초)만 제외**(실측: ≤60초 0 / 1–4분 168 / 4–20분 346 / >20분 326) |
-| 평가 쿼리 | YouTube Suggest + seed-독립 trigger + curation, `[DATA: N_q]`(Pilot 확정; 56부터) |
-| qrels | Text∪Visual∪Fusion 각 Top10 pooling → **2인 blind·독립** 라벨링, κ 보고; 불일치 |=1|=평균, **0↔2=합의** |
+| 평가 쿼리 | YouTube Suggest(**초성 sweep**) + seed-독립 trigger + curation → 카테고리별 **MD5+content-filter 표집**, **N=70 (14×5)** |
+| qrels | Text∪Visual∪Fusion 각 Top10 pooling → **3인 blind·독립** 라벨링, **median-of-3** 집계; Cohen κ(A-B)·완전3인시 Fleiss κ 보고 (기존 |차이|1=평균·0↔2=합의는 C 미커버 백스톱) |
 | 쿼리 제거 | **최종 qrels에서 관련(등급≥1) 0개** 쿼리 제외(결과 무관, 제거 수 투명 보고) |
 | gap 계산 | 전체 자동(라벨링 없음), centered |
 
@@ -270,7 +275,7 @@ Pilot(§PREREG 0.6)**의 pool 크기·라벨링 부담으로 확정(56부터).
 2. 임베딩(이미지/gap텍스트/검색텍스트) → **centered gap** 자동 계산(+인코더 sanity check §0.4).
 3. **trigger freeze → Suggest 생성 → curation(navigational/mismatch/service 제외, audit log)
    → Query Pilot로 pool 크기 실측 → 쿼리 수·쿼리셋 Freeze**(§0.2·0.6).
-4. 본 쿼리 pooling → **2인 blind·독립** 라벨링 → qrels·κ·불일치(합의)·정답0 제거(§0.3).
+4. 본 쿼리 pooling → **3인 blind·독립** 라벨링 → **median-of-3** qrels·κ(Cohen/Fleiss)·정답0 제거(§0.3).
 5. retrieval: Text/Visual/Late Fusion(**α=0.5 primary + α grid sensitivity**, best-α 선택 없음).
 6. (쿼리, 관련영상) Δrank 산출.
 7. H1(Fusion α=0.5 vs Text: MRR@10 차>0.05 & paired Wilcoxon) / H2(영상당 median Δrank vs
@@ -287,9 +292,9 @@ Pilot(§PREREG 0.6)**의 pool 크기·라벨링 부담으로 확정(56부터).
 모름 / Fusion만→Fusion에 유리한 후보만 라벨링). 표준 pooling을 따라 **Text-only ∪
 Visual-only ∪ Late Fusion 각 Top10의 합집합**(중복 제거)을 후보 풀로 삼는다(§PREREG 0.3;
 Top-K·pooling 대상 시스템은 결과 보기 전 고정, 사후 변경 금지). 라벨링 시트는 **어느
-시스템이 뽑았는지 표시하지 않고(blind) 쿼리별로 셔플**하며, **두 라벨러가 상호 라벨을 볼
-수 없는 독립 파일**로 작업한다(§PREREG 0.3). Fusion이 찾은 영상이 pooling으로 qrels에
-포함되는 것은 IR 표준이다.
+시스템이 뽑았는지 표시하지 않고(blind) 쿼리별로 셔플**하며, **세 라벨러가 상호 라벨을 볼
+수 없는 독립 파일**로 작업하고 **median-of-3**으로 집계한다(§PREREG 0.3). Fusion이 찾은
+영상이 pooling으로 qrels에 포함되는 것은 IR 표준이다.
 
 ### 5.2 지표
 
@@ -424,7 +429,11 @@ Wilcoxon (Fusion α=0.5 vs Text-only, 쿼리별 RR@10): `[DATA: stat, p]` (부�
 
 ## 8. 한계 (Limitations)
 
-- 테스트 쿼리 `[DATA: N_q]`·평가자 2인 — 검정력 한계(MDES로 정량 보고).
+- 테스트 쿼리 `[DATA: N_q]`(=70)·평가자 3인(median-of-3) — 검정력 한계(MDES로 정량 보고).
+- **시각 인코더 OCR 미수행**: CLIP-ViT-B-32는 썸네일 내 **한국어 자막 텍스트를 판독하지
+  못한다**(전용 OCR 없음, 한국어 이미지-텍스트는 특히 약함). 따라서 본 연구의 시각 신호(및
+  gap)는 **썸네일의 회화적 장면**에 국한되며, 자막에 담긴 정보는 반영하지 못한다. OCR-증강
+  썸네일로의 확장은 후속 연구로 남긴다(§9).
 - gap은 정렬된 다국어 CLIP 텍스트 인코더의 한국어 품질에 의존하며, **mean-centering
   전처리**(이방성 제거)를 쓴다 — centered는 raw CLIPScore와 다르므로 raw 결과를 sensitivity로
   병기했으나, 전처리 선택이 완전히 자유롭지 않음은 한계다.
@@ -451,7 +460,8 @@ Wilcoxon (Fusion α=0.5 vs Text-only, 쿼리별 RR@10): `[DATA: stat, p]` (부�
 라벨링 없이 정량적으로 설명하는 gap 지표를 제안하고 실증**한 데 있다.
 
 향후: gap 기반 적응형 검색(gap 높은 영상에만 시각 임베딩 적재)의 실제 비용-성능 트레이드
-오프 측정, 대표 프레임 다중 샘플링, 한국어 도메인 CLIP fine-tuning, 썸네일 A/B 교체 탐지.
+오프 측정, **OCR-증강 썸네일**(한국어 자막 판독)로 시각 채널·gap 확장, 대표 프레임 다중
+샘플링, 한국어 도메인 CLIP fine-tuning, 썸네일 A/B 교체 탐지.
 
 ---
 
@@ -467,7 +477,8 @@ Radford+2021(CLIP), Hessel+2021(CLIPScore), Fang+2021(CLIP2Video), Reimers&Gurev
 ## 데이터 삽입 체크리스트 (작업용)
 
 - [x] 4.1 코퍼스 규모 N=**840**(14×60) 확보 · 임베딩 · centered gap 산출 완료
-- [ ] 4.1 쿼리 수 확정 (curation → Query Pilot 진행 중)
+- [x] 4.1 쿼리 수 확정 **N=70(14×5)** — 초성 sweep + MD5+content-filter 표집, 3인 라벨링 시트 생성
+- [ ] 4.1/5 라벨링 완료(3인 median-of-3) → qrels·κ·정답0 제거 후 최종 N 확정·보고
 - [ ] 6.1 전체 성능표(Text/Visual/Fusion α=0.5) + Wilcoxon + 부트스트랩 CI + **α sensitivity 곡선**
 - [ ] 6.2 primary Spearman ρ(centered gap, median Δrank) + 산점도 + Cohen's d + MDES
       + **raw sensitivity** + **카테고리 stratified·회귀**
@@ -476,4 +487,5 @@ Radford+2021(CLIP), Hessel+2021(CLIPScore), Fang+2021(CLIP2Video), Reimers&Gurev
 - [ ] 7~9장 작성, Abstract [DATA] 전부 실수치 교체
 - [ ] 참고문헌 7번 서지 완성, novelty 재검색(§2.1)
 - [ ] Appendix: **seed 목록 · trigger 목록 · 쿼리 curation exclusion funnel · categoryId dispersion · 수집 funnel** 표
+- [ ] Appendix: **쿼리 생성 방법 비교(음절/초성/bare sweep)** + **표집 3-way audit(MD5/farthest/medoid)** 근거표
 - [ ] **5페이지 분량 확인** (초과 시 §2 관련연구·§6.6·부록 우선 축약)

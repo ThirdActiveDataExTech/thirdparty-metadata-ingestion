@@ -224,6 +224,7 @@
   Pilot의 실측 pool 크기·라벨링 부담을 보고 필요 시 70~84로 조정. **84로 무조건 늘리지
   않는다** — 코퍼스(1,397/최종 840)는 이미 충분하고 병목은 평가설계·qrels 품질이다. "라벨
   품질 떨어질 규모로 키우기보다 56을 제대로." "쿼리 수는 Pilot이 정한다"는 절차를 freeze.
+  **→ [개정 2026-08-14c] Pilot·라벨링 여력 검토 후 최종 N=70(14×5)으로 확정**(56~84 범위 내).
 - **🔒 Freeze 순서(필수)**: **쿼리 생성 → Freeze → Retrieval → Evaluation.** 평가
   쿼리는 **retrieval 실험을 돌리기 전에 확정**한다. 실험 결과(성능)를 보고 쿼리를
   빼거나 바꾸지 않는다("Evaluation queries were finalized before retrieval experiments").
@@ -398,7 +399,7 @@ Query Pilot: 쿼리 10개(카테고리에 분산) → §0.3 pooling(Top10×3) �
 | **H1 성공** | Late Fusion MRR@10 > Text-only + 0.05 **그리고** Wilcoxon signed-rank test p < 0.05 |
 | **H2 성공** | Spearman ρ(gap, Δrank) > 0 **그리고** p < 0.05 |
 | **강건성 필수 보고** | 위 지표 전부에 부트스트랩 95% CI 동반 + subsampling 수렴 곡선 |
-| **라벨 신뢰성 필수 보고** | 라벨러 2인 Cohen's κ (목표: substantial ≥ 0.6) |
+| **라벨 신뢰성 필수 보고** | 라벨러 **3인 median-of-3**; Cohen κ(A-B)·완전3인시 Fleiss κ (목표 ≥0.6) [개정 2026-08-13] |
 | **유의수준·검정력** | α = 0.05, power = 0.80 (Cohen 1988 관습, 인용으로 고정) |
 
 ---
@@ -501,7 +502,7 @@ Politics), 26(Howto & Style), 27(Education), 28(Science & Technology). 나머지
 
 - 테스트 쿼리 `[DATA: ~50]`개, 쿼리당 상위 후보 `[DATA: depth]`개(품 절감을 위해
   depth=10 검토 — MRR@10/NDCG@10은 상위 10만 보므로 지표 영향 거의 없음)
-- **2인 독립 라벨링** → Cohen's κ로 일치도 보고
+- **3인 독립 라벨링(median-of-3)** → Cohen κ(A-B)·완전3인시 Fleiss κ로 일치도 보고 [개정 2026-08-13]
 - **불일치 조정 규칙(사전 고정, 2026-08-07c 개정)**: (1) **경미한 불일치(|차이|=1: 0↔1,
   1↔2)** → **두 등급의 평균**(0.5·1.5; NDCG는 graded라 그대로 사용). (2) **심각한 불일치
   (0↔2)** → **두 라벨러가 해당 항목만 합의(consensus reconciliation)** 로 최종 등급 결정
