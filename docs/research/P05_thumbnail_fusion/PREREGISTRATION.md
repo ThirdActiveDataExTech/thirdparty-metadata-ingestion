@@ -729,3 +729,15 @@ Politics), 26(Howto & Style), 27(Education), 28(Science & Technology). 나머지
   **한계 기록**: 자동차 등 일부 category의 detailing 편중은 **eligible pool(=generation 특성)**
   이며 어떤 표집으로도 제거 불가(sampling ≠ generation 문제). sweep 채택 근거는 04l(추천검색어는
   navigational/상품 오염 더 큼). **이로써 query generation·curation·sampling 재론 종료 → 라벨링.**
+- **🔒 2026-08-14b (generation 결함 발견·수정 + 최종 표집 확정 — 라벨 생성 前, HARKing 아님)**:
+  **근본 결함 발견**: 음절 sweep(가나다…)은 사실상 **ㅏ모음 음절만** 탐색해 거/게/고/구/기 등
+  타모음 완성어를 구조적으로 누락(예: 뉴스 경제/기자/교통사고, 자동차 리뷰/배터리/경매 못 잡음).
+  → **초성 sweep(ㄱㄴㄷ…)** 로 revised(04_gen_jamo): 동일 trigger에서 해당 초성 전체 모음 탐색.
+  음절 baseline 보존. **동일 curation**(04_curate_jamo: 이전 EXCLUDE 재사용 + 렉시콘) 적용.
+  **초성 pool에서 3-way 재비교**(04f4, 사전정의 지표): **META/NAV(/56) MD5=1·Farthest=1·Medoid=6**
+  → **medoid 탈락**(coverage-max가 제작/메타 쿼리 유입). MD5가 content-natural·최고 재현성 →
+  **MD5 + content-filter(META/NAV/product/near-dup skip)** 채택(04f_final_md5). **bare 추천검색어**도
+  비교(04l2): **동물 eligible 3(<4) feasibility 실패 + 교육부·시사타파·스타일러·차량용품 등 기관/상품
+  오염** → 기각. **최종 = 초성 sweep + MD5+content-filter, 56 freeze**(재retrieval pool 22.3·재시트).
+  세 generation(음절/초성/bare) × 세 sampling(MD5/farthest/medoid) 전수 비교 완료.
+  **query 재론 완전 종료 — 이후 라벨링만.**
