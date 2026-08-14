@@ -2,9 +2,13 @@
      본문 2단·국문 함초롱바탕 등 조판은 HWP 양식에서 적용. 이 파일은 내용 원고.
      ⟦DATA⟧ = 라벨링·실험 후 실수치로 교체. 저자/소속/과제문구는 [ ] 플레이스홀더. -->
 
-# 썸네일은 언제 검색에 도움이 되는가: 한국어 YouTube에서 시각–텍스트 의미 격차와 검색 순위 개선의 관계 분석
+# 영상 검색에서 시각–텍스트 의미 격차 기반 시각 정보의 조건부 기여 분석
 
-**When Does the Thumbnail Help Retrieval? The Visual–Text Semantic Gap and Retrieval Rank Improvement in Korean YouTube Search**
+**Analyzing the Conditional Contribution of Visual Information to Video Retrieval via the Visual–Text Semantic Gap**
+
+<!-- 제목 잠정(A안). 재검토 예정. 대안: (A+C 절충) 영상 검색에서 썸네일–제목 의미 격차 기반
+     시각 정보의 조건부 기여 분석 / (B) …순위 개선의 관계 분석. 실증 도메인(한국어 YouTube)은
+     초록·본문·한계에 명시. -->
 
 [저자1] · [저자2]<sup>*</sup>  
 [소속1] · [소속2]  
