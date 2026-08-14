@@ -16,7 +16,7 @@
 | 4 | Reimers & Gurevych (2019). Sentence-BERT. *EMNLP*. | arXiv:1908.10084 | 다국어 텍스트 임베딩(mpnet 계열) 근거 |
 | 5 | Li et al. (2022). BLIP. *ICML*. | arXiv:2201.12086 | 이미지-텍스트 통합모델 관련연구 |
 | 6 | Gao et al. (2022). M2HF: Multi-level Multi-modal Hybrid Fusion for Text-Video Retrieval. | arXiv:2208.07664 | 멀티레벨 융합 대비 late fusion 단순성 |
-| 7 | ThumbnailTruth (2025). A Multi-Modal LLM Approach for Detecting Misleading YouTube Thumbnails. | arXiv:2509.04714 | ⚠️ 서지정보 미완 — 저자/베뉴 확인 필요. 가장 가까운 선행연구(클릭베이트 분류) |
+| 7 | Naveed, Uzmi & Qazi (2025). ThumbnailTruth: A Multi-Modal LLM Approach for Detecting Misleading YouTube Thumbnails Across Diverse Cultural Settings. | arXiv:2509.04714 [cs.SI] | 가장 가까운 선행연구. **멀티모달 LLM(GPT-4o·Claude 3.5·Gemini)** 으로 오도성 썸네일 **탐지**(영상→텍스트·썸네일·자막 통합). 우리와 차이: 임베딩 기반 검색 랭킹의 기여 조건이 아니라 misleading 분류 |
 | 8 | Mu & Viswanath (2018). All-but-the-Top: Simple and Effective Postprocessing for Word Representations. *ICLR*. | arXiv:1702.01417 | gap 계산 전 모달별 mean-centering(이방성/modality-gap offset 제거)의 근거 |
 | 9 | Ethayarajh (2019). How Contextual are Contextualized Word Representations? *EMNLP*. | arXiv:1909.00512 | 임베딩 이방성(anisotropy) 현상 근거 — raw cosine이 좁게 뭉치는 이유 |
 

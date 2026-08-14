@@ -107,8 +107,9 @@ CLIPScore[2]는 CLIP 유사도를 캡션 품질의 자동 평가에 사용했고
 
 ### 2.3 YouTube 썸네일 연구
 
-가장 가까운 선행 연구는 CLIP 썸네일·텍스트 late fusion으로 클릭베이트를 **분류**한 연구[7]이나,
-과제가 이진 분류이며 검색 랭킹에서의 기여 조건을 연속 지표로 설명하지 않는다.
+가장 가까운 선행 연구는 **멀티모달 LLM**(영상→텍스트 설명·썸네일·자막을 통합)으로 **오도성
+(misleading) 썸네일을 탐지**한 연구[7]이나, 과제가 오도성 판정(분류)이며 임베딩 기반 검색
+랭킹에서 시각 정보의 **기여 조건**을 연속 지표로 설명하지는 않는다.
 
 ### 2.4 연구 공백
 
@@ -329,8 +330,9 @@ unified vision-language understanding and generation," in *Proc. ICML*, 2022.
 [6] Z. Gao et al., "M2HF: Multi-level multi-modal hybrid fusion for text-video retrieval,"
 *arXiv:2208.07664*, 2022.
 
-[7] [저자 미상], "A multi-modal LLM approach for detecting misleading YouTube thumbnails,"
-*arXiv:2509.04714*, 2025. ⟦서지 확인 필요⟧
+[7] W. Naveed, Z. A. Uzmi, and Z. A. Qazi, "ThumbnailTruth: A multi-modal LLM approach for
+detecting misleading YouTube thumbnails across diverse cultural settings," *arXiv:2509.04714*,
+2025.
 
 [8] J. Mu and P. Viswanath, "All-but-the-top: Simple and effective postprocessing for word
 representations," in *Proc. ICLR*, 2018.
