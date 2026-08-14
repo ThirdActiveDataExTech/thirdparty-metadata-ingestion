@@ -71,6 +71,11 @@
   배제됨을 dev 코퍼스에서 실측 → 제거. 근거: Shorts는 CTR·썸네일(자동생성 프레임)·소비·추천이
   달라 gap 교란이나, 4~20분 일반 영상은 배제할 이유 없음. (search가 Shorts를 다수 반환하므로
   후처리로 거른다 — 페이지당 유효 수율은 낮아지나 PAGES=2로 흡수.)
+  **⚠️ [개정 2026-08-15] 60초 초과만으로는 Shorts를 완전 배제 못 함**(YouTube 2024-10 정책상
+  세로형 최대 3분도 Short). 공식 API에 Short 필드가 없어, 각 영상을 `youtube.com/shorts/{id}`
+  접근의 리다이렉트 여부로 사후 판별해 **is_short 라벨 부여**(corpus_shorts_flag.json). 실측 결과
+  **840편 중 105편(12.5%)이 Short**. 정책: **코퍼스는 그대로 유지(840)** 하고, is_short를 **공변량**
+  으로 보고 + **non-Shorts 부분표본 민감도**로 H1·H2 재실행(옵션 C). 코퍼스 재수집/축소 없음.
 - **목표 규모·표집 방식 — best-effort 층화 표집 (2026-08-07 Freeze)**: 카테고리당 목표
   **N=60**까지 수집(14×60=**840편 사전 Freeze**). **희소 카테고리는 억지로 60편을 맞추지
   않는다**("balanced"가 아니라 **"best-effort category-stratified sampling"**). N=100→60
@@ -748,3 +753,10 @@ Politics), 26(Howto & Style), 27(Education), 28(Science & Technology). 나머지
   스포츠 레전드·브이로그 롯데월드 등으로 교체. 재retrieval(pool 22.7)·재시트(**1,587쌍/인**).
   통계적 이득은 marginal이나 (쿼리,관련영상) 쌍·robustness 확보 목적. 잔여 약쿼리(게임 낙원 등)는
   zero-relevance가 사후 정리.
+- **🔒 2026-08-15 (Shorts 판별·정책 확정 — 라벨 생성 前, 코퍼스 무변경)**: "60초 초과만" 필터가
+  YouTube 2024-10 정책(세로형 ≤3분도 Short) 때문에 Shorts를 완전 배제 못 함이 확인됨. 공식 API에
+  Short 필드가 없어 `youtube.com/shorts/{id}` 리다이렉트 판별로 **840편 전수 is_short 라벨**
+  (corpus_shorts_flag.json) → **105편(12.5%) Short**(60~180s 후보 143 중 105; 휴리스틱: 200=Short,
+  303=일반). **정책 = 옵션 C**: 코퍼스 840 그대로 유지(재수집·축소 없음), is_short를 공변량으로
+  보고(카테고리별 유병률) + **non-Shorts 민감도**로 H1·H2 재실행. §0.1·paper §4.1/4.4/6.5 반영.
+  라벨링/임베딩/gap/retrieval 무변경 — 라벨링 그대로 진행.
