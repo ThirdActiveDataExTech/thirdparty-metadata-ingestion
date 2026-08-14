@@ -41,12 +41,12 @@ improve retrieval, whether this improvement is uniform across videos or arises o
 specific conditions remains unclear. We characterize this condition with a continuous,
 label-free metric—the *visual–text semantic gap*—defined as the complement of thumbnail–title
 alignment in the CLIP joint space and obtained as a by-product of embedding extraction. On
-⟦DATA:840⟧ Korean YouTube videos and ⟦DATA:70⟧ queries, late fusion of CLIP image and
-multilingual text embeddings improves retrieval over text-only ⟦DATA⟧, and the gap is a
-significant predictor of fusion-induced rank improvement ⟦DATA⟧. Our contribution is not a new
-fusion technique but a metric that quantitatively explains *when* visual information helps,
-providing a basis for adaptively extending a metadata retrieval platform with visual embeddings
-only for high-gap videos.
+⟦DATA:840⟧ Korean YouTube videos and ⟦DATA:70⟧ queries, we empirically examine whether late
+fusion of CLIP image and multilingual text embeddings improves retrieval over text-only, and
+whether the gap is associated with fusion-induced rank improvement ⟦DATA⟧. Our contribution is
+not a new fusion technique but a metric and analysis for characterizing *when* visual
+information may help, providing a basis for exploring the adaptive extension of a metadata
+retrieval platform with visual embeddings for high-gap videos.
 
 **키워드 : 멀티모달 검색, CLIP, 의미 격차, 설명 가능 검색, 한국어 YouTube**
 
@@ -127,15 +127,18 @@ CLIPScore[2]는 CLIP 유사도를 캡션 품질의 자동 평가에 사용했고
 
 **표 1. 사용 임베딩 인코더**
 
-| 역할 | 모델 | 차원 |
+| 역할 | 모델(체크포인트) | 차원 |
 |---|---|---|
-| 썸네일 이미지 | CLIP ViT-B/32 | 512 |
-| gap·시각채널용 텍스트 | 다국어 CLIP 텍스트(distillation 정렬) | 512 |
-| 검색 텍스트 채널 | 다국어 문장 인코더(SBERT 계열) | 768 |
+| 썸네일 이미지 | `sentence-transformers/clip-ViT-B-32` | 512 |
+| gap·시각채널용 텍스트 | `sentence-transformers/clip-ViT-B-32-multilingual-v1` | 512 |
+| 검색 텍스트 채널 | `paraphrase-multilingual-mpnet-base-v2` | 768 |
 
 두 텍스트 인코더는 목적이 다르다. CLIP 계열 텍스트 인코더는 **이미지–텍스트 공동공간에서
-gap과 시각 유사도를 계산**하기 위해, SBERT 계열 인코더는 **한국어 텍스트 간 검색 유사도**를
-높이기 위해 사용한다.
+gap과 시각 유사도를 계산**하기 위해, mpnet 계열 인코더는 **한국어 텍스트 간 검색 유사도**를
+높이기 위해 사용한다. **구현 세부(재현용)**: 모든 임베딩은 L2 정규화하며, 유사도는 코사인,
+채널 결합 전 쿼리별 min–max 정규화를 적용한다. 썸네일 이미지 전처리(리사이즈·crop)는 CLIP
+기본 설정을 따르고, 텍스트는 원문 그대로(추가 형태소 처리 없이) 인코딩한다. 라이브러리·버전과
+전체 하이퍼파라미터는 부록/공개 저장소에 명시한다.
 
 ### 3.2 시각–텍스트 의미 격차(gap)
 
@@ -150,12 +153,15 @@ gap은 **썸네일과 제목이 CLIP 공동 임베딩 공간에서 얼마나 비
 나타내는 영상 수준 지표**다. 본 연구는 이 비정렬 정도가 검색에서 시각 정보의 추가 기여와
 관련되는지를 실험으로 검증하며, gap을 그 자체로 "시각 정보의 유용성"으로 정의하지 않는다.
 
-여기서 `center(·)`는 모달별 코퍼스 평균을 차감·재정규화하는 전처리다. CLIP 임베딩은
-이방성(anisotropy)이 강해 raw 코사인이 좁은 대역에 뭉치므로[8][9], 모달별 mean-centering으로
-이방성을 제거해 정합–비정합의 분리를 개선한다. centering은 성능이 아니라 **정합성 construct
-validity**(제목이 자기 썸네일과 더 정합한가)를 근거로 실험 전 선택했으며, raw gap도 sensitivity로
-병기한다. 지표는 라벨링 없이 전체 코퍼스에 자동 적용되며 임베딩 추출의 부산물이라 추가
-비용이 없다.
+여기서 `center(·)`는 모달별 코퍼스 평균을 차감·재정규화하는 전처리다. CLIP 등 대조학습
+임베딩은 이방성(anisotropy)과 modality gap이 강해 raw 코사인이 좁은 대역에 뭉치므로[8][9][10],
+모달별 mean-centering으로 이 성분을 제거해 정합–비정합의 분리를 개선한다. **centering 선택의
+근거(엄밀화)**: (1) 어떤 retrieval 점수·Δrank·qrels도 보기 전에 centering을 고정했다. (2) 판단
+기준은 **자기매칭(self-matching) construct validity** — 각 제목이 무작위 썸네일보다 자기 자신의
+썸네일과 더 정합한가(self-match rate) — 이며, **성능 지표가 아니다**. (3) 이 판단에 qrels·Δrank는
+일절 사용하지 않았다. 따라서 "데이터를 보고 잘 분리되는 전처리를 고른 것"이 아니다. raw gap도
+sensitivity로 병기한다(§4.4). 지표는 라벨링 없이 전체 코퍼스에 자동 적용되며 임베딩 추출의
+부산물이라 추가 비용이 없다.
 
 ### 3.3 Late Fusion 검색
 
@@ -191,9 +197,11 @@ grid는 sensitivity 곡선으로만 보고한다(최고 α를 "최적"으로 선
 
 YouTube KR `assignable` 카테고리 **14개**를 주제 다양성 확보용 층화 틀로 사용해 **카테고리당
 60편 × 14 = ⟦DATA:840⟧편**을 수집했다. ⚠️ categoryId는 **Sampling Anchor이지 semantic ground
-truth가 아니며**, H1/H2 어디서도 레이블로 쓰지 않는다. 절차: 카테고리당 복수 seed로 `search`
+truth가 아니며**, 본 연구의 어느 분석에서도 레이블로 쓰지 않는다. 절차: 카테고리당 복수 seed로 `search`
 수집 → `videos.list`의 categoryId로 사후 필터링, 정렬 3혼합(relevance·viewCount·date), 채널당
-최대 5편, seed 간 round-robin. **Shorts 제외**(길이 실측 60초 초과만), 게시일 2025-01-01 이후.
+최대 5편, seed 간 round-robin. **60초 이하 영상 제외**(초단편 클립 배제; 실측 duration>60s),
+게시일 2025-01-01 이후.[각주: YouTube는 2024-10-15 이후 최대 3분의 세로형/정사각형 영상도
+Shorts로 분류할 수 있어, 60초 초과만으로는 short-form을 완전히 배제하지 못한다(§6.5 한계).]
 이는 확률표본이 아니라 **gap 분산 확보용 카테고리 층화표본**이다.
 
 ### 4.2 평가 쿼리
@@ -219,16 +227,19 @@ Fleiss κ)로 보고한다. 최종 qrels에서 관련(등급≥1) 문서가 0개
 
 ### 4.4 평가 지표 및 통계 검정
 
-- **검색 성능(RQ2)**: MRR@10, NDCG@10, Recall@10.
-- **gap 예측력(RQ1)**: Spearman ρ(gap, median Δrank), 효과 크기 Cohen's d.
-- **H1 검정**: Text-only 대 Fusion(α=0.5)의 쿼리별 reciprocal rank@10에 **paired Wilcoxon
-  signed-rank test**(p<0.05) **그리고** 전체 MRR@10 차 > +0.05. RR@10이 이산·비정규 분포라
-  비모수 검정을 쓴다.
-- **H2 검정**: 영상당 median Δrank로 집계해 `Spearman(gap, median Δrank)` 유의성(ρ>0, p<0.05)을
-  본다(Δrank는 영상–쿼리 쌍 구조이고 한 영상에 여러 쿼리가 붙으므로 영상당 median 집계로
-  독립성을 확보한다). **부트스트랩 95% CI**와 **카테고리 내 stratified 상관**, **raw vs centered
-  gap sensitivity**를 병기한다. 카테고리 교란을 통제하는 클러스터-robust 회귀와 MDES는 필요 시
-  추가 분석으로 제시한다.
+지표는 검색 성능(RQ2)에 MRR@10·NDCG@10·Recall@10, gap–개선 연관(RQ1)에 Spearman ρ(gap,
+median Δrank)와 효과 크기 Cohen's d를 쓴다. 본 논문은 연구 질문 RQ1·RQ2로 명칭을 통일하며,
+각각을 아래 검정으로 확인한다.
+
+- **RQ2 검정(융합 효과)**: Text-only 대 Fusion(α=0.5)의 쿼리별 reciprocal rank@10에 **paired
+  Wilcoxon signed-rank test**(p<0.05) **그리고** 전체 MRR@10 차 > +0.05. RR@10이 이산·비정규
+  분포라 비모수 검정을 쓴다.
+- **RQ1 검정(gap–개선 연관)**: 영상당 median Δrank로 집계해 `Spearman(gap, median Δrank)`의
+  유의성(ρ>0, p<0.05)을 **상관 수준**에서 본다(Δrank는 영상–쿼리 쌍 구조이고 한 영상에 여러
+  쿼리가 붙으므로 영상당 median 집계로 독립성을 확보한다). **부트스트랩 95% CI**와 **카테고리
+  내 stratified 상관**, **raw vs centered gap sensitivity**를 병기한다. 카테고리 교란을 통제하는
+  클러스터-robust 회귀와 MDES는 필요 시 추가 분석으로 제시한다. 상관 유의성은 예측력의 직접
+  증거가 아니므로, 본 연구는 결과를 "예측"이 아니라 "연관"으로 해석한다.
 
 ## Ⅴ. 결과 ⟪실험 후 작성⟫
 
@@ -244,7 +255,7 @@ Fleiss κ)로 보고한다. 최종 qrels에서 관련(등급≥1) 문서가 0개
 
 Wilcoxon(Fusion vs Text, 쿼리별 RR@10): ⟦DATA: stat, p⟧ (부트스트랩 95% CI ⟦DATA⟧).
 
-### 5.2 gap의 순위 개선 예측력 (RQ1)
+### 5.2 gap과 순위 개선의 연관 (RQ1)
 
 Spearman ρ(gap, 영상당 median Δrank) = ⟦DATA⟧ (95% CI ⟦DATA⟧, p=⟦DATA⟧). raw gap
 sensitivity ⟦DATA⟧, 카테고리 stratified 양(+)상관 비율 ⟦DATA⟧, 회귀 gap 계수 ⟦DATA⟧.
@@ -272,8 +283,9 @@ gap 상·하위군 평균 Δrank와 Cohen's d ⟦DATA⟧. (그림 1: gap 대 med
 
 §5.3의 반례를 논한다. gap이 높다는 것은 썸네일이 제목과 다른 정보를 담는다는 뜻이지, 그
 정보가 특정 쿼리에 유용함을 보장하지 않는다. 썸네일과 제목이 모두 쿼리와 약하게만 관련되면
-gap이 높아도 개선이 없을 수 있다. 이는 gap을 결정적 규칙이 아니라 **예측 후보 변수**로
-서술하는 근거이며, 반례를 숨기지 않는 것과 일관된다.
+gap이 높아도 개선이 없을 수 있다. 이는 gap을 결정적 규칙이 아니라 순위 개선과 **연관을 보이는
+변수**(상관 수준)로 서술하는 근거이며, 반례를 숨기지 않는 것과 일관된다. 본 연구의 primary
+분석은 Spearman 상관이므로 "예측"이 아니라 "연관"으로 해석함을 명시한다.
 
 ### 6.4 실무적 함의: 시각 임베딩의 선별 적용
 
@@ -288,7 +300,9 @@ gap이 높아도 개선이 없을 수 있다. 이는 gap을 결정적 규칙이 
 (1) 시각 인코더는 OCR을 수행하지 않아 **썸네일 내 한국어 자막 텍스트를 판독하지 못하므로**,
 시각 신호와 gap은 썸네일의 회화적 장면에 국한된다. (2) gap은 정렬된 다국어 CLIP 인코더의
 한국어 품질과 mean-centering 전처리에 의존한다. (3) 평가 코퍼스는 확률표본이 아닌 카테고리
-층화표본이다(대표성 주장은 그 범위로 한정). (4) 상관은 인과가 아니다.
+층화표본이다(대표성 주장은 그 범위로 한정). (4) **60초 초과만 배제**하므로 YouTube의 2024-10
+정책상 최대 3분 세로형 short-form이 코퍼스에 일부 포함될 수 있다(aspect ratio·180초 기준을
+결합한 sensitivity는 향후 과제). (5) primary 분석은 **상관**이며 인과가 아니다.
 
 ## Ⅶ. 결 론
 
@@ -339,3 +353,7 @@ representations," in *Proc. ICLR*, 2018.
 
 [9] K. Ethayarajh, "How contextual are contextualized word representations? Comparing the
 geometry of BERT, ELMo, and GPT-2 embeddings," in *Proc. EMNLP-IJCNLP*, pp. 55–65, 2019.
+
+[10] W. Liang, Y. Zhang, Y. Kwon, S. Yeung, and J. Zou, "Mind the gap: Understanding the
+modality gap in multi-modal contrastive representation learning," in *Proc. NeurIPS*, 2022.
+(arXiv:2203.02053)
