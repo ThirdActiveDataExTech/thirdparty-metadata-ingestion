@@ -261,7 +261,14 @@ gap은 "높을수록 반드시 도움"이 아니라 "시각 정보의 잠재 기
 
 ## Acknowledgement
 
-이 논문은 [과제 지원 문구]에 의함.
+이 논문은 2024년도 정부(과학기술정보통신부)의 재원으로 정보통신기획평가원의 지원을 받아
+수행된 연구임 (No.RS-2024-00340834, 써드파티 데이터의 활용성 증대를 위한 액티브 메타데이터
+기반 능동형 데이터 확장 기술 개발).
+
+This work was supported by Institute for Information & communications Technology
+Promotion(IITP) grant funded by the Korea government(MSIT) (No.RS-2024-00340834, Development
+active metadata-driven active data expansion technology to increase third-party data
+utilization).
 
 ## References
 
