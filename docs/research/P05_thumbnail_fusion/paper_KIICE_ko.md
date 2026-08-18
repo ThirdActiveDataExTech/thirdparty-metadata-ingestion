@@ -60,7 +60,7 @@ retrieval platform with visual embeddings for high-gap videos.
 영상 메타데이터를 수집·색인해 검색을 제공하는 플랫폼은 제목·설명·태그 등 **텍스트
 메타데이터**에 의존한다. 반면 사용자가 실제 클릭 판단에 크게 활용하는 **썸네일의 시각
 정보**는 검색에 거의 반영되지 않는다. 썸네일 같은 시각 채널을 텍스트와 결합(late fusion)하면
-검색 성능이 향상된다는 보고는 많으나[3][6], 대부분 *"이미지를 넣었더니 좋아졌다"* 에서
+검색 성능이 향상된다는 보고는 많으나[1][2], 대부분 *"이미지를 넣었더니 좋아졌다"* 에서
 멈추고 **그 향상이 어떤 영상에서 발생하는지**는 다루지 않는다. 이 구분은 실무적으로 중요하다.
 시각 임베딩의 계산·저장은 비용이 들기 때문에, "모든 영상에 필요한가, 일부에만 필요한가"에
 따라 메타데이터 검색 플랫폼의 색인 확장 설계가 달라진다.
@@ -96,14 +96,14 @@ retrieval platform with visual embeddings for high-gap videos.
 
 ### 2.1 멀티모달 검색
 
-CLIP[1]은 이미지·텍스트를 대조학습으로 공통 임베딩 공간에 정렬해, 결합 공간의 코사인
+CLIP[3]은 이미지·텍스트를 대조학습으로 공통 임베딩 공간에 정렬해, 결합 공간의 코사인
 유사도를 정합성의 표준 지표로 확립했다. 이를 비디오–텍스트 검색에 적용한 프레임 집계 기반
-방법[3]과 멀티레벨 융합[6]이 제안됐으나, 대규모 프레임·자막 중심이며 시각 채널의 **기여
+방법[1]과 멀티레벨 융합[2]이 제안됐으나, 대규모 프레임·자막 중심이며 시각 채널의 **기여
 조건**은 분석하지 않는다. 한국어 텍스트 검색은 다국어 문장 임베딩[4]을 기반으로 한다.
 
 ### 2.2 이미지–텍스트 정합성 측정
 
-CLIPScore[2]는 CLIP 유사도를 캡션 품질의 자동 평가에 사용했고, BLIP[5] 등 통합 비전–언어
+CLIPScore[5]는 CLIP 유사도를 캡션 품질의 자동 평가에 사용했고, BLIP[6] 등 통합 비전–언어
 모델도 정합성 표현을 제공한다. 본 연구는 **같은 정합성 계산을 캡션 평가가 아니라 검색
 기여도의 조건 변수로 재해석**한다.
 
@@ -114,15 +114,15 @@ CLIPScore[2]는 CLIP 유사도를 캡션 품질의 자동 평가에 사용했고
 랭킹에서 시각 정보의 **기여 조건**을 연속 지표로 설명하지는 않는다.
 
 한편 검색에서 **모달을 언제 활용할지**를 다룬 계열도 있다. 쿼리별로 다중 수준 표현의 유효성을
-추정해 late fusion 가중을 조정하는 방법[11]과, 모달 간 점수 일치(cross-modal agreement)로 각
-쿼리에서 활용할 모달을 능동 선택하는 방법[12]이 그것이다. 다만 이들은 검색 **성능을 높이기 위한
+추정해 late fusion 가중을 조정하는 방법[8]과, 모달 간 점수 일치(cross-modal agreement)로 각
+쿼리에서 활용할 모달을 능동 선택하는 방법[9]이 그것이다. 다만 이들은 검색 **성능을 높이기 위한
 적응 가중·모달 선택 메커니즘**을 제안하는 데 초점이 있으며, 정합성의 차이 자체를 시각 기여의
 조건 변수로 **기술·분석**하지는 않는다.
 
 ### 2.4 연구 공백
 
 요컨대 기존 연구는 주로 **검색 성능**이나 **정합성 자체**를 다루거나[1–6], 모달 활용 여부를
-**성능 최적화 메커니즘**으로 조정한다[11,12]. 반면 **정합성의 차이(gap)가 검색에서 시각 채널의
+**성능 최적화 메커니즘**으로 조정한다[8,9]. 반면 **정합성의 차이(gap)가 검색에서 시각 채널의
 기여 조건으로 작동하는지를 연속 지표로 기술하는 분석**은 상대적으로 덜 다루어진 문제다. 본
 연구는 이 문제를 대상으로, 새로운 융합 기법이 아니라 **고정 융합 위에서 gap과 시각 기여의 연관을
 분석**한다.
@@ -165,7 +165,7 @@ gap은 **썸네일과 제목이 CLIP 공동 임베딩 공간에서 얼마나 비
 관련되는지를 실험으로 검증하며, gap을 그 자체로 "시각 정보의 유용성"으로 정의하지 않는다.
 
 여기서 `center(·)`는 모달별 코퍼스 평균을 차감·재정규화하는 전처리다. CLIP 등 대조학습
-임베딩은 이방성(anisotropy)과 modality gap이 강해 raw 코사인이 좁은 대역에 뭉치므로[8][9][10],
+임베딩은 이방성(anisotropy)과 modality gap이 강해 raw 코사인이 좁은 대역에 뭉치므로[10][11][12],
 모달별 mean-centering으로 이 성분을 제거해 정합–비정합의 분리를 개선한다. **centering 선택의
 근거(엄밀화)**: (1) 어떤 retrieval 점수·Δrank·qrels도 보기 전에 centering을 고정했다. (2) 판단
 기준은 **자기매칭(self-matching) construct validity** — 각 제목이 무작위 썸네일보다 자기 자신의
@@ -342,40 +342,39 @@ utilization).
 
 ## References
 
-[1] A. Radford et al., "Learning transferable visual models from natural language supervision,"
-in *Proc. ICML*, pp. 8748–8763, 2021.
-
-[2] J. Hessel, A. Holtzman, M. Forbes, R. L. Bras, and Y. Choi, "CLIPScore: A reference-free
-evaluation metric for image captioning," in *Proc. EMNLP*, pp. 7514–7528, 2021.
-
-[3] H. Fang, P. Xiong, L. Xu, and Y. Chen, "CLIP2Video: Mastering video-text retrieval via
+[1] H. Fang, P. Xiong, L. Xu, and Y. Chen, "CLIP2Video: Mastering video-text retrieval via
 image CLIP," *arXiv:2106.11097*, 2021.
+
+[2] Z. Gao et al., "M2HF: Multi-level multi-modal hybrid fusion for text-video retrieval,"
+*arXiv:2208.07664*, 2022.
+
+[3] A. Radford et al., "Learning transferable visual models from natural language supervision,"
+in *Proc. ICML*, pp. 8748–8763, 2021.
 
 [4] N. Reimers and I. Gurevych, "Sentence-BERT: Sentence embeddings using Siamese
 BERT-networks," in *Proc. EMNLP-IJCNLP*, pp. 3982–3992, 2019.
 
-[5] J. Li, D. Li, C. Xiong, and S. Hoi, "BLIP: Bootstrapping language-image pre-training for
-unified vision-language understanding and generation," in *Proc. ICML*, 2022.
+[5] J. Hessel, A. Holtzman, M. Forbes, R. L. Bras, and Y. Choi, "CLIPScore: A reference-free
+evaluation metric for image captioning," in *Proc. EMNLP*, pp. 7514–7528, 2021.
 
-[6] Z. Gao et al., "M2HF: Multi-level multi-modal hybrid fusion for text-video retrieval,"
-*arXiv:2208.07664*, 2022.
+[6] J. Li, D. Li, C. Xiong, and S. Hoi, "BLIP: Bootstrapping language-image pre-training for
+unified vision-language understanding and generation," in *Proc. ICML*, 2022.
 
 [7] W. Naveed, Z. A. Uzmi, and Z. A. Qazi, "ThumbnailTruth: A multi-modal LLM approach for
 detecting misleading YouTube thumbnails across diverse cultural settings," *arXiv:2509.04714*,
 2025.
 
-[8] J. Mu and P. Viswanath, "All-but-the-top: Simple and effective postprocessing for word
-representations," in *Proc. ICLR*, 2018.
-
-[9] K. Ethayarajh, "How contextual are contextualized word representations? Comparing the
-geometry of BERT, ELMo, and GPT-2 embeddings," in *Proc. EMNLP-IJCNLP*, pp. 55–65, 2019.
-
-[10] W. Liang, Y. Zhang, Y. Kwon, S. Yeung, and J. Zou, "Mind the gap: Understanding the
-modality gap in multi-modal contrastive representation learning," in *Proc. NeurIPS*, 2022.
-
-[11] W. Ma, Q. Chen, F. Liu, T. Zhou, and Z. Cai, "Query-adaptive late fusion for hierarchical
+[8] W. Ma, Q. Chen, F. Liu, T. Zhou, and Z. Cai, "Query-adaptive late fusion for hierarchical
 fine-grained video-text retrieval," *IEEE Trans. Neural Netw. Learn. Syst.*, 2022.
 
-[12] E. Loweimi, M. Qian, K. Knill, et al., "To be multimodal or not to be: Query-adaptive
+[9] E. Loweimi, M. Qian, K. Knill, et al., "To be multimodal or not to be: Query-adaptive
 audio-visual person retrieval via active modality detection," in *Proc. INTERSPEECH*, 2026.
-(arXiv:2203.02053)
+
+[10] J. Mu and P. Viswanath, "All-but-the-top: Simple and effective postprocessing for word
+representations," in *Proc. ICLR*, 2018.
+
+[11] K. Ethayarajh, "How contextual are contextualized word representations? Comparing the
+geometry of BERT, ELMo, and GPT-2 embeddings," in *Proc. EMNLP-IJCNLP*, pp. 55–65, 2019.
+
+[12] W. Liang, Y. Zhang, Y. Kwon, S. Yeung, and J. Zou, "Mind the gap: Understanding the
+modality gap in multi-modal contrastive representation learning," in *Proc. NeurIPS*, 2022.
