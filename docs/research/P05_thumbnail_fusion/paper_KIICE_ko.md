@@ -98,7 +98,7 @@ retrieval platform with visual embeddings for high-gap videos.
 
 CLIP[3]은 이미지·텍스트를 대조학습으로 공통 임베딩 공간에 정렬해, 결합 공간의 코사인
 유사도를 정합성의 표준 지표로 확립했다. 이를 비디오–텍스트 검색에 적용한 프레임 집계 기반
-방법[1]과 멀티레벨 융합[2]이 제안됐으나, 대규모 프레임·자막 중심이며 시각 채널의 **기여
+방법[1]과 멀티모달 하이브리드 융합[2]이 제안됐으나, 대규모 프레임·자막 중심이며 시각 채널의 **기여
 조건**은 분석하지 않는다. 한국어 텍스트 검색은 다국어 문장 임베딩[4]을 기반으로 한다.
 
 ### 2.2 이미지–텍스트 정합성 측정
@@ -345,8 +345,8 @@ utilization).
 [1] H. Fang, P. Xiong, L. Xu, and Y. Chen, "CLIP2Video: Mastering video-text retrieval via
 image CLIP," *arXiv:2106.11097*, Jun. 2021.
 
-[2] S. Liu, W. Quan, M. Zhou, et al., "M2HF: Multi-level multi-modal hybrid fusion for
-text-video retrieval," *arXiv:2208.07664*, Aug. 2022.
+[2] S. Liu, W. Quan, M. Zhou, et al., "M2HF: Multi-branch multi-modal hybrid fusion for
+text–video retrieval," *Comput. Vis. Media*, Vol. 12, No. 2, pp. 449–471, 2026.
 
 [3] A. Radford et al., "Learning transferable visual models from natural language supervision,"
 in *Proc. Int. Conf. Machine Learning (ICML)*, Vol. 139, pp. 8748–8763, Jul. 2021.
@@ -366,7 +366,8 @@ detecting misleading YouTube thumbnails across diverse cultural settings," *arXi
 Sep. 2025.
 
 [8] W. Ma, Q. Chen, F. Liu, T. Zhou, and Z. Cai, "Query-adaptive late fusion for hierarchical
-fine-grained video-text retrieval," *IEEE Trans. Neural Netw. Learn. Syst.*, early access, Oct. 2022.
+fine-grained video-text retrieval," *IEEE Trans. Neural Netw. Learn. Syst.*, Vol. 35, No. 5,
+pp. 7150–7161, May 2024.
 
 [9] E. Loweimi, M. Qian, K. Knill, et al., "To be multimodal or not to be: Query-adaptive
 audio-visual person retrieval via active modality detection," in *Proc. INTERSPEECH*, 2026.

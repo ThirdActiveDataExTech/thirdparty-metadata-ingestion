@@ -11,13 +11,13 @@
 | # | 서지정보 | 확인 경로 | 우리 논문에서의 용도 |
 |---|---|---|---|
 | 1 | Fang et al. (2021). CLIP2Video: Mastering Video-Text Retrieval via Image CLIP. | arXiv:2106.11097 | 프레임 집계 방식 대비 썸네일 단일프레임의 위치(§2.1) |
-| 2 | Liu, Quan, Zhou, et al. (2022). M2HF: Multi-level Multi-modal Hybrid Fusion for Text-Video Retrieval. | arXiv:2208.07664 (정식본: *Computational Visual Media*, 2026, 12(2):449–471, 'Multi-branch'로 개정) | 멀티레벨 융합 대비 late fusion 단순성(§2.1). ⚠️ 저자 = Shuo Liu 외(이전 'Gao' 오기 수정) |
+| 2 | Liu, Quan, Zhou, et al. (2026). M2HF: Multi-branch Multi-modal Hybrid Fusion for Text–Video Retrieval. *Computational Visual Media*, 12(2):449–471. | DOI:10.26599/CVM.2025.9450444 (프리프린트: arXiv:2208.07664, 'Multi-level') | 멀티모달 하이브리드 융합 대비 late fusion 단순성(§2.1). **정식 저널본 인용 확정**. 저자 = Shuo Liu 외(이전 'Gao' 오기 수정) |
 | 3 | Radford et al. (2021). Learning Transferable Visual Models From Natural Language Supervision (CLIP). *ICML*. | arXiv:2103.00020 | 썸네일 이미지 인코더(ViT-B/32)의 기반 모델·CLIP 공동공간(§2.1) |
 | 4 | Reimers & Gurevych (2019). Sentence-BERT. *EMNLP*. | arXiv:1908.10084 | 다국어 텍스트 임베딩(mpnet 계열) 근거(§2.1) |
 | 5 | Hessel et al. (2021). CLIPScore: A Reference-free Evaluation Metric for Image Captioning. *EMNLP*. | arXiv:2104.08718 | gap 지표의 계산식 출처(용도는 재해석)(§2.2) |
 | 6 | Li et al. (2022). BLIP. *ICML*. | arXiv:2201.12086 | 이미지-텍스트 통합모델 관련연구(§2.2) |
 | 7 | Naveed, Uzmi & Qazi (2025). ThumbnailTruth: A Multi-Modal LLM Approach for Detecting Misleading YouTube Thumbnails Across Diverse Cultural Settings. | arXiv:2509.04714 [cs.SI] | 썸네일 축 최근접. **멀티모달 LLM(GPT-4o·Claude 3.5·Gemini)** 으로 오도성 썸네일 **탐지**. 우리와 차이: 검색 랭킹 기여 조건이 아니라 misleading 분류(§2.3) |
-| 8 | Ma, Chen, Liu, Zhou & Cai (2022). Query-Adaptive Late Fusion for Hierarchical Fine-Grained Video-Text Retrieval. *IEEE TNNLS*. | IEEE Xplore doc 9927461 (early access 2022-10) | §2.3 "쿼리 적응 모달 활용" 축. 쿼리별 다중레벨 유효성 추정→late fusion 가중 적응(QAMF). 우리와 차이: **성능 최적화 메커니즘** vs 우리는 정합차이-기여 **연관 분석** |
+| 8 | Ma, Chen, Liu, Zhou & Cai (2024). Query-Adaptive Late Fusion for Hierarchical Fine-Grained Video-Text Retrieval. *IEEE TNNLS*, 35(5):7150–7161. | DOI:10.1109/TNNLS.2022.3214208 (early access 2022-10, 정식 게재 2024-05) | §2.3 "쿼리 적응 모달 활용" 축. 쿼리별 다중레벨 유효성 추정→late fusion 가중 적응(QAMF). 우리와 차이: **성능 최적화 메커니즘** vs 우리는 정합차이-기여 **연관 분석** |
 | 9 | Loweimi, Qian, Knill, et al. (2026). To Be Multimodal or Not to Be: Query-Adaptive Audio-Visual Person Retrieval via Active Modality Detection. *INTERSPEECH*. | arXiv:2606.05931 | §2.3 동일 축. cross-modal agreement로 쿼리별 모달 능동 선택. 우리와 차이: **성능용 모달 선택 메커니즘** vs **기여 조건 기술 분석** |
 | 10 | Mu & Viswanath (2018). All-but-the-Top: Simple and Effective Postprocessing for Word Representations. *ICLR*. | arXiv:1702.01417 | gap 계산 전 모달별 mean-centering(이방성/modality-gap offset 제거)의 근거(§3.2) |
 | 11 | Ethayarajh (2019). How Contextual are Contextualized Word Representations? *EMNLP*. | arXiv:1909.00512 | 임베딩 이방성(anisotropy) 현상 근거 — raw cosine이 좁게 뭉치는 이유(§3.2) |
@@ -41,5 +41,6 @@
 - [x] **2026-08-18 KIICE 발표문 양식(2025) 규정 확인 완료**: "참고 문헌은 본문에서 인용된 것만을 **인용 순서에 따라** 작성", "모든 문헌 **영문** 원칙", "영문 Time new roman 9pt". → 우리 인용순서 재정렬이 규정과 **일치**(되돌릴 필요 없음). 서지 형식(저자, "제목," 논문지명, Vol., No., pp., 년월)에 맞춰 목록 보강 완료.
   - 확인된 서지: [6] BLIP = PMLR Vol.162, pp.12888–12900, Jul.2022 / [12] Mind the Gap = NeurIPS Vol.35, pp.17612–17625, Dec.2022.
   - **분량 규정: 3페이지 이내(초과 시 페이지당 1만원)** — 저자 결정: **5페이지 유지, 초과분 부담 감수**(내용 충실 우선).
+- [x] **2026-08-18 서지 확정**: [8] QAMF = *IEEE TNNLS* 35(5):7150–7161, May 2024 (DOI 10.1109/TNNLS.2022.3214208). [2] M2HF = 정식 저널본 *Computational Visual Media* 12(2):449–471, 2026 (DOI 10.26599/CVM.2025.9450444, 'Multi-branch')로 인용 확정. [9] = INTERSPEECH 2026(arXiv:2606.05931), 저자 10인 확인, 프로시딩 페이지는 행사 특성상 미부여(현 표기 유지).
 - [ ] **제출 직전 최종 재확인**: 최근 6개월(2026-03~) 신규 arXiv에서 "gap↔retrieval contribution 상관 분석" 직접 경쟁 연구 유무 재검색. [8][9]가 여전히 최인접인지 재확인.
-- [ ] [8] IEEE TNNLS 정식 권/호/페이지 확정(현재 early access 2022-10 표기), [9] INTERSPEECH 2026 정식 프로시딩 페이지 확정, [2] M2HF 전체 저자명 확정.
+- [ ] [9] INTERSPEECH 2026 정식 프로시딩 페이지가 나오면 갱신(현재 미부여).

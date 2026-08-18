@@ -26,12 +26,14 @@
 - **우리 논문에서의 용도(§2.1)**: 여러 프레임을 집계하는 영상 검색 계열의 대표 사례. 우리는 반대로
   **썸네일 단일 프레임**만 쓰는 경량 설정임을 대비해 위치를 잡는다.
 
-## [2] M2HF — 텍스트–영상 검색을 위한 멀티레벨 멀티모달 하이브리드 융합
-**서지**: S. Liu, W. Quan, M. Zhou, et al. (2022). *arXiv:2208.07664*. (정식본: *Computational
-Visual Media*, 2026, 12(2):449–471, 제목 'Multi-branch…'로 개정)
-**원본**: [arXiv abs](https://arxiv.org/abs/2208.07664) · [PDF](https://arxiv.org/pdf/2208.07664) · [정식 저널본(CVM)](https://www.sciopen.com/article/10.26599/CVM.2025.9450444)
+## [2] M2HF — 텍스트–영상 검색을 위한 멀티브랜치 멀티모달 하이브리드 융합
+**서지**: S. Liu, W. Quan, M. Zhou, et al. (2026). "M2HF: Multi-branch multi-modal hybrid
+fusion for text–video retrieval," *Computational Visual Media*, Vol. 12, No. 2, pp. 449–471.
+(프리프린트: *arXiv:2208.07664*, 2022, 'Multi-level')
+**원본**: [정식 저널본(CVM, DOI)](https://www.sciopen.com/article/10.26599/CVM.2025.9450444) · [arXiv abs(프리프린트)](https://arxiv.org/abs/2208.07664) · [PDF](https://arxiv.org/pdf/2208.07664)
 
-> ⚠️ 저자 정정: 이전에 'Z. Gao'로 잘못 적었으나 실제 제1저자는 **Shuo Liu**(외 7인)이다.
+> ✅ **인용 버전 확정 = 정식 저널본(CVM 2026)**. peer-review 등재본이라 서지 완전(권/호/페이지/DOI).
+> ⚠️ 저자 정정: 이전 'Z. Gao'는 오기 — 실제 제1저자 **Shuo Liu**(외).
 
 - **무엇을 왜**: 하나의 영상에는 프레임(영상), 자막·음성인식(텍스트), 오디오 등 **여러 모달**이
   들어 있다. 이들을 어떻게 결합해야 텍스트 쿼리로 영상을 잘 찾을 수 있는지가 문제.
@@ -108,7 +110,8 @@ Visual Media*, 2026, 12(2):449–471, 제목 'Multi-branch…'로 개정)
   않는다는 차이를 강조.
 
 ## [8] QAMF — 쿼리에 맞춰 융합을 조절하는 계층적 영상–텍스트 검색
-**서지**: W. Ma, Q. Chen, F. Liu, T. Zhou, Z. Cai (2022). *IEEE Trans. Neural Netw. Learn. Syst.*
+**서지**: W. Ma, Q. Chen, F. Liu, T. Zhou, Z. Cai (2024). *IEEE Trans. Neural Netw. Learn. Syst.*,
+Vol. 35, No. 5, pp. 7150–7161. (DOI:10.1109/TNNLS.2022.3214208, early access 2022-10)
 **원본**: [IEEE Xplore(정식·유료)](https://ieeexplore.ieee.org/document/9927461/) · [ResearchGate(요청 PDF)](https://www.researchgate.net/publication/364716564_Query-Adaptive_Late_Fusion_for_Hierarchical_Fine-Grained_Video-Text_Retrieval)
 
 - **무엇을 왜**: 영상–텍스트 매칭은 **여러 의미 수준**(큰 사건, 동작·관계, 세부 개체)에서 일어나는데,
@@ -120,7 +123,7 @@ Visual Media*, 2026, 12(2):449–471, 제목 'Multi-branch…'로 개정)
 - **우리 논문에서의 용도(§2.3)**: "**모달·수준을 언제 활용할지**" 축의 대표. 다만 이는 **성능을 올리기
   위한 적응 가중 메커니즘**이며, 우리는 α를 고정한 채 **gap과 시각 기여의 연관을 기술·분석**한다는
   점에서 근본적으로 다르다(우리 novelty를 선명하게 하는 대비 대상).
-- ⚠️ **미확정**: 2022-10 early access 기준. 정식 **권/호/페이지**는 IEEE Xplore에서 확인 필요.
+- ✅ **서지 확정**: early access(2022-10) → 정식 게재 *TNNLS* 35(5):7150–7161, May 2024.
 
 ## [9] Active Modality Detection — 쿼리별로 쓸 모달을 능동 선택하는 인물 검색
 **서지**: E. Loweimi, M. Qian, K. Knill, et al. (2026). *Proc. INTERSPEECH*. (arXiv:2606.05931)
@@ -133,7 +136,8 @@ Visual Media*, 2026, 12(2):449–471, 제목 'Multi-branch…'로 개정)
 - **결과·기여**: 방송 영상 코퍼스에서 단일 모달·고정 융합보다 검색 정확도(P@1)가 향상됨을 보고.
 - **우리 논문에서의 용도(§2.3)**: [8]과 같은 축. 모달 일치를 **성능용 선택 메커니즘**으로 쓴다는
   점에서, 정합 차이를 **기여의 조건 변수로 기술·분석**하는 우리와 대비된다.
-- ⚠️ **미확정**: 2026년 행사. 실제 채택·발표·**프로시딩 페이지**가 확정됐는지 확인 필요.
+- ✅ **INTERSPEECH 2026 채택 확인**(arXiv comment). 저자 10인 전체 확인. 다만 **프로시딩 페이지**는
+  행사 특성상 아직 미부여 → 나오면 갱신.
 
 ## [10] All-but-the-Top — 임베딩의 지배적 방향을 제거하는 후처리
 **서지**: J. Mu, P. Viswanath (2018). *Proc. ICLR*.
