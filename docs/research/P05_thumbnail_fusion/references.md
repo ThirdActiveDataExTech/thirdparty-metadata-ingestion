@@ -27,7 +27,7 @@
 
 | 항목 | 정확한 식별자 | 비고 |
 |---|---|---|
-| 썸네일 이미지 인코더 | `sentence-transformers/clip-ViT-B-32` | 512-dim. ⚠️ **OCR 미수행** — 썸네일 내 한국어 자막 텍스트 판독 못 함(시각 신호=회화적 장면에 국한, §8 한계·§9 후속) |
+| 썸네일 이미지 인코더 | `sentence-transformers/clip-ViT-B-32` | 512-dim. ⚠️ **OCR 미수행** — 썸네일 내 한국어 자막 텍스트 판독 못 함(시각 신호=시각적 장면·비문자적 시각 정보에 국한, 한계·후속) |
 | gap용 정렬 텍스트 인코더 | `sentence-transformers/clip-ViT-B-32-multilingual-v1` | CLIP 이미지 공간 정렬(distillation), 512-dim |
 | 검색용 텍스트 인코더 | `paraphrase-multilingual-mpnet-base-v2` | 768-dim (평가 파이프라인은 PCA 없이 사용; 운영 플랫폼은 512로 PCA) |
 
