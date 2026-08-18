@@ -343,38 +343,40 @@ utilization).
 ## References
 
 [1] H. Fang, P. Xiong, L. Xu, and Y. Chen, "CLIP2Video: Mastering video-text retrieval via
-image CLIP," *arXiv:2106.11097*, 2021.
+image CLIP," *arXiv:2106.11097*, Jun. 2021.
 
 [2] Z. Gao et al., "M2HF: Multi-level multi-modal hybrid fusion for text-video retrieval,"
-*arXiv:2208.07664*, 2022.
+*arXiv:2208.07664*, Aug. 2022.
 
 [3] A. Radford et al., "Learning transferable visual models from natural language supervision,"
-in *Proc. ICML*, pp. 8748–8763, 2021.
+in *Proc. Int. Conf. Machine Learning (ICML)*, Vol. 139, pp. 8748–8763, Jul. 2021.
 
 [4] N. Reimers and I. Gurevych, "Sentence-BERT: Sentence embeddings using Siamese
-BERT-networks," in *Proc. EMNLP-IJCNLP*, pp. 3982–3992, 2019.
+BERT-networks," in *Proc. EMNLP-IJCNLP*, pp. 3982–3992, Nov. 2019.
 
 [5] J. Hessel, A. Holtzman, M. Forbes, R. L. Bras, and Y. Choi, "CLIPScore: A reference-free
-evaluation metric for image captioning," in *Proc. EMNLP*, pp. 7514–7528, 2021.
+evaluation metric for image captioning," in *Proc. EMNLP*, pp. 7514–7528, Nov. 2021.
 
 [6] J. Li, D. Li, C. Xiong, and S. Hoi, "BLIP: Bootstrapping language-image pre-training for
-unified vision-language understanding and generation," in *Proc. ICML*, 2022.
+unified vision-language understanding and generation," in *Proc. Int. Conf. Machine Learning
+(ICML)*, Vol. 162, pp. 12888–12900, Jul. 2022.
 
 [7] W. Naveed, Z. A. Uzmi, and Z. A. Qazi, "ThumbnailTruth: A multi-modal LLM approach for
 detecting misleading YouTube thumbnails across diverse cultural settings," *arXiv:2509.04714*,
-2025.
+Sep. 2025.
 
 [8] W. Ma, Q. Chen, F. Liu, T. Zhou, and Z. Cai, "Query-adaptive late fusion for hierarchical
-fine-grained video-text retrieval," *IEEE Trans. Neural Netw. Learn. Syst.*, 2022.
+fine-grained video-text retrieval," *IEEE Trans. Neural Netw. Learn. Syst.*, early access, Oct. 2022.
 
 [9] E. Loweimi, M. Qian, K. Knill, et al., "To be multimodal or not to be: Query-adaptive
 audio-visual person retrieval via active modality detection," in *Proc. INTERSPEECH*, 2026.
 
 [10] J. Mu and P. Viswanath, "All-but-the-top: Simple and effective postprocessing for word
-representations," in *Proc. ICLR*, 2018.
+representations," in *Proc. Int. Conf. Learning Representations (ICLR)*, 2018.
 
 [11] K. Ethayarajh, "How contextual are contextualized word representations? Comparing the
-geometry of BERT, ELMo, and GPT-2 embeddings," in *Proc. EMNLP-IJCNLP*, pp. 55–65, 2019.
+geometry of BERT, ELMo, and GPT-2 embeddings," in *Proc. EMNLP-IJCNLP*, pp. 55–65, Nov. 2019.
 
 [12] W. Liang, Y. Zhang, Y. Kwon, S. Yeung, and J. Zou, "Mind the gap: Understanding the
-modality gap in multi-modal contrastive representation learning," in *Proc. NeurIPS*, 2022.
+modality gap in multi-modal contrastive representation learning," in *Proc. Adv. Neural Inf.
+Process. Syst. (NeurIPS)*, Vol. 35, pp. 17612–17625, Dec. 2022.
