@@ -156,28 +156,28 @@ gap과 시각 유사도를 계산**하기 위해, mpnet 계열 인코더는 **�
 영상 *i*의 gap은 CLIP 결합 공간에서 썸네일 임베딩과 제목 임베딩의 정합성(코사인)의 여집합으로
 정의한다.
 
-```
-gap_i = 1 − cos( center(v_img_i), center(g_txt_i) )
-```
+<!-- 최종 HWP: 아래 식을 수식편집기로 정식 조판(식 (1)) -->
+$$
+\mathrm{gap}_i = 1 - \cos\!\big(\,\mathrm{center}(v^{\mathrm{img}}_i),\ \mathrm{center}(g^{\mathrm{txt}}_i)\,\big) \tag{1}
+$$
 
 gap은 **썸네일과 제목이 CLIP 공동 임베딩 공간에서 얼마나 비정렬(misaligned)되어 있는지를
 나타내는 영상 수준 지표**다. 본 연구는 이 비정렬 정도가 검색에서 시각 정보의 추가 기여와
 관련되는지를 실험으로 검증하며, gap을 그 자체로 "시각 정보의 유용성"으로 정의하지 않는다.
 
-여기서 `center(·)`는 모달별 코퍼스 평균을 차감·재정규화하는 전처리다. CLIP 등 대조학습
-임베딩은 이방성(anisotropy)과 modality gap이 강해 raw 코사인이 좁은 대역에 뭉치므로[10][11][12],
-모달별 mean-centering으로 이 성분을 제거해 정합–비정합의 분리를 개선한다. **centering 선택의
-근거(엄밀화)**: (1) 어떤 retrieval 점수·Δrank·qrels도 보기 전에 centering을 고정했다. (2) 판단
-기준은 **자기매칭(self-matching) construct validity** — 각 제목이 무작위 썸네일보다 자기 자신의
-썸네일과 더 정합한가(self-match rate) — 이며, **성능 지표가 아니다**. (3) 이 판단에 qrels·Δrank는
-일절 사용하지 않았다. 따라서 "데이터를 보고 잘 분리되는 전처리를 고른 것"이 아니다. raw gap도
-sensitivity로 병기한다(§4.4). 지표는 라벨링 없이 전체 코퍼스에 자동 적용되며 임베딩 추출의
+여기서 center(·)는 모달별 코퍼스 평균을 차감·재정규화하는 전처리다. CLIP 등 대조학습 임베딩은
+이방성(anisotropy)과 modality gap이 강해 raw 코사인이 좁은 대역에 뭉치므로[10][11][12], 모달별
+mean-centering으로 이 성분을 제거해 정합–비정합의 분리를 개선한다. centering은 **어떤 retrieval
+점수·Δrank·qrels도 보기 전에 고정**했으며, 그 타당성은 성능이 아니라 **자기매칭(self-matching)
+construct validity**(각 제목이 무작위 썸네일보다 자기 썸네일과 더 정합한지)로만 확인했다. raw gap도
+민감도 분석으로 병기한다(§4.4). 지표는 라벨링 없이 전체 코퍼스에 자동 적용되며 임베딩 추출의
 부산물이라 추가 비용이 없다.
 
 ### 3.3 Late Fusion 검색
 
 세 검색 방식을 비교한다. 두 채널의 점수 스케일이 달라 쿼리별 min–max 정규화 후 가중합한다.
 
+<!-- 최종 HWP: Late Fusion score 식을 수식편집기로 식 (2)로 조판 -->
 ```
 Text-only   : sim = cos(q_txt, d_txt)                 (검색 텍스트 인코더)
 Visual-only : sim = cos(q_clip, d_img)                (텍스트 쿼리 ↔ 썸네일, 교차모달)
@@ -193,6 +193,7 @@ grid는 sensitivity 곡선으로만 보고한다(최고 α를 "최적"으로 선
 
 정답지의 각 (쿼리 q, 관련 영상 v)에 대해 순위 개선폭을 정의한다.
 
+<!-- 최종 HWP: Δrank 식을 수식편집기로 식 (3)으로 조판 -->
 ```
 Δrank(v,q) = rank_text(v|q) − rank_fusion(v|q)      (양수 = 융합이 순위 개선)
 ```
