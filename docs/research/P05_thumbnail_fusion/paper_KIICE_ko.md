@@ -246,9 +246,11 @@ ground truth가 아니며**, 본 연구의 어느 분석에서도 레이블로 �
 median Δrank)와 효과 크기 Cohen's d를 쓴다. 본 논문은 연구 질문 RQ1·RQ2로 명칭을 통일하며,
 각각을 아래 검정으로 확인한다.
 
-- **RQ2 검정(융합 효과)**: Text-only 대 Fusion(α=0.5)의 쿼리별 reciprocal rank@10에 **paired
-  Wilcoxon signed-rank test**(p<0.05) **그리고** 전체 MRR@10 차 > +0.05. RR@10이 이산·비정규
-  분포라 비모수 검정을 쓴다.
+- **RQ2 검정(융합 효과)**: 유의성은 Text-only 대 Fusion(α=0.5)의 쿼리별 reciprocal rank@10에
+  대한 **paired Wilcoxon signed-rank test**(p<0.05)를 primary로 쓴다(RR@10이 이산·비정규
+  분포라 비모수). 효과의 크기는 **MRR@10·NDCG@10·Recall@10의 절대 변화량과 부트스트랩 95%
+  CI**로 별도 보고하고, Wilcoxon의 짝지음 효과 크기로 **rank-biserial correlation**을 병기한다.
+  즉 유의성과 효과 크기를 분리하며, 임의의 개선 임계값은 두지 않는다.
 - **RQ1 검정(gap–개선 연관)**: 영상당 median Δrank로 집계해 `Spearman(gap, median Δrank)`의
   유의성(ρ>0, p<0.05)을 **상관 수준**에서 본다(Δrank는 영상–쿼리 쌍 구조이고 한 영상에 여러
   쿼리가 붙으므로 영상당 median 집계로 독립성을 확보한다). **부트스트랩 95% CI**와 **카테고리

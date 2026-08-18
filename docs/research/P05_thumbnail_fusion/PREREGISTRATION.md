@@ -336,10 +336,13 @@
 - **지표**: MRR@10, NDCG@10(graded relevance), Recall@10, 그리고 gap-Δrank용 Spearman ρ.
 - **통계**: H1=Wilcoxon signed-rank(paired), H2=Spearman 순위상관. **부트스트랩 95% CI**
   (1,000회) + **subsampling 수렴 곡선** + **MDES**(§6). gap 수준별 **Cohen's d**.
-- **🔒 H1 계산 단위 확정(2026-08-07c)**: primary는 **Fusion(α=0.5) vs Text-only**.
-  ① 쿼리별 **reciprocal rank@10**(Text RR, Fusion RR) 계산 → **paired Wilcoxon signed-rank**
-  (p<0.05), ② **aggregate MRR@10 차이 = mean(Fusion RR) − mean(Text RR) > +0.05**.
-  **두 조건 모두** 충족 시 H1 성공(§2). NDCG@10·Recall@10도 동일 쌍대 검정으로 보조 보고.
+- **🔒 H1(RQ2) 판정 확정(2026-08-07c; 임계값 제거 개정 2026-08-18, 결과 보기 전)**: primary는
+  **Fusion(α=0.5) vs Text-only**. 쿼리별 **reciprocal rank@10**(Text RR, Fusion RR)에 **paired
+  Wilcoxon signed-rank test(p<0.05)** 를 **유의성 primary**로 쓴다. **효과 크기는 분리 보고**한다
+  — MRR@10·NDCG@10·Recall@10의 **절대 변화량 + 부트스트랩 95% CI**, Wilcoxon 짝지음 효과크기
+  **rank-biserial correlation**. 크기의 실질성은 **MDES(§6)** 로 해석하며, **임의의 개선
+  임계값(구 '+0.05')은 두지 않는다**(유의성·효과크기 혼재 방지). 구 규정: "Wilcoxon p<0.05 **그리고**
+  MRR 차 > +0.05 두 조건 모두"였으나, 0.05 임계에 근거가 없어 제거.
 - **🔒 Δrank 정의 고정(2026-08-07, 결과 보기 전)**: `Δrank = rank_text − rank_fusion`
   → **양수 = fusion이 순위 개선**, 음수 = 악화. H2 = "**centered gap이 클수록 Δrank가
   증가**(Spearman ρ>0)". 이 정의를 04/05 코드·문서에 박는다.
@@ -401,8 +404,8 @@ Query Pilot: 쿼리 10개(카테고리에 분산) → §0.3 pooling(Top10×3) �
 
 | 항목 | 사전 정의된 기준 |
 |---|---|
-| **H1 성공** | Late Fusion MRR@10 > Text-only + 0.05 **그리고** Wilcoxon signed-rank test p < 0.05 |
-| **H2 성공** | Spearman ρ(gap, Δrank) > 0 **그리고** p < 0.05 |
+| **H1(RQ2) 유의** | Wilcoxon signed-rank test p < 0.05 (유의성 primary). 효과 크기(MRR/NDCG/Recall Δ·부트스트랩 95% CI·rank-biserial)는 **별도 보고**, 실질성은 MDES로 해석. **임의 임계값 없음** [개정 2026-08-18] |
+| **H2(RQ1) 유의** | Spearman ρ(gap, Δrank) > 0 **그리고** p < 0.05 |
 | **강건성 필수 보고** | 위 지표 전부에 부트스트랩 95% CI 동반 + subsampling 수렴 곡선 |
 | **라벨 신뢰성 필수 보고** | 라벨러 **3인 median-of-3**; Cohen κ(A-B)·완전3인시 Fleiss κ (목표 ≥0.6) [개정 2026-08-13] |
 | **유의수준·검정력** | α = 0.05, power = 0.80 (Cohen 1988 관습, 인용으로 고정) |
@@ -760,3 +763,10 @@ Politics), 26(Howto & Style), 27(Education), 28(Science & Technology). 나머지
   303=일반). **정책 = 옵션 C**: 코퍼스 840 그대로 유지(재수집·축소 없음), is_short를 공변량으로
   보고(카테고리별 유병률) + **non-Shorts 민감도**로 H1·H2 재실행. §0.1·paper §4.1/4.4/6.5 반영.
   라벨링/임베딩/gap/retrieval 무변경 — 라벨링 그대로 진행.
+- **🔒 2026-08-18 (RQ2 판정에서 임의 MRR 임계값 제거 — 라벨 생성 前, HARKing 아님)**:
+  구 H1 성공 = "Wilcoxon p<0.05 **그리고** aggregate MRR 차 > +0.05" 두 조건이었으나, **+0.05에
+  통계적·실무적 근거가 없어** 리뷰 지적. **개정**: 유의성은 **Wilcoxon signed-rank(p<0.05) 단독**,
+  효과 크기(MRR/NDCG/Recall Δ + 부트스트랩 95% CI + **rank-biserial correlation**)는 **별도 보고**,
+  크기의 실질성은 **MDES(§6)** 로 해석. 유의성·효과크기 혼재를 없애 더 표준적 서술. 결과 미관측
+  시점 변경이라 preregistration 안전. paper §4.4 동기화. (RQ1/H2의 'ρ>0 & p<0.05'는 방향+유의성
+  이라 임의 임계값 아님 — 유지.)
