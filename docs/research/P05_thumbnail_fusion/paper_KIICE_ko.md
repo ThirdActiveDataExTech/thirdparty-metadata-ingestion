@@ -199,13 +199,11 @@ YouTube KR `assignable` 카테고리 **14개**를 주제 다양성 확보용 층
 60편 × 14 = ⟦DATA:840⟧편**을 수집했다. ⚠️ categoryId는 **Sampling Anchor이지 semantic ground
 truth가 아니며**, 본 연구의 어느 분석에서도 레이블로 쓰지 않는다. 절차: 카테고리당 복수 seed로 `search`
 수집 → `videos.list`의 categoryId로 사후 필터링, 정렬 3혼합(relevance·viewCount·date), 채널당
-최대 5편, seed 간 round-robin. **60초 이하 영상 제외**(초단편 클립 배제; 실측 duration>60s),
-게시일 2025-01-01 이후. YouTube는 2024-10 이후 최대 3분의 세로형 영상도 Shorts로 분류하므로,
-60초 초과만으로는 short-form이 배제되지 않는다. 공식 API에 Short 여부 필드가 없어, 각 영상을
-`youtube.com/shorts/{id}` 접근이 리다이렉트되는지로 사후 판별해 **is_short 라벨을 부여**했다
-(코퍼스의 12.5%가 Short). Short 여부는 분석에서 유병률 보고 및 non-Shorts 민감도에 사용한다
-(§4.4·§6.5).
-이는 확률표본이 아니라 **gap 분산 확보용 카테고리 층화표본**이다.
+최대 5편, seed 간 round-robin. **60초 초과 영상만 수집**(초단편 클립 배제), 게시일 2025-01-01
+이후. 이는 확률표본이 아니라 **gap 분산 확보용 카테고리 층화표본**이다. 공식 API에 Short 여부
+필드가 없어, 각 영상을 `youtube.com/shorts/{id}` 접근의 리다이렉트 여부로 **Shorts와 일반
+영상을 사후 분리**했다(is_short; 코퍼스의 12.5%가 Short). is_short는 유병률 보고와 non-Shorts
+민감도 분석에 사용한다(§4.4·§6.5).
 
 ### 4.2 평가 쿼리
 
