@@ -1,9 +1,10 @@
 # P05 참고문헌 한국어 요약집
 
 > 목적: 논문 `paper_KIICE_ko.md`가 인용하는 참고문헌을 **배경 지식 없이도 대략 어떤 연구인지
-> 알 수 있도록** 풀어서 정리. 각 항목은 (a) 무엇을 왜 풀었나, (b) 방법이 실제로 어떻게 작동하나,
-> (c) 결과·기여, (d) 우리 논문에서의 용도 순. 번호는 논문 최종본과 동일한 **인용(등장) 순서**.
-> 서지 원문·확인 경로는 `references.md`, 용어 정의는 `GLOSSARY_ko.md` 참조.
+> 알 수 있도록** 풀어서 정리 + **원본을 직접 확인할 링크**. 각 항목은 (a) 무엇을 왜 풀었나,
+> (b) 방법이 실제로 어떻게 작동하나, (c) 결과·기여, (d) 우리 논문에서의 용도, (e) 원본 링크.
+> 번호는 논문 최종본과 동일한 **인용(등장) 순서**. 서지 원문·확인 경로는 `references.md`,
+> 용어 정의는 `GLOSSARY_ko.md` 참조.
 >
 > ⚠️ 세부 수치·주장은 제출 전 원문 대조로 재확인할 것(특히 최신 논문 [8][9]).
 
@@ -11,6 +12,7 @@
 
 ## [1] CLIP2Video — 이미지 CLIP을 영상–텍스트 검색으로 확장
 **서지**: H. Fang, P. Xiong, L. Xu, Y. Chen (2021). *arXiv:2106.11097*.
+**원본**: [arXiv abs](https://arxiv.org/abs/2106.11097) · [PDF](https://arxiv.org/pdf/2106.11097) · [코드(GitHub)](https://github.com/CryhanFang/CLIP2Video)
 
 - **무엇을 왜**: CLIP은 **정지 이미지**–텍스트로 학습된 모델이라, 그대로 영상 검색에 쓰면 프레임을
   단순 평균 내면서 **시간(움직임·순서) 정보가 사라진다**. 이 시간 정보를 어떻게 최소 비용으로
@@ -25,18 +27,26 @@
   **썸네일 단일 프레임**만 쓰는 경량 설정임을 대비해 위치를 잡는다.
 
 ## [2] M2HF — 텍스트–영상 검색을 위한 멀티레벨 멀티모달 하이브리드 융합
-**서지**: Z. Gao et al. (2022). *arXiv:2208.07664*.
+**서지**: S. Liu, W. Quan, M. Zhou, et al. (2022). *arXiv:2208.07664*. (정식본: *Computational
+Visual Media*, 2026, 12(2):449–471, 제목 'Multi-branch…'로 개정)
+**원본**: [arXiv abs](https://arxiv.org/abs/2208.07664) · [PDF](https://arxiv.org/pdf/2208.07664) · [정식 저널본(CVM)](https://www.sciopen.com/article/10.26599/CVM.2025.9450444)
+
+> ⚠️ 저자 정정: 이전에 'Z. Gao'로 잘못 적었으나 실제 제1저자는 **Shuo Liu**(외 7인)이다.
 
 - **무엇을 왜**: 하나의 영상에는 프레임(영상), 자막·음성인식(텍스트), 오디오 등 **여러 모달**이
   들어 있다. 이들을 어떻게 결합해야 텍스트 쿼리로 영상을 잘 찾을 수 있는지가 문제.
-- **방법**: 여러 모달을 **여러 수준(feature~score)에서 섞는 하이브리드 융합** 구조. 보조 학습
-  기법을 더해 각 모달의 기여를 끌어올린다. 한마디로 "무겁고 정교한 다모달 융합 파이프라인".
-- **결과·기여**: 여러 텍스트–영상 검색 벤치마크에서 높은 성능. 다모달·다수준 융합의 유효성을 입증.
+- **방법**: CLIP 시각 특징을 오디오·모션 특징과 **조기 융합**하고, 다시 **여러 수준에서 섞는
+  하이브리드 융합** 구조. 한마디로 "무겁고 정교한 다모달 융합 파이프라인".
+- **결과·기여**: MSR-VTT·MSVD·LSMDC·DiDeMo·ActivityNet 등 여러 텍스트–영상 검색 벤치마크에서
+  당시 최고 수준 성능.
 - **우리 논문에서의 용도(§2.1)**: 복잡한 멀티레벨 융합의 **반대 극단**으로 인용. 우리는 텍스트·시각
   두 채널을 점수 수준에서 α=0.5로 더하는 **단순 late fusion**임을 대비한다.
+- **제출 시 선택**: arXiv(Multi-level, 2022) vs 정식 저널본(CVM, 2026, 'Multi-branch') 중 어느
+  버전을 인용할지 결정 필요. 본문이 "멀티레벨"이라 현재는 arXiv본 표기.
 
 ## [3] CLIP — 자연어 감독으로 배우는 전이 가능한 시각 표현
-**서지**: A. Radford et al. (2021). *Proc. ICML*, pp. 8748–8763.
+**서지**: A. Radford et al. (2021). *Proc. ICML*, Vol. 139, pp. 8748–8763.
+**원본**: [arXiv abs](https://arxiv.org/abs/2103.00020) · [PDF](https://arxiv.org/pdf/2103.00020) · [PMLR(정식)](https://proceedings.mlr.press/v139/radford21a.html)
 
 - **무엇을 왜**: 기존 비전 모델은 "개/고양이" 같은 **정해진 라벨 집합**으로 학습돼 새로운 개념에
   약했다. 사람이 라벨을 달지 않고도 대규모로 배우게 하는 방법이 필요.
@@ -50,6 +60,7 @@
 
 ## [4] Sentence-BERT — 문장을 비교 가능한 벡터로 만드는 시아미즈 BERT
 **서지**: N. Reimers, I. Gurevych (2019). *Proc. EMNLP-IJCNLP*, pp. 3982–3992.
+**원본**: [arXiv abs](https://arxiv.org/abs/1908.10084) · [PDF](https://arxiv.org/pdf/1908.10084)
 
 - **무엇을 왜**: 원래 BERT로 문장 유사도를 재려면 **두 문장을 항상 함께 넣어야** 해서(교차 인코더),
   문장이 많아지면 비교 횟수가 폭발해 검색·군집에 쓰기 어렵다.
@@ -62,6 +73,7 @@
 
 ## [5] CLIPScore — 참조 캡션 없이 이미지 캡션 품질을 재는 지표
 **서지**: J. Hessel, A. Holtzman, M. Forbes, R. L. Bras, Y. Choi (2021). *Proc. EMNLP*, pp. 7514–7528.
+**원본**: [arXiv abs](https://arxiv.org/abs/2104.08718) · [PDF](https://arxiv.org/pdf/2104.08718)
 
 - **무엇을 왜**: 기존 캡션 평가(BLEU·CIDEr 등)는 **사람이 만든 정답 캡션**과 비교해야 하고, 그마저도
   사람 판단과 잘 안 맞는다. 정답 없이 캡션의 좋고 나쁨을 재는 방법이 필요.
@@ -72,7 +84,8 @@
   아니라 **"썸네일과 제목이 얼마나 어긋나는가(검색 기여의 조건 변수)"** 로 **재해석**한다.
 
 ## [6] BLIP — 이해와 생성을 아우르는 통합 비전–언어 사전학습
-**서지**: J. Li, D. Li, C. Xiong, S. Hoi (2022). *Proc. ICML*.
+**서지**: J. Li, D. Li, C. Xiong, S. Hoi (2022). *Proc. ICML*, Vol. 162, pp. 12888–12900.
+**원본**: [arXiv abs](https://arxiv.org/abs/2201.12086) · [PDF](https://arxiv.org/pdf/2201.12086) · [PMLR(정식)](https://proceedings.mlr.press/v162/li22n.html)
 
 - **무엇을 왜**: 많은 비전–언어 모델이 **이해(검색·분류) 아니면 생성(캡셔닝)** 한쪽에만 강했고, 웹에서
   모은 이미지–텍스트 데이터에는 **잡음(엉뚱한 캡션)** 이 많았다.
@@ -83,6 +96,7 @@
 
 ## [7] ThumbnailTruth — 멀티모달 LLM으로 오도성 썸네일 탐지
 **서지**: W. Naveed, Z. A. Uzmi, Z. A. Qazi (2025). *arXiv:2509.04714*.
+**원본**: [arXiv abs](https://arxiv.org/abs/2509.04714) · [PDF](https://arxiv.org/pdf/2509.04714) · [HTML](https://arxiv.org/html/2509.04714v1)
 
 - **무엇을 왜**: YouTube 썸네일이 **영상 내용과 다르게 과장·오도(클릭베이트)** 하는 경우가 많고, 그
   양상이 **문화권마다 다르다**. 이를 자동으로 판별하는 문제.
@@ -95,6 +109,7 @@
 
 ## [8] QAMF — 쿼리에 맞춰 융합을 조절하는 계층적 영상–텍스트 검색
 **서지**: W. Ma, Q. Chen, F. Liu, T. Zhou, Z. Cai (2022). *IEEE Trans. Neural Netw. Learn. Syst.*
+**원본**: [IEEE Xplore(정식·유료)](https://ieeexplore.ieee.org/document/9927461/) · [ResearchGate(요청 PDF)](https://www.researchgate.net/publication/364716564_Query-Adaptive_Late_Fusion_for_Hierarchical_Fine-Grained_Video-Text_Retrieval)
 
 - **무엇을 왜**: 영상–텍스트 매칭은 **여러 의미 수준**(큰 사건, 동작·관계, 세부 개체)에서 일어나는데,
   이 수준들을 **항상 같은 비율로 섞으면** 손해다. 쿼리마다 중요한 수준이 다르기 때문.
@@ -105,9 +120,11 @@
 - **우리 논문에서의 용도(§2.3)**: "**모달·수준을 언제 활용할지**" 축의 대표. 다만 이는 **성능을 올리기
   위한 적응 가중 메커니즘**이며, 우리는 α를 고정한 채 **gap과 시각 기여의 연관을 기술·분석**한다는
   점에서 근본적으로 다르다(우리 novelty를 선명하게 하는 대비 대상).
+- ⚠️ **미확정**: 2022-10 early access 기준. 정식 **권/호/페이지**는 IEEE Xplore에서 확인 필요.
 
 ## [9] Active Modality Detection — 쿼리별로 쓸 모달을 능동 선택하는 인물 검색
 **서지**: E. Loweimi, M. Qian, K. Knill, et al. (2026). *Proc. INTERSPEECH*. (arXiv:2606.05931)
+**원본**: [arXiv abs](https://arxiv.org/abs/2606.05931) · [PDF](https://arxiv.org/pdf/2606.05931) · [HTML](https://arxiv.org/html/2606.05931)
 
 - **무엇을 왜**: 오디오–비주얼 인물 검색에서는 어떤 쿼리엔 **목소리**가, 어떤 쿼리엔 **얼굴**이 없거나
   불량할 수 있다. 없는 모달까지 무조건 섞으면 **잡음이 들어와** 성능이 떨어진다.
@@ -116,9 +133,11 @@
 - **결과·기여**: 방송 영상 코퍼스에서 단일 모달·고정 융합보다 검색 정확도(P@1)가 향상됨을 보고.
 - **우리 논문에서의 용도(§2.3)**: [8]과 같은 축. 모달 일치를 **성능용 선택 메커니즘**으로 쓴다는
   점에서, 정합 차이를 **기여의 조건 변수로 기술·분석**하는 우리와 대비된다.
+- ⚠️ **미확정**: 2026년 행사. 실제 채택·발표·**프로시딩 페이지**가 확정됐는지 확인 필요.
 
 ## [10] All-but-the-Top — 임베딩의 지배적 방향을 제거하는 후처리
 **서지**: J. Mu, P. Viswanath (2018). *Proc. ICLR*.
+**원본**: [arXiv abs](https://arxiv.org/abs/1702.01417) · [PDF](https://arxiv.org/pdf/1702.01417)
 
 - **무엇을 왜**: 단어 임베딩은 **공통 평균 성분**과 **소수의 지배적 방향**을 크게 가져서, 서로 다른
   단어들도 벡터가 비슷해 보이는 **이방성(anisotropy)** 문제가 있다.
@@ -130,6 +149,7 @@
 
 ## [11] Ethayarajh (2019) — 문맥 임베딩이 좁은 원뿔에 몰린다는 발견
 **서지**: K. Ethayarajh (2019). *Proc. EMNLP-IJCNLP*, pp. 55–65.
+**원본**: [arXiv abs](https://arxiv.org/abs/1909.00512) · [PDF](https://arxiv.org/pdf/1909.00512)
 
 - **무엇을 왜**: BERT·ELMo·GPT-2 같은 **문맥 임베딩**이 기하학적으로 얼마나 "문맥적"인지(서로 얼마나
   퍼져 있는지)를 규명하려는 분석 연구.
@@ -140,7 +160,8 @@
   필요성**을 뒷받침.
 
 ## [12] Mind the Gap — CLIP 공동공간의 modality gap
-**서지**: W. Liang, Y. Zhang, Y. Kwon, S. Yeung, J. Zou (2022). *Proc. NeurIPS*. (arXiv:2203.02053)
+**서지**: W. Liang, Y. Zhang, Y. Kwon, S. Yeung, J. Zou (2022). *Proc. NeurIPS*, Vol. 35, pp. 17612–17625.
+**원본**: [arXiv abs](https://arxiv.org/abs/2203.02053) · [PDF](https://arxiv.org/pdf/2203.02053) · [OpenReview](https://openreview.net/forum?id=S7Evzt9uit3) · [코드(GitHub)](https://github.com/Weixin-Liang/Modality-Gap)
 
 - **무엇을 왜**: CLIP처럼 이미지·텍스트를 한 공간에 올리는 모델에서, 실제로 **이미지 벡터들과 텍스트
   벡터들이 잘 섞이는가**? 를 따진 연구.
@@ -158,8 +179,10 @@
 - **썸네일 이미지 인코더** `sentence-transformers/clip-ViT-B-32` (512-dim). ⚠️ **OCR 미수행** —
   썸네일 안에 쓰인 한국어 자막 텍스트는 읽지 못하고, 시각 신호는 **회화적 장면(구도·인물·색)** 에
   국한된다. 논문에서 한계·후속연구로 명시.
+  [모델 카드](https://huggingface.co/sentence-transformers/clip-ViT-B-32)
 - **gap용 정렬 텍스트 인코더** `clip-ViT-B-32-multilingual-v1` (512-dim). CLIP 이미지 공간에
   맞춰 distillation으로 정렬된 다국어 텍스트 인코더 — 그래서 이미지와 같은 공간에서 코사인 비교가
-  가능.
+  가능. [모델 카드](https://huggingface.co/sentence-transformers/clip-ViT-B-32-multilingual-v1)
 - **검색용 텍스트 인코더** `paraphrase-multilingual-mpnet-base-v2` (768-dim). 실제 텍스트 검색
   점수 계산용. 평가 파이프라인에서는 PCA 없이 768-dim 그대로 사용.
+  [모델 카드](https://huggingface.co/sentence-transformers/paraphrase-multilingual-mpnet-base-v2)

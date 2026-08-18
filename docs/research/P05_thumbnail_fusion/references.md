@@ -11,7 +11,7 @@
 | # | 서지정보 | 확인 경로 | 우리 논문에서의 용도 |
 |---|---|---|---|
 | 1 | Fang et al. (2021). CLIP2Video: Mastering Video-Text Retrieval via Image CLIP. | arXiv:2106.11097 | 프레임 집계 방식 대비 썸네일 단일프레임의 위치(§2.1) |
-| 2 | Gao et al. (2022). M2HF: Multi-level Multi-modal Hybrid Fusion for Text-Video Retrieval. | arXiv:2208.07664 | 멀티레벨 융합 대비 late fusion 단순성(§2.1) |
+| 2 | Liu, Quan, Zhou, et al. (2022). M2HF: Multi-level Multi-modal Hybrid Fusion for Text-Video Retrieval. | arXiv:2208.07664 (정식본: *Computational Visual Media*, 2026, 12(2):449–471, 'Multi-branch'로 개정) | 멀티레벨 융합 대비 late fusion 단순성(§2.1). ⚠️ 저자 = Shuo Liu 외(이전 'Gao' 오기 수정) |
 | 3 | Radford et al. (2021). Learning Transferable Visual Models From Natural Language Supervision (CLIP). *ICML*. | arXiv:2103.00020 | 썸네일 이미지 인코더(ViT-B/32)의 기반 모델·CLIP 공동공간(§2.1) |
 | 4 | Reimers & Gurevych (2019). Sentence-BERT. *EMNLP*. | arXiv:1908.10084 | 다국어 텍스트 임베딩(mpnet 계열) 근거(§2.1) |
 | 5 | Hessel et al. (2021). CLIPScore: A Reference-free Evaluation Metric for Image Captioning. *EMNLP*. | arXiv:2104.08718 | gap 지표의 계산식 출처(용도는 재해석)(§2.2) |

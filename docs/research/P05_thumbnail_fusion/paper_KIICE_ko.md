@@ -345,8 +345,8 @@ utilization).
 [1] H. Fang, P. Xiong, L. Xu, and Y. Chen, "CLIP2Video: Mastering video-text retrieval via
 image CLIP," *arXiv:2106.11097*, Jun. 2021.
 
-[2] Z. Gao et al., "M2HF: Multi-level multi-modal hybrid fusion for text-video retrieval,"
-*arXiv:2208.07664*, Aug. 2022.
+[2] S. Liu, W. Quan, M. Zhou, et al., "M2HF: Multi-level multi-modal hybrid fusion for
+text-video retrieval," *arXiv:2208.07664*, Aug. 2022.
 
 [3] A. Radford et al., "Learning transferable visual models from natural language supervision,"
 in *Proc. Int. Conf. Machine Learning (ICML)*, Vol. 139, pp. 8748–8763, Jul. 2021.
