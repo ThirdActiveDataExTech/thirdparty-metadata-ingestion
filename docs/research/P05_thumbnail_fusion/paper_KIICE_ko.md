@@ -25,8 +25,9 @@ E-mail : [email1] / [email2]
 있으나, **그 개선이 모든 영상에서 균일하게 나타나는지, 특정 조건에서만 나타나는지**는
 규명되지 않았다. 본 연구는 이 조건을 **라벨링 없이 자동 계산되는 연속 지표**인 **썸네일–제목
 의미 격차**(넓게는 시각–텍스트 의미 격차; visual–text semantic gap, 이하 gap)로 특성화한다.
-gap은 CLIP 결합 공간에서 썸네일과 제목이 얼마나 비정렬(misaligned)되어 있는지를 나타내는
-영상 수준 지표로, 정합성의 여집합으로 정의되며 임베딩 추출의 부산물로 얻어진다. 한국어 YouTube 영상 ⟦DATA:840⟧편과 검색어
+gap은 CLIP 공동 임베딩 공간에서 mean-centering 후 썸네일–제목 코사인 유사도를 역변환한(1−cos)
+영상 수준의 비정렬 지표로, 값이 클수록 두 표현이 공동공간에서 덜 유사하며 임베딩 추출의
+부산물로 얻어진다. 한국어 YouTube 영상 ⟦DATA:840⟧편과 검색어
 ⟦DATA:70⟧개로 CLIP 이미지 임베딩과 다국어 텍스트 임베딩의 late fusion을 평가하여, **융합이
 text-only 대비 검색 성능을 향상시키는지, 그리고 gap이 융합에 의한 순위 개선과 관련되는지를
 실증적으로 검증한다** ⟦DATA⟧. 본 연구의 기여는 새로운 융합 기법이 아니라 시각 정보의 기여
@@ -40,8 +41,9 @@ information in thumbnails largely unused. While fusing visual and textual signal
 improve retrieval, whether this improvement is uniform across videos or arises only under
 specific conditions remains unclear. We characterize this condition with a continuous,
 label-free metric—the *thumbnail–title semantic gap* (broadly, a visual–text semantic gap)—
-defined as the complement of thumbnail–title alignment in the CLIP joint space and obtained as
-a by-product of embedding extraction. On
+defined as an inverse transform (1−cos) of the mean-centered thumbnail–title cosine similarity
+in the CLIP joint space—higher values indicating less similarity—and obtained as a by-product
+of embedding extraction. On
 ⟦DATA:840⟧ Korean YouTube videos and ⟦DATA:70⟧ queries, we empirically examine whether late
 fusion of CLIP image and multilingual text embeddings improves retrieval over text-only, and
 whether the gap is associated with fusion-induced rank improvement ⟦DATA⟧. Our contribution is
@@ -188,17 +190,17 @@ gap과 시각 유사도를 계산**하기 위해, mpnet 계열 인코더는 **�
 
 ### 3.2 썸네일–제목 의미 격차(gap)
 
-영상 *i*의 gap은 CLIP 결합 공간에서 썸네일 임베딩과 제목 임베딩의 정합성(코사인)의 여집합으로
-정의한다.
+영상 *i*의 gap은 CLIP 결합 공간에서 모달별 mean-centering을 적용한 썸네일·제목 임베딩의 코사인
+유사도를 역변환(1 − cos)하여 정의하는 영상 수준의 비정렬 지표다.
 
 <!-- 최종 HWP: 아래 식을 수식편집기로 정식 조판(식 (1)) -->
 $$
 \mathrm{gap}_i = 1 - \cos\!\big(\,\mathrm{center}(v^{\mathrm{img}}_i),\ \mathrm{center}(g^{\mathrm{txt}}_i)\,\big) \tag{1}
 $$
 
-gap은 **썸네일과 제목이 CLIP 공동 임베딩 공간에서 얼마나 비정렬(misaligned)되어 있는지를
-나타내는 영상 수준 지표**다. 본 연구는 이 비정렬 정도가 검색에서 시각 정보의 추가 기여와
-관련되는지를 실험으로 검증하며, gap을 그 자체로 "시각 정보의 유용성"으로 정의하지 않는다.
+즉 **gap이 클수록 썸네일과 제목의 표현이 공동공간에서 덜 유사하다**. 본 연구는 이 비정렬
+정도가 검색에서 시각 정보의 추가 기여와 관련되는지를 실험으로 검증하며, gap을 그 자체로
+"시각 정보의 유용성"으로 정의하지 않는다.
 
 여기서 center(·)는 모달별 코퍼스 평균을 차감·재정규화하는 전처리다. CLIP 등 대조학습 임베딩은
 이방성(anisotropy)과 modality gap이 강해 raw 코사인이 좁은 대역에 뭉치므로[10][11][12], 모달별
