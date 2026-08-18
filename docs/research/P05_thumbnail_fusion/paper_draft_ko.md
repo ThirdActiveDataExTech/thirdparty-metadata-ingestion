@@ -307,7 +307,8 @@ Top-K·pooling 대상 시스템은 결과 보기 전 고정, 사후 변경 금�
 ### 5.3 통계·강건성 (§PREREG 0.5·6)
 
 **H1(RQ2)**: Fusion(α=0.5) vs Text-only — 쿼리별 reciprocal rank@10에 **paired Wilcoxon
-signed-rank**(p<0.05) **그리고** aggregate MRR@10 차 > +0.05(두 조건 모두).
+signed-rank**(p<0.05)를 유의성 primary로. 효과 크기(MRR·NDCG·Recall Δ + 부트스트랩 95% CI +
+rank-biserial)는 별도 보고(임의 임계값 없음, 2026-08-18 개정).
 
 **H2(RQ1)** — 카테고리 교란·반복측정을 선제 차단하는 다층 구조(§PREREG 0.5):
 - **primary**: 영상당 **median Δrank** → `Spearman(centered gap, median Δrank)` (gap이
@@ -321,8 +322,8 @@ signed-rank**(p<0.05) **그리고** aggregate MRR@10 차 > +0.05(두 조건 모�
 
 ### 5.4 성공 기준 (실험 전 고정)
 
-- RQ2(H1): Fusion(α=0.5) MRR@10 > Text-only + 0.05 **그리고** paired Wilcoxon p<0.05
-- RQ1(H2): primary Spearman ρ(centered gap, median Δrank) > 0, p<0.05
+- RQ2(H1): paired Wilcoxon p<0.05(유의성). 효과 크기는 Δ·95% CI·rank-biserial 별도 보고(임계값 없음)
+- RQ1(H2): primary Spearman ρ(centered gap, median Δrank) > 0, p<0.05 (연관, 예측 아님)
 - 결과가 위에 못 미쳐도 §PREREG 3(결과 분기 매트릭스)에 따라 조건부/부정 결과로 서술.
 
 ---
