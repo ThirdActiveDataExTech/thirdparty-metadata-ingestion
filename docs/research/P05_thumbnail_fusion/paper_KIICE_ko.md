@@ -251,12 +251,13 @@ median Δrank)와 효과 크기 Cohen's d를 쓴다. 본 논문은 연구 질문
   분포라 비모수). 효과의 크기는 **MRR@10·NDCG@10·Recall@10의 절대 변화량과 부트스트랩 95%
   CI**로 별도 보고하고, Wilcoxon의 짝지음 효과 크기로 **rank-biserial correlation**을 병기한다.
   즉 유의성과 효과 크기를 분리하며, 임의의 개선 임계값은 두지 않는다.
-- **RQ1 검정(gap–개선 연관)**: 영상당 median Δrank로 집계해 `Spearman(gap, median Δrank)`의
-  유의성(ρ>0, p<0.05)을 **상관 수준**에서 본다(Δrank는 영상–쿼리 쌍 구조이고 한 영상에 여러
-  쿼리가 붙으므로 영상당 median 집계로 독립성을 확보한다). **부트스트랩 95% CI**와 **카테고리
-  내 stratified 상관**, **raw vs centered gap sensitivity**를 병기한다. 카테고리 교란을 통제하는
-  클러스터-robust 회귀와 MDES는 필요 시 추가 분석으로 제시한다. 상관 유의성은 예측력의 직접
-  증거가 아니므로, 본 연구는 결과를 "예측"이 아니라 "연관"으로 해석한다.
+- **RQ1 검정(gap–개선 연관)**: gap은 영상 수준 지표이므로 영상당 median Δrank로 집계한다(한
+  영상에 여러 쿼리가 붙어도 관측치 1개로 독립성 확보). 분석은 세 층으로 구분한다. **Primary**:
+  `Spearman ρ(gap, median Δrank)`의 유의성(ρ>0, p<0.05)과 **부트스트랩 95% CI**. **Robustness**:
+  카테고리 내 stratified 상관과 raw vs centered gap 민감도. **Exploratory**: 카테고리 교란을
+  통제하는 cluster-robust 회귀. 귀무 결과 시 표본의 최소탐지효과(MDES)로 해석을 보강한다.
+  상관 유의성은 예측력의 직접 증거가 아니므로, 본 연구는 결과를 "예측"이 아니라 "연관"으로
+  해석한다.
 - **Short 강건성**: 코퍼스의 12.5%가 Short이므로, Short 유병률을 보고하고 **Short 제외
   부분표본(non-Shorts)으로 RQ1·RQ2를 재실행**해 결과가 Short 포함에 좌우되지 않음을
   확인한다. Short 수가 충분하면 Short/일반 서브그룹 비교를 탐색적으로 병기한다.
@@ -277,9 +278,10 @@ Wilcoxon(Fusion vs Text, 쿼리별 RR@10): ⟦DATA: stat, p⟧ (부트스트랩 
 
 ### 5.2 gap과 순위 개선의 연관 (RQ1)
 
-Spearman ρ(gap, 영상당 median Δrank) = ⟦DATA⟧ (95% CI ⟦DATA⟧, p=⟦DATA⟧). raw gap
-sensitivity ⟦DATA⟧, 카테고리 stratified 양(+)상관 비율 ⟦DATA⟧, 회귀 gap 계수 ⟦DATA⟧.
-gap 상·하위군 평균 Δrank와 Cohen's d ⟦DATA⟧. (그림 1: gap 대 median Δrank 산점도.)
+**Primary** — Spearman ρ(gap, 영상당 median Δrank) = ⟦DATA⟧ (95% CI ⟦DATA⟧, p=⟦DATA⟧).
+**Robustness** — 카테고리 stratified 양(+)상관 비율 ⟦DATA⟧, raw gap 민감도 ⟦DATA⟧.
+**Exploratory** — cluster-robust 회귀 gap 계수 ⟦DATA⟧, gap 상·하위군 Cohen's d ⟦DATA⟧.
+(그림 1: gap 대 median Δrank 산점도.)
 
 ### 5.3 조건별 분석
 
