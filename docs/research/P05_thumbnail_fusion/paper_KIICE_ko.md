@@ -107,16 +107,25 @@ CLIPScore[2]는 CLIP 유사도를 캡션 품질의 자동 평가에 사용했고
 모델도 정합성 표현을 제공한다. 본 연구는 **같은 정합성 계산을 캡션 평가가 아니라 검색
 기여도의 조건 변수로 재해석**한다.
 
-### 2.3 YouTube 썸네일 연구
+### 2.3 썸네일과 쿼리 적응적 모달 활용
 
-가장 가까운 선행 연구는 **멀티모달 LLM**(영상→텍스트 설명·썸네일·자막을 통합)으로 **오도성
-(misleading) 썸네일을 탐지**한 연구[7]이나, 과제가 오도성 판정(분류)이며 임베딩 기반 검색
+썸네일을 직접 다룬 연구로는 **멀티모달 LLM**(영상→텍스트 설명·썸네일·자막을 통합)으로 **오도성
+(misleading) 썸네일을 탐지**한 연구[7]가 있으나, 과제가 오도성 판정(분류)이며 임베딩 기반 검색
 랭킹에서 시각 정보의 **기여 조건**을 연속 지표로 설명하지는 않는다.
+
+한편 검색에서 **모달을 언제 활용할지**를 다룬 계열도 있다. 쿼리별로 다중 수준 표현의 유효성을
+추정해 late fusion 가중을 조정하는 방법[11]과, 모달 간 점수 일치(cross-modal agreement)로 각
+쿼리에서 활용할 모달을 능동 선택하는 방법[12]이 그것이다. 다만 이들은 검색 **성능을 높이기 위한
+적응 가중·모달 선택 메커니즘**을 제안하는 데 초점이 있으며, 정합성의 차이 자체를 시각 기여의
+조건 변수로 **기술·분석**하지는 않는다.
 
 ### 2.4 연구 공백
 
-요컨대 기존 연구는 **검색 성능** 또는 **정합성 자체**를 다루지만, **정합성의 차이(gap)가 검색에서
-시각 채널의 기여 조건으로 작동하는지**는 충분히 다루지 않았다. 본 연구는 이 공백을 채운다.
+요컨대 기존 연구는 주로 **검색 성능**이나 **정합성 자체**를 다루거나[1–6], 모달 활용 여부를
+**성능 최적화 메커니즘**으로 조정한다[11,12]. 반면 **정합성의 차이(gap)가 검색에서 시각 채널의
+기여 조건으로 작동하는지를 연속 지표로 기술하는 분석**은 상대적으로 덜 다루어진 문제다. 본
+연구는 이 문제를 대상으로, 새로운 융합 기법이 아니라 **고정 융합 위에서 gap과 시각 기여의 연관을
+분석**한다.
 
 ## Ⅲ. 제안 방법
 
@@ -363,4 +372,10 @@ geometry of BERT, ELMo, and GPT-2 embeddings," in *Proc. EMNLP-IJCNLP*, pp. 55�
 
 [10] W. Liang, Y. Zhang, Y. Kwon, S. Yeung, and J. Zou, "Mind the gap: Understanding the
 modality gap in multi-modal contrastive representation learning," in *Proc. NeurIPS*, 2022.
+
+[11] W. Ma, Q. Chen, F. Liu, T. Zhou, and Z. Cai, "Query-adaptive late fusion for hierarchical
+fine-grained video-text retrieval," *IEEE Trans. Neural Netw. Learn. Syst.*, 2022.
+
+[12] E. Loweimi, M. Qian, K. Knill, et al., "To be multimodal or not to be: Query-adaptive
+audio-visual person retrieval via active modality detection," in *Proc. INTERSPEECH*, 2026.
 (arXiv:2203.02053)

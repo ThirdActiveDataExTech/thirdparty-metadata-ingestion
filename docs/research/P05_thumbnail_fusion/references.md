@@ -19,6 +19,9 @@
 | 7 | Naveed, Uzmi & Qazi (2025). ThumbnailTruth: A Multi-Modal LLM Approach for Detecting Misleading YouTube Thumbnails Across Diverse Cultural Settings. | arXiv:2509.04714 [cs.SI] | 가장 가까운 선행연구. **멀티모달 LLM(GPT-4o·Claude 3.5·Gemini)** 으로 오도성 썸네일 **탐지**(영상→텍스트·썸네일·자막 통합). 우리와 차이: 임베딩 기반 검색 랭킹의 기여 조건이 아니라 misleading 분류 |
 | 8 | Mu & Viswanath (2018). All-but-the-Top: Simple and Effective Postprocessing for Word Representations. *ICLR*. | arXiv:1702.01417 | gap 계산 전 모달별 mean-centering(이방성/modality-gap offset 제거)의 근거 |
 | 9 | Ethayarajh (2019). How Contextual are Contextualized Word Representations? *EMNLP*. | arXiv:1909.00512 | 임베딩 이방성(anisotropy) 현상 근거 — raw cosine이 좁게 뭉치는 이유 |
+| 10 | Liang et al. (2022). Mind the Gap: Understanding the Modality Gap in Multi-modal Contrastive Representation Learning. *NeurIPS*. | arXiv:2203.02053 | modality gap(우리 gap과 구별) — centering으로 제거하는 대상 |
+| 11 | Ma, Chen, Liu, Zhou & Cai (2022). Query-Adaptive Late Fusion for Hierarchical Fine-Grained Video-Text Retrieval. *IEEE TNNLS*. | IEEE Xplore doc 9927461 (early access 2022-10) | §2.3 "쿼리 적응 모달 활용" 축. 쿼리별 다중레벨 유효성 추정→late fusion 가중 적응(QAMF). 우리와 차이: **성능 최적화 메커니즘** vs 우리는 정합차이-기여 **연관 분석** |
+| 12 | Loweimi, Qian, Knill, et al. (2026). To Be Multimodal or Not to Be: Query-Adaptive Audio-Visual Person Retrieval via Active Modality Detection. *INTERSPEECH*. | arXiv:2606.05931 | §2.3 동일 축. cross-modal agreement로 쿼리별 모달 능동 선택. 우리와 차이: **성능용 모달 선택 메커니즘** vs **기여 조건 기술 분석** |
 
 ## 사용 모델·도구 (방법 재현용 — 논문에 명시)
 
@@ -30,6 +33,9 @@
 
 ## 재검색 로그 (제출 전)
 
-- [ ] "CLIPScore rank improvement retrieval" — ACL/SIGIR/CIKM 최근 프로시딩
-- [ ] "image-text gap retrieval fusion" — arXiv 최근 6개월
-- [ ] 결과 여기 기록
+- [x] **2026-08-18 재검색 실시** (WebSearch, 4각도: CLIPScore-랭킹, gap-late fusion, 썸네일-검색기여, query-adaptive fusion)
+  - **[7] ThumbnailTruth의 "가장 가까운" 표현은 부정확** 판정 → 본문 "관련된 연구로는…"으로 약화, §2.3 두 축으로 재구성.
+  - 연구질문(시각이 언제 검색에 기여?) 축에서 [7]보다 가까운 계열 발견 → **[11] QAMF(IEEE TNNLS 2022)**, **[12] Active Modality Detection(INTERSPEECH 2026)** 추가 인용. 둘 다 **성능용 적응 메커니즘**이라 우리(연관 분석)와 차별점 성립 → 오히려 §2.4 공백 선명화.
+  - 참고: Cross the Gap(arXiv:2502.04263, CLIP intra-modal misalignment), YouTube thumbnail design rec(Springer 2024)는 도메인/과제가 멀어 미인용.
+- [ ] **제출 직전 최종 재확인**: 최근 6개월(2026-03~) 신규 arXiv에서 "gap↔retrieval contribution 상관 분석" 직접 경쟁 연구 유무 재검색. [11][12]가 여전히 최인접인지 재확인.
+- [ ] [11] IEEE TNNLS 정식 권/호/페이지 확정(현재 early access 2022-10 기준), [12] INTERSPEECH 2026 정식 프로시딩 페이지 확정.
