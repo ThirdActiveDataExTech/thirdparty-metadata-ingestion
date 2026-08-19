@@ -136,34 +136,28 @@ CLIPScore[5]는 CLIP 유사도를 캡션 품질의 자동 평가에 사용했고
 제안 방법의 전체 처리 과정은 그림 1과 같다. 쿼리·코퍼스 구성부터 세 인코더 임베딩, gap 산출,
 세 검색 방식과 late fusion, 그리고 순위 개선(Δrank) 산출·분석까지의 흐름을 나타낸다.
 
-<!-- 최종 HWP: 아래 흐름을 도식(벡터 그림)으로 재작성 — 그림 1 -->
+<!-- 최종 HWP: 아래 라우팅을 박스+화살표 도식으로 재작성 — 그림 1.
+     핵심: Query와 제목이 각각 mpnet·CLIP-text 두 인코더로 '이중 인코딩'됨을 반드시 시각화. -->
 ```
-                         카테고리 14개
-                              │
-        ┌─────────────────────┴──────────────────────┐
-   [쿼리 경로]                                   [코퍼스 경로]
- 자동완성 초성 sweep                          search + videos.list
-        │→ curation → 결정적 표집                     │
-   Query 70 (14×5)                          Video Corpus 840 (14×60)
-        │                                             │
-        │                          ┌──────────────────┴─────────┐
-        │                        제목                          썸네일
-        │                          │                             │
-        │              ┌───────────┴───────────┐                 │
-        │        검색 텍스트 인코더    CLIP 정렬 텍스트 인코더   CLIP 이미지 인코더
-        │              │                    │                    │
-        │        텍스트 임베딩       (gap용) 텍스트 임베딩     이미지 임베딩
-        │              │                    └─────────┬──────────┘
-        │              │                gap = 1 − cos(center, center)
-        │              │                              │
-        │              │                     Visual–Text Gap
-        └──────────────┤                              │
-             Text Retrieval + Visual Retrieval        │
-                        │                              │
-              Late Fusion (α=0.5) → Δrank             │
-                        │                              │
-                        └──── RQ1: gap ↔ Δrank 연관 ───┘
-                             RQ2: 융합 검색 성능
+[구성]  쿼리 경로 : 자동완성 초성 sweep → curation → 결정적 표집  ⇒  Query 70 (14×5)
+        코퍼스 경로: search + videos.list                        ⇒  Video Corpus 840 (14×60; 제목+썸네일)
+
+[인코더 3종]   mpnet(검색 텍스트, 768d) · CLIP-text(CLIP정렬 다국어 텍스트, 512d) · CLIP-image(썸네일, 512d)
+
+[이중 인코딩 라우팅]
+        Query  ─┬─►[mpnet]──────► 쿼리 텍스트 임베딩
+                └─►[CLIP-text]──► 쿼리 CLIP 임베딩
+        제목   ─┬─►[mpnet]──────► 제목 텍스트 임베딩
+                └─►[CLIP-text]──► 제목 CLIP 임베딩
+        썸네일 ────►[CLIP-image]► 썸네일 이미지 임베딩
+
+[채널 계산]
+        Text sim   = cos( 쿼리 텍스트 , 제목 텍스트 )            → Text Retrieval
+        Visual sim = cos( 쿼리 CLIP  , 썸네일 이미지 )           → Visual Retrieval
+        gap        = 1 − cos( 제목 CLIP , 썸네일 이미지 )  (mean-centered)
+
+[검색·분석]  Text Retrieval + Visual Retrieval ─► Late Fusion(α=0.5) ─► Δrank
+             ⇒  RQ1: gap ↔ Δrank 연관   /   RQ2: 검색 성능
 ```
 
 **그림 1. 제안 방법의 전체 처리 과정** (쿼리·코퍼스 구성 → 임베딩 → gap 산출 → 검색·융합 → 순위 개선·분석)
