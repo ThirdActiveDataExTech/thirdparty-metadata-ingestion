@@ -232,7 +232,7 @@ def render(blocks):
             if CAP.match(raw):
                 tgt.append(f'<p class="caption">{inline(pl)}</p>')
             elif not in_body and (raw.startswith("키워드") or raw.startswith("Keywords")):
-                m = re.match(r"(키워드|Keywords)\s*[:*]*\s*(.*)", raw)
+                m = re.match(r"(키워드|Keywords)[\s:*]*(.*)", raw)
                 head, terms = (m.group(1), m.group(2).strip("* ").strip()) if m else ("키워드", raw)
                 front.append(f'<p class="kw"><strong>{head}</strong><br>{inline(terms)}</p>')
             elif not in_body and (raw.startswith("[저자") or raw.startswith("[Author") or raw.startswith("E-mail")):
