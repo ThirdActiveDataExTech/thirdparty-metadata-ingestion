@@ -92,7 +92,13 @@ def parse(raw):
         if st.startswith("- "):
             buf = []
             while i < len(lines) and lines[i].strip().startswith("- "):
-                buf.append(lines[i].strip()[2:]); i += 1
+                cur = lines[i].strip()[2:]; i += 1
+                # 다음 줄들이 들여쓰기된 연속 줄이면 같은 항목으로 이어붙임
+                while (i < len(lines) and lines[i].strip() != ""
+                       and not lines[i].strip().startswith("- ")
+                       and not _is_block_start(lines[i].strip())):
+                    cur += " " + lines[i].strip(); i += 1
+                buf.append(cur)
             blocks.append(("ul", buf, in_body)); continue
         if re.fullmatch(r"\*\*.+\*\*", st) and blocks and blocks[-1][0] == "title_ko":
             blocks.append(("title_en", st.strip("*").strip(), in_body)); i += 1; continue
