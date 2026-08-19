@@ -183,7 +183,7 @@ line,path.e{stroke:#666;stroke-width:1.1;fill:none;marker-end:url(#ar)}
 <h3>4.2 평가 쿼리</h3>
 <p>쿼리는 연구자 창작이나 영상 텍스트에서 파생하지 않고(순환논리 회피), <strong>YouTube 공개 자동완성(Suggest)</strong> 에서 생성한다. 각 카테고리명과 관련어(카테고리당 1~2개)에 <strong>한글 초성 자음을 결합한 질의</strong>를 자동완성에 입력해 반환된 추천 검색어를 후보 pool로 수집하고, <strong>사전 등록된 curation 규칙</strong>으로 navigational(채널/프로그램)·category mismatch·상품·서비스 쿼리를 제외한다(후보별 제외 사유 전량 기록). 이어 eligible pool에서 <strong>고정 해시 기반 결정적 표집</strong>(비콘텐츠·근접중복 제거 포함)으로 <strong>카테고리당 5개 × 14 = 70개</strong>를 선정한다. 쿼리는 retrieval 실험 전에 확정(freeze)하며 성능을 보고 바꾸지 않는다. 따라서 본 연구의 쿼리 집합은 사용자의 실제 검색 빈도를 추정하는 확률표본이 아니라, <strong>플랫폼에서 관찰 가능한 검색 관심사의 후보를 구성하기 위한 평가용 쿼리 집합</strong>이다.</p>
 <h3>4.3 정답지(qrels) 구축</h3>
-<p>편향을 막기 위해 <strong>Text-only ∪ Visual-only ∪ Late Fusion 각 Top10의 합집합</strong>(pooling)을 후보 풀로 삼는다. 후보 (쿼리, 영상) 쌍을 <strong>3인이 blind·독립</strong>으로 3단계(2=관련/1=부분/0=무관)로 라벨링한다. 3단계는 순서형(ordinal) 등급이므로 최종 등급은 <strong>세 판정의 중앙값(median)</strong> 으로 집계하도록 사전 고정한다. 등급 폭이 최대인 쌍(0과 2 공존)은 감사 로그로 남긴다. 평가자 간 일치도는 <strong>Fleiss&#x27; κ</strong>(3인 전체)로 보고하고, 평가자 쌍별 <strong>Cohen&#x27;s κ</strong>를 보조로 제시한다. 최종 qrels에서 관련(등급≥1) 문서가 0개인 쿼리는 채점 불가로 제외하며, <strong>전체 쿼리 → zero-relevance 제거 → 최종 평가 쿼리 수를 카테고리별로 투명 보고</strong>한다. 이는 독립 구성한 쿼리와 코퍼스의 정합성에 대한 사후 진단 자료이기도 하다.</p>
+<p>편향을 막기 위해 <strong>Text-only ∪ Visual-only ∪ Late Fusion 각 Top10의 합집합</strong>(pooling)을 후보 풀로 삼는다. 후보 (쿼리, 영상) 쌍을 <strong>3인이 blind·독립</strong>으로 3단계(2=관련/1=부분/0=무관)로 라벨링한다. 3단계는 순서형(ordinal) 등급이므로 최종 등급은 <strong>세 판정의 중앙값(median)</strong> 으로 집계하도록 사전 고정한다. 평가자 간 일치도는 <strong>Fleiss&#x27; κ</strong>(3인 전체)로 보고하고, 평가자 쌍별 <strong>Cohen&#x27;s κ</strong>를 보조로 제시한다. 최종 qrels에서 관련(등급≥1) 문서가 0개인 쿼리는 채점 불가로 제외하고, 제외 수를 카테고리별로 투명 보고한다.</p>
 <h3>4.4 평가 지표 및 통계 검정</h3>
 <p>지표는 검색 성능(RQ2)에 MRR@10·NDCG@10·Recall@10, gap–개선 연관(RQ1)에 Spearman ρ(gap, median Δrank)를 쓴다. 본 논문은 연구 질문 RQ1·RQ2로 명칭을 통일하며, 각각을 아래 검정으로 확인한다.</p>
 <ul><li><strong>RQ2 검정(융합 효과)</strong>: 유의성은 Text-only 대 Fusion(α=0.5)의 쿼리별 reciprocal rank@10에</li></ul>
@@ -209,7 +209,7 @@ line,path.e{stroke:#666;stroke-width:1.1;fill:none;marker-end:url(#ar)}
 <h3>6.2 gap이 그 효과를 설명했는가 (RQ1)</h3>
 <p>§5.2의 gap–Δrank 관계를 논한다 <span class="tbd">&nbsp;&nbsp;</span>. gap이 클수록 융합에 의한 순위 개선이 큰 경향이 관찰된다면, 시각 정보의 추가 기여는 <strong>균일하지 않고 제목–썸네일의 의미 격차와 관련</strong>된다는 것을 시사한다. 다만 이는 상관 관계이며 인과가 아니다.</p>
 <h3>6.3 gap이 높은데도 개선되지 않는 영상 (반례)</h3>
-<p>§5.3의 반례를 논한다. gap이 높다는 것은 썸네일이 제목과 다른 정보를 담는다는 뜻이지, 그 정보가 특정 쿼리에 유용함을 보장하지 않는다. 썸네일과 제목이 모두 쿼리와 약하게만 관련되면 gap이 높아도 개선이 없을 수 있다. 이는 gap을 결정적 규칙이 아니라 순위 개선과 <strong>연관을 보이는 변수</strong>(상관 수준)로 서술하는 근거이며, 반례를 숨기지 않는 것과 일관된다. 본 연구의 primary 분석은 Spearman 상관이므로 &quot;예측&quot;이 아니라 &quot;연관&quot;으로 해석함을 명시한다.</p>
+<p>§5.3의 반례를 논한다. gap이 높다는 것은 썸네일이 제목과 다른 정보를 담는다는 뜻이지, 그 정보가 특정 쿼리에 유용함을 보장하지 않는다. 썸네일과 제목이 모두 쿼리와 약하게만 관련되면 gap이 높아도 개선이 없을 수 있다. 이는 gap을 결정적 규칙이 아니라 순위 개선과 <strong>연관</strong>을 보이는 변수로 서술하는 근거이며(반례를 숨기지 않음), 본 연구가 결과를 &quot;예측&quot;이 아니라 &quot;연관&quot;으로 해석하는 이유다.</p>
 <h3>6.4 실무적 함의: 시각 임베딩의 선별 적용</h3>
 <p>낮은 gap 영상에서 시각 임베딩의 기여가 작음이 확인된다면, 그런 영상에는 시각 임베딩 계산· 저장을 생략하고 높은 gap 영상에만 선별 적용하여 <strong>메타데이터 검색 플랫폼의 색인을 비용 효율적으로 확장</strong>하는 방향을 탐색할 수 있다. 즉 gap은 &quot;모든 영상에 시각 임베딩을 넣을 것인가&quot;라는 색인 설계 결정에 정량적 검토 기준을 제공한다. 다만 실제 선별(임계값·분류 성능)의 검증은 본 연구 범위 밖이며 향후 과제다.</p>
 <h3>6.5 한계</h3>
