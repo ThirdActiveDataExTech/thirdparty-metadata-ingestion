@@ -88,8 +88,8 @@ retrieval platform with visual embeddings for high-gap videos.
 
 본 연구의 연구 질문과 기여는 다음과 같다.
 
-- **RQ1(조건, 주)**: 영상별 gap이 클수록 융합에 의한 검색 순위 개선(Δrank)이 큰가?
-- **RQ2(성능, 부)**: CLIP 썸네일 임베딩과 다국어 텍스트 임베딩의 late fusion은 text-only 대비
+- **RQ1(조건)**: 영상별 gap이 클수록 융합에 의한 검색 순위 개선(Δrank)이 큰가?
+- **RQ2(성능)**: CLIP 썸네일 임베딩과 다국어 텍스트 임베딩의 late fusion은 text-only 대비
   검색 성능을 향상시키는가?
 
 기여는 (1) **라벨링이 필요 없는 썸네일–제목 의미 격차(gap) 지표의 정의 및 자동 계산**,
