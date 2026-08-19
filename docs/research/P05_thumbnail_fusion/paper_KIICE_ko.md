@@ -169,13 +169,13 @@ CLIPScore[5]는 CLIP 유사도를 캡션 품질의 자동 평가에 사용했고
 정렬된 다국어 텍스트 인코더**를 쓴다. 검색 텍스트 채널은 한국어 품질이 좋은 별도 인코더를
 쓰되, gap은 반드시 같은 결합 공간에서 계산해야 하므로 역할을 섞지 않는다.
 
-**표 1. 사용 임베딩 인코더**
+**표 1. 사용 임베딩 인코더** (텍스트 인코더가 둘인 이유: 입력은 같아도 목적·표현 공간이 다름)
 
-| 역할 | 모델(체크포인트) | 차원 |
-|---|---|---|
-| 썸네일 이미지 | `sentence-transformers/clip-ViT-B-32` | 512 |
-| gap·시각채널용 텍스트 | `sentence-transformers/clip-ViT-B-32-multilingual-v1` | 512 |
-| 검색 텍스트 채널 | `paraphrase-multilingual-mpnet-base-v2` | 768 |
+| 역할 | 인코더(체크포인트) | 입력 | 출력 | 용도 |
+|---|---|---|---|---|
+| 이미지 | `sentence-transformers/clip-ViT-B-32` | 썸네일 | 512 | 시각 검색·gap의 이미지 표현 |
+| CLIP 정렬 텍스트 | `sentence-transformers/clip-ViT-B-32-multilingual-v1` | 제목·쿼리 | 512 | CLIP 이미지와 **같은 공간**에서 gap·시각 검색용 텍스트 표현 |
+| 검색 텍스트 | `paraphrase-multilingual-mpnet-base-v2` | 제목·쿼리 | 768 | 한국어 텍스트 검색 유사도 |
 
 두 텍스트 인코더는 목적이 다르다. CLIP 계열 텍스트 인코더는 **이미지–텍스트 공동공간에서
 gap과 시각 유사도를 계산**하기 위해, mpnet 계열 인코더는 **한국어 텍스트 간 검색 유사도**를
