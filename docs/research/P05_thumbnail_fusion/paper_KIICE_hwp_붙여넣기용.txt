@@ -72,7 +72,7 @@ gap은 CLIP 공동 임베딩 공간에서 mean-centering 후 썸네일–제목 
 fusion을 평가하여, 융합이 text-only 대비 검색 성능을 향상시키는지, 그리고 gap이 융합에
 의한 순위 개선과 관련되는지를 실증적으로 검증한다【결과 입력】. 본 연구의 기여는 새로운
 융합 기법이 아니라 시각 정보의 기여 조건을 정량적으로 다루는 지표를 제안한 데 있으며, 이는
-gap이 높은 영상에 시각 임베딩을 선별 적용하는 메타데이터 검색 플랫폼의 적응형 확장
+gap이 높은 영상에 시각 임베딩을 선별 적용하는 메타데이터 검색 플랫폼의 선택적(조건부) 색인 확장
 가능성을 탐색하는 근거가 될 수 있다.
 
 〔스타일: "ABSTRACT" 헤더=휴먼고딕 / 본문=Times New Roman 8pt〕
@@ -90,7 +90,7 @@ empirically examine whether late fusion of CLIP image and multilingual text embe
 retrieval over text-only, and whether the gap is associated with fusion-induced rank
 improvement【결과 입력】. Our contribution is not a new fusion technique but a metric and
 analysis for characterizing when visual information may help, providing a basis for exploring
-the adaptive extension of a metadata retrieval platform with visual embeddings for high-gap
+the selective (conditional) index expansion of a metadata retrieval platform with visual embeddings for high-gap
 videos.
 
 〔스타일: 키워드 헤더=휴먼고딕(가운데) / 색인어=영문 Arial 8pt(가운데). 헤더 다음 줄에 영문 색인어〕
@@ -370,7 +370,7 @@ Top-10에 든 영상으로 제한된다.
 실증적으로 검증하는 틀을 제시했다【결과 입력】. gap은 시각 임베딩을 선택적으로 적용할
 가능성을 탐색하는 기준으로 활용될 수 있으며, 낮은 gap 영상에서 시각 임베딩 제거 시 성능
 손실이 작음을 확인하면 비용 효율적 색인 확장의 근거가 된다. 향후 OCR-증강 썸네일로의 gap
-확장과 적응형 색인의 실제 비용–성능 트레이드오프 측정을 계획한다.
+확장과 선택적 색인 확장의 실제 비용–성능 트레이드오프 측정을 계획한다.
 
 〔스타일: "Acknowledgement" 헤더=Arial 10pt, 중간 정렬〕
 Acknowledgement
