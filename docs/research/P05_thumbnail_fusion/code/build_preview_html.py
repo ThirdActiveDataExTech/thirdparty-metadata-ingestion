@@ -116,7 +116,13 @@ def md_table(rows):
         header, body = cells[0], cells[2:]
     else:
         header, body = cells[0], cells[1:]
-    out = ["<table><thead><tr>" + "".join(f"<th>{inline(c)}</th>" for c in header) + "</tr></thead><tbody>"]
+    hset = set(h.strip() for h in header)
+    cls, colg = "", ""
+    if {"역할", "인코더", "입력", "출력", "용도"} <= hset:  # 표 1(인코더): 열 폭 명시
+        ws = ["14%", "32%", "15%", "9%", "30%"]  # 역할·인코더·입력·출력·용도
+        cls = ' class="t-enc"'
+        colg = "<colgroup>" + "".join(f'<col style="width:{w}">' for w in ws) + "</colgroup>"
+    out = [f"<table{cls}>{colg}<thead><tr>" + "".join(f"<th>{inline(c)}</th>" for c in header) + "</tr></thead><tbody>"]
     for r in body:
         out.append("<tr>" + "".join(f"<td>{inline(c)}</td>" for c in r) + "</tr>")
     return "".join(out) + "</tbody></table>"
@@ -286,6 +292,7 @@ code{ font-family:Consolas,"D2Coding",monospace; font-size:8.2pt; overflow-wrap:
 /* 표: 한쪽 단 안, 스크롤 없음(줄바꿈으로 축소) */
 .tblbox{ margin:2mm 0; break-inside:avoid; }
 table{ border-collapse:collapse; width:100%; font-size:7pt; }
+table.t-enc{ table-layout:fixed; }
 th,td{ border:1px solid #555; padding:.35mm .8mm; line-height:1.2; letter-spacing:-.2px; text-align:left; vertical-align:top;
        font-family:var(--serif); overflow-wrap:anywhere; word-break:keep-all; }
 th{ font-family:var(--gothic); background:#eef1f5; white-space:nowrap; }
