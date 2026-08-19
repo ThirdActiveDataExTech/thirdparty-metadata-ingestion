@@ -23,8 +23,8 @@ def strip_comments(t): return re.sub(r"<!--.*?-->", "", t, flags=re.DOTALL)
 
 def placeholders(s):
     s = re.sub(r"⟦DATA:([^⟧]*)⟧", r"\1", s)
-    s = re.sub(r"⟦[^⟧]*⟧", '<span class="tbd">&nbsp;&nbsp;</span>', s)
-    s = re.sub(r"【[^】]*】", '<span class="tbd">&nbsp;&nbsp;</span>', s)
+    s = re.sub(r"⟦[^⟧]*⟧", '<span class="tbd">[결과]</span>', s)
+    s = re.sub(r"【[^】]*】", '<span class="tbd">[결과]</span>', s)
     return s
 
 
@@ -289,7 +289,7 @@ td code{ font-size:6.6pt; }
 svg.pipe{ width:100%; max-width:100%; height:auto; border:1px solid #e0e0e0; border-radius:4px; background:#fff; }
 pre.fig{ font-family:Consolas,monospace; font-size:7pt; line-height:1.3; white-space:pre-wrap; margin:2mm 0;
          padding:2mm; background:#f6f6f8; border:1px solid #ddd; border-radius:3px; break-inside:avoid; }
-.tbd{ border-bottom:1px solid #aaa; }
+.tbd{ color:#8a8a8a; font-style:italic; font-size:8.4pt; }
 @media screen{
   body:not(.paged-done) .doc{ background:#fff; width:210mm; margin:14mm auto; padding:30mm;
           min-height:297mm; box-shadow:0 3px 16px rgba(0,0,0,.35); }
