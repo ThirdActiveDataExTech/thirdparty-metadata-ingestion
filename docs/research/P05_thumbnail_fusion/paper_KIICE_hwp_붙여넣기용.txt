@@ -231,6 +231,11 @@ sensitivity 곡선으로만 보고한다(최고 α를 "최적"으로 선택하�
 〔식 (3) — 수식편집기로 입력〕
 Δrank(v,q) = rank_text(v|q) − rank_fusion(v|q)   (양수 = 융합이 순위 개선)   … (3)
 
+여기서 rank는 전체 평가 코퍼스(840편) 내 순위로 정의하고, Text-only·Fusion 두 방식 모두 전체
+코퍼스에 대해 동일하게 계산한다. Top-K로 절단하지 않으므로 관련 영상이 Top-10 밖이라도 Δrank가
+항상 정의된다(검색 성능 지표는 @10 절단을 쓰나, Δrank는 관련 영상의 순위 이동을 온전히
+반영하기 위해 전체 순위를 사용한다).
+
 가설은 gap이 큰 영상일수록 Δrank가 크다(Spearman ρ>0)는 것이다. gap은 영상 수준 지표이므로,
 분석은 영상당 Δrank를 median으로 집계해 Spearman(gap, median Δrank)로 본다.
 
