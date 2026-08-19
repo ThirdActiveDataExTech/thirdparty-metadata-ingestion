@@ -287,8 +287,8 @@ code{ font-family:Consolas,"D2Coding",monospace; font-size:8.2pt; overflow-wrap:
 .tblbox{ margin:2mm 0; break-inside:avoid; }
 table{ border-collapse:collapse; width:100%; font-size:7pt; }
 th,td{ border:1px solid #555; padding:.35mm .8mm; line-height:1.2; letter-spacing:-.2px; text-align:left; vertical-align:top;
-       font-family:var(--serif); overflow-wrap:anywhere; word-break:break-all; }
-th{ font-family:var(--gothic); background:#eef1f5; }
+       font-family:var(--serif); overflow-wrap:anywhere; word-break:keep-all; }
+th{ font-family:var(--gothic); background:#eef1f5; white-space:nowrap; }
 td code{ font-size:6.6pt; }
 /* 그림: 한쪽 단 안, 컬럼 폭에 맞춰 축소 */
 .figbox{ text-align:center; margin:2mm 0; break-inside:avoid; }
