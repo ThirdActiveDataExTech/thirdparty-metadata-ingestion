@@ -9,7 +9,8 @@ html,body{ background:#8a8f98; margin:0; }
 @page{ size:A4; margin:30mm 30mm 30mm 30mm; }
 @page{ @bottom-center{ content:"— " counter(page) " —"; font-family:var(--tnr); font-size:8pt; color:#888; } }
 .paper{ font-family:var(--serif); font-size:9pt; line-height:1.45; color:#000;
-        column-count:2; column-gap:7mm; text-align:justify; }
+        column-count:2; column-gap:7mm; text-align:left;
+        word-break:keep-all; overflow-wrap:break-word; line-break:strict; }
 .paper p{ margin:0 0 1.6mm; text-indent:2em; }
 .paper p.authors,.paper p.kw,.paper p.caption,.paper li{ text-indent:0; }
 .span{ column-span:all; -webkit-column-span:all; }
