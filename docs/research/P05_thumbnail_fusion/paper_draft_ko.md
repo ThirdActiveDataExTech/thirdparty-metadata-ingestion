@@ -177,9 +177,9 @@ gap_i = 1 - cos_sim( center(v_img_i), center(g_txt_i) )   # center = 모달별 �
 차이가 노이즈에 지배된다. 모달별 평균 벡터를 차감(mean-centering; Mu & Viswanath, 2018)
 하면 이방성·modality-gap offset이 제거되어 **정합(제목↔자기 썸네일)과 비정합의 분리가
 크게 개선**된다(자기매칭 R@1이 raw 대비 상승, §5). ⚠️ **표현 주의**: centering은 "정답
-gap"이 아니라 **construct validity를 높이는 전처리**이며(CLIPScore가 raw인 것과 이 점만
-다름), **retrieval 성능이 아니라 정합-비정합 construct validity를 근거로 실험 전에
-선택**했다(HARKing 아님). raw gap 결과도 sensitivity로 함께 보고한다(§5.3, §6.2). µ는
+gap"이 아니라 **정합–비정합 분리를 개선하는 전처리**이며(CLIPScore가 raw인 것과 이 점만
+다름), **retrieval 성능이 아니라 자기매칭 기반 타당성 점검(self-matching validation)을 근거로
+실험 전에 선택**했다(HARKing 아님). raw gap 결과도 sensitivity로 함께 보고한다(§5.3, §6.2). µ는
 최종 평가 코퍼스로 1회 계산해 이후 전 단계에 동일 적용한다.
 
 > **인코더 두 개(§3.1) 재확인**: gap은 반드시 같은 CLIP 결합 공간에서 재야 하므로 이미지
