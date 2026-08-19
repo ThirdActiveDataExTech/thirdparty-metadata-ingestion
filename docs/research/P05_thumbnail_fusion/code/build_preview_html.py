@@ -120,7 +120,7 @@ CAP = re.compile(r"^(표|그림)\s*\d+\.")
 
 # --- 그림 1: 파이프라인 SVG (3-인코더 이중 인코딩 라우팅, 개략도) ---
 PIPE_SVG = r"""
-<svg viewBox="0 0 720 470" class="pipe" xmlns="http://www.w3.org/2000/svg" font-family="'Malgun Gothic',sans-serif">
+<svg viewBox="0 0 720 388" class="pipe" xmlns="http://www.w3.org/2000/svg" font-family="'Malgun Gothic',sans-serif">
 <defs><marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
 <path d="M0,0 L6,3 L0,6 Z" fill="#555"/></marker></defs>
 <style>
@@ -257,15 +257,15 @@ html,body{ background:#8a8f98; margin:0; }
 .front p,.body p{ margin:0 0 1.6mm; text-align:left; }
 .body p{ text-indent:1.5em; }
 .body p.caption,.body li,.front p.authors,.front p.kw,.front p.abs{ text-indent:0; }
-h1.title-ko{ font-size:15pt; font-weight:700; text-align:center; margin:2mm 0; }
+h1.title-ko{ font-size:14pt; font-weight:700; text-align:center; margin:2mm 0; }
 .title-en{ font-family:var(--arial); font-size:12pt; font-weight:700; text-align:center; margin:0 0 3mm; }
 .authors{ text-align:center; font-size:9pt; margin:.5mm 0; }
 h2.sec{ font-family:var(--gothic); font-size:10pt; font-weight:700; text-align:center; margin:4mm 0 2mm; }
 .body h2.sec{ margin:4mm 0 2mm; }
 h3{ font-family:var(--gothic); font-size:9pt; font-weight:700; margin:2.5mm 0 1mm; }
 .abs{ text-align:justify; }
-.kw{ font-family:var(--gothic); font-size:8.5pt; margin-top:2mm; }
-.caption{ font-family:var(--gothic); font-size:8.3pt; margin:1mm 0 1.6mm; }
+.kw{ font-family:var(--gothic); font-size:8pt; margin-top:2mm; }
+.caption{ font-family:var(--gothic); font-size:9pt; margin:1mm 0 1.6mm; }
 ul{ margin:0 0 1.6mm; padding-left:4.5mm; }
 li{ margin:0 0 .8mm; }
 code{ font-family:Consolas,"D2Coding",monospace; font-size:8.2pt; overflow-wrap:anywhere; }
