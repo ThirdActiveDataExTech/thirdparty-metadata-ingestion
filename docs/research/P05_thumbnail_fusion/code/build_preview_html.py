@@ -131,7 +131,7 @@ PIPE_SVG = r"""
 text{font-size:12px;fill:#111}
 .s{font-size:10.5px;fill:#333}
 line,path.e{stroke:#666;stroke-width:1.1;fill:none;marker-end:url(#ar)}
-.lay{font-size:11px;fill:#889;font-weight:bold}
+.lay{font-size:9.5px;fill:#889;font-weight:bold}
 </style>
 <!-- 구성 -->
 <rect x="15" y="12" width="330" height="34" rx="6" class="b"/>
@@ -141,12 +141,12 @@ line,path.e{stroke:#666;stroke-width:1.1;fill:none;marker-end:url(#ar)}
 <text x="384" y="27" class="s">코퍼스: search + videos.list</text>
 <text x="384" y="41" class="s">⇒ Video 840 (14×60; 제목 + 썸네일)</text>
 <!-- 입력 -->
-<text x="20" y="80" class="lay">입력</text>
+<text x="4" y="80" class="lay">입력</text>
 <rect x="95" y="66" width="120" height="26" rx="6" class="b"/><text x="130" y="83">Query</text>
 <rect x="300" y="66" width="120" height="26" rx="6" class="b"/><text x="345" y="83">제목</text>
 <rect x="520" y="66" width="150" height="26" rx="6" class="b"/><text x="565" y="83">썸네일</text>
 <!-- 인코더 -->
-<text x="20" y="150" class="lay">인코더</text>
+<text x="4" y="150" class="lay">인코더</text>
 <rect x="70" y="132" width="120" height="30" rx="6" class="b enc"/><text x="97" y="151" class="s">mpnet(768d)</text>
 <rect x="300" y="132" width="140" height="30" rx="6" class="b enc"/><text x="315" y="151" class="s">CLIP-text(512d)</text>
 <rect x="520" y="132" width="150" height="30" rx="6" class="b enc"/><text x="533" y="151" class="s">CLIP-image(512d)</text>
@@ -157,7 +157,7 @@ line,path.e{stroke:#666;stroke-width:1.1;fill:none;marker-end:url(#ar)}
 <path class="e" d="M330,92 C230,108 170,116 140,132"/>
 <path class="e" d="M580,92 L590,132"/>
 <!-- 계산 -->
-<text x="20" y="230" class="lay">채널 계산</text>
+<text x="4" y="230" class="lay">채널 계산</text>
 <rect x="60" y="205" width="200" height="46" rx="6" class="b cmp"/>
 <text x="70" y="223" class="s">Text 유사도</text><text x="70" y="239" class="s">cos(Query·mpnet, 제목·mpnet)</text>
 <rect x="285" y="205" width="210" height="46" rx="6" class="b cmp"/>
@@ -170,7 +170,7 @@ line,path.e{stroke:#666;stroke-width:1.1;fill:none;marker-end:url(#ar)}
 <path class="e" d="M590,162 L600,205"/>
 <path class="e" d="M410,162 C440,185 470,195 430,205"/>
 <!-- 검색·융합 -->
-<text x="20" y="315" class="lay">검색·융합</text>
+<text x="4" y="315" class="lay">검색·융합</text>
 <rect x="60" y="292" width="200" height="28" rx="6" class="b"/><text x="105" y="311" class="s">Text Retrieval</text>
 <rect x="285" y="292" width="210" height="28" rx="6" class="b"/><text x="330" y="311" class="s">Visual Retrieval</text>
 <path class="e" d="M160,251 L160,292"/>
