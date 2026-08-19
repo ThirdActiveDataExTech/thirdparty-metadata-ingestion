@@ -23,8 +23,7 @@ h2.sec{ font-family:var(--gothic); font-size:10pt; font-weight:700; text-align:c
 h3{ font-family:var(--gothic); font-size:9pt; font-weight:700; margin:2.5mm 0 1mm; }
 .abs{ text-align:justify; }
 .kw{ font-family:var(--gothic); font-size:8.5pt; margin-top:2mm; }
-.caption{ font-family:var(--gothic); font-size:8.3pt; margin:1mm 0 1.6mm;
-          column-span:all; -webkit-column-span:all; }
+.caption{ font-family:var(--gothic); font-size:8.3pt; margin:1mm 0 1.6mm; }
 ul{ margin:0 0 1.6mm; padding-left:4.5mm; }
 li{ margin:0 0 .8mm; }
 code{ font-family:Consolas,"D2Coding",monospace; font-size:8.2pt; overflow-wrap:anywhere; }
@@ -33,16 +32,16 @@ code{ font-family:Consolas,"D2Coding",monospace; font-size:8.2pt; overflow-wrap:
 .eqn i{ font-style:italic; }
 .eqn .ann{ font-family:var(--serif); font-size:8.5pt; color:#444; }
 .eqn .eqtag{ position:absolute; right:0; font-size:9pt; color:#333; }
-/* 표: 전폭, 스크롤 없음 */
-.tblbox{ column-span:all; -webkit-column-span:all; margin:2.5mm auto; break-inside:avoid; }
-table{ border-collapse:collapse; width:100%; font-size:8pt; }
-th,td{ border:1px solid #555; padding:1mm 1.6mm; text-align:left; vertical-align:top;
-       font-family:var(--serif); overflow-wrap:anywhere; }
+/* 표: 한쪽 단 안, 스크롤 없음(줄바꿈으로 축소) */
+.tblbox{ margin:2mm 0; break-inside:avoid; }
+table{ border-collapse:collapse; width:100%; font-size:7pt; }
+th,td{ border:1px solid #555; padding:.7mm 1mm; text-align:left; vertical-align:top;
+       font-family:var(--serif); overflow-wrap:anywhere; word-break:break-all; }
 th{ font-family:var(--gothic); background:#eef1f5; }
-td code{ font-size:7.6pt; }
-/* 그림: 전폭 SVG */
-.figbox{ column-span:all; -webkit-column-span:all; text-align:center; margin:2mm auto; break-inside:avoid; }
-svg.pipe{ width:100%; max-width:165mm; height:auto; border:1px solid #e0e0e0; border-radius:4px; background:#fff; }
+td code{ font-size:6.6pt; }
+/* 그림: 한쪽 단 안, 컬럼 폭에 맞춰 축소 */
+.figbox{ text-align:center; margin:2mm 0; break-inside:avoid; }
+svg.pipe{ width:100%; max-width:100%; height:auto; border:1px solid #e0e0e0; border-radius:4px; background:#fff; }
 pre.fig{ font-family:Consolas,monospace; font-size:7pt; line-height:1.3; white-space:pre-wrap; margin:2mm 0;
          padding:2mm; background:#f6f6f8; border:1px solid #ddd; border-radius:3px; break-inside:avoid; }
 .tbd{ border-bottom:1px solid #aaa; }
