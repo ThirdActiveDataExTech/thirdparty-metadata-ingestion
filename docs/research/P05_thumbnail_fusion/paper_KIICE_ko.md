@@ -54,9 +54,7 @@ not a new fusion technique but a metric and analysis for characterizing *when* v
 information may help, providing a basis for exploring the adaptive extension of a metadata
 retrieval platform with visual embeddings for high-gap videos.
 
-**키워드 : 멀티모달 검색, CLIP, 썸네일–제목 의미 격차, 썸네일, 한국어 YouTube**
-
-**Keywords : Multimodal retrieval, CLIP, Thumbnail–title semantic gap, Thumbnail, Korean YouTube**
+**키워드** : Multimodal retrieval, CLIP, Thumbnail–title semantic gap, Thumbnail, Korean YouTube
 
 ---
 

@@ -93,9 +93,9 @@ analysis for characterizing when visual information may help, providing a basis 
 the adaptive extension of a metadata retrieval platform with visual embeddings for high-gap
 videos.
 
-〔스타일: 키워드 헤더=휴먼고딕 / 색인어=영문 Arial 8pt〕
-키워드 : 멀티모달 검색, CLIP, 썸네일–제목 의미 격차, 썸네일, 한국어 YouTube
-Keywords : Multimodal retrieval, CLIP, Thumbnail–title semantic gap, Thumbnail, Korean YouTube
+〔스타일: 키워드 헤더=휴먼고딕(가운데) / 색인어=영문 Arial 8pt(가운데). 헤더 다음 줄에 영문 색인어〕
+키워드
+Multimodal retrieval, CLIP, Thumbnail–title semantic gap, Thumbnail, Korean YouTube
 
 ════════════════════════════════════════════════════════════════════════
  ↓↓↓ 여기서부터 2단 ↓↓↓

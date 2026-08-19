@@ -232,7 +232,9 @@ def render(blocks):
             if CAP.match(raw):
                 tgt.append(f'<p class="caption">{inline(pl)}</p>')
             elif not in_body and (raw.startswith("키워드") or raw.startswith("Keywords")):
-                front.append(f'<p class="kw">{inline(pl)}</p>')
+                m = re.match(r"(키워드|Keywords)\s*[:*]*\s*(.*)", raw)
+                head, terms = (m.group(1), m.group(2).strip("* ").strip()) if m else ("키워드", raw)
+                front.append(f'<p class="kw"><strong>{head}</strong><br>{inline(terms)}</p>')
             elif not in_body and (raw.startswith("[저자") or raw.startswith("[Author") or raw.startswith("E-mail")):
                 front.append(f'<p class="authors">{inline(pl)}</p>')
             elif not in_body:
@@ -264,7 +266,8 @@ h2.sec{ font-family:var(--gothic); font-size:10pt; font-weight:700; text-align:c
 .body h2.sec{ margin:4mm 0 2mm; }
 h3{ font-family:var(--gothic); font-size:9pt; font-weight:700; margin:2.5mm 0 1mm; }
 .abs{ text-align:justify; }
-.kw{ font-family:var(--gothic); font-size:8pt; margin-top:2mm; }
+.kw{ font-family:var(--gothic); font-size:8pt; margin-top:3mm; text-align:center; }
+.kw strong{ display:block; margin-bottom:.5mm; }
 .caption{ font-family:var(--gothic); font-size:9pt; margin:1mm 0 1.6mm; }
 ul{ margin:0 0 1.6mm; padding-left:4.5mm; }
 li{ margin:0 0 .8mm; }
