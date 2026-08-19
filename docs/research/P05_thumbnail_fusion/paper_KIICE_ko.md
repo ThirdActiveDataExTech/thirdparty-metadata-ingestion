@@ -95,7 +95,7 @@ expansion of a metadata retrieval platform with visual embeddings for high-gap v
 (2) **gap과 융합에 의한 검색 순위 개선의 관계 분석**(시각 정보가 "언제" 검색에 기여하는가),
 (3) **한국어 YouTube 환경에서의 실증**이다. 즉 새로운 융합 기법이 아니라 **시각 정보의 기여
 조건을 다루는 지표와 분석 틀**을 제안한다. gap 기반으로 시각 임베딩을 선별 적용하는 등의
-실무적 활용 가능성은 Ⅵ.4에서 논의한다.
+실무적 활용 가능성은 §6.4에서 논의한다.
 
 ## Ⅱ. 관련 연구
 
