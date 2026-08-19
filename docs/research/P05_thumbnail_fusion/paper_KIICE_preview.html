@@ -22,8 +22,7 @@ h2.sec{ font-family:var(--gothic); font-size:10pt; font-weight:700; text-align:c
 .body h2.sec{ margin:4mm 0 2mm; }
 h3{ font-family:var(--gothic); font-size:9pt; font-weight:700; margin:2.5mm 0 1mm; }
 .abs{ text-align:justify; }
-.kw{ font-family:var(--gothic); font-size:8pt; margin-top:3mm; text-align:center; }
-.kw strong{ display:block; margin-bottom:.5mm; }
+.front p.kwterms{ font-family:var(--gothic); font-size:8pt; text-align:center; margin:0 0 2mm; }
 .caption{ font-family:var(--gothic); font-size:9pt; margin:1mm 0 1.6mm; }
 ul{ margin:0 0 1.6mm; padding-left:4.5mm; }
 li{ margin:0 0 .8mm; }
@@ -62,7 +61,8 @@ pre.fig{ font-family:Consolas,monospace; font-size:7pt; line-height:1.3; white-s
 <p class="abs">영상 메타데이터 검색은 제목·설명 등 텍스트에 주로 의존하며, 썸네일의 시각 정보는 거의 활용되지 않는다. 시각 정보를 텍스트와 결합(fusion)하면 검색 성능이 오른다는 것은 알려져 있으나, <strong>그 개선이 모든 영상에서 균일하게 나타나는지, 특정 조건에서만 나타나는지</strong>는 규명되지 않았다. 본 연구는 이 개선이 나타나는 조건을 설명할 <strong>후보 변수</strong>로, 라벨링 없이 자동 계산되는 연속 지표인 <strong>썸네일–제목 의미 격차</strong>(넓게는 시각–텍스트 의미 격차; visual–text semantic gap, 이하 gap)를 제안한다. gap은 CLIP 공동 임베딩 공간에서 mean-centering 후 썸네일–제목 코사인 유사도를 역변환한(1−cos) 영상 수준의 비정렬 지표로, 값이 클수록 두 표현이 공동공간에서 덜 유사하며 임베딩 추출의 부산물로 얻어진다. 한국어 YouTube 영상 840편과 검색어 70개로 CLIP 이미지 임베딩과 다국어 텍스트 임베딩의 late fusion을 평가하여, <strong>융합이 text-only 대비 검색 성능을 향상시키는지, 그리고 gap이 융합에 의한 순위 개선과 관련되는지를 실증적으로 검증한다</strong> <span class="tbd">&nbsp;&nbsp;</span>. 본 연구의 기여는 새로운 융합 기법이 아니라 시각 정보의 기여 조건을 정량적으로 다루는 지표를 제안한 데 있으며, 이는 gap이 높은 영상에 시각 임베딩을 선별 적용하는 <strong>메타데이터 검색 플랫폼의 적응형 확장</strong> 가능성을 탐색하는 근거가 될 수 있다.</p>
 <h2 class="sec">ABSTRACT</h2>
 <p class="abs">Video metadata retrieval relies mostly on textual fields such as titles, leaving the visual information in thumbnails largely unused. While fusing visual and textual signals is known to improve retrieval, whether this improvement is uniform across videos or arises only under specific conditions remains unclear. As a candidate variable for this condition, we propose a continuous, label-free metric—the *thumbnail–title semantic gap* (broadly, a visual–text semantic gap)—defined as an inverse transform (1−cos) of the mean-centered thumbnail–title cosine similarity in the CLIP joint space—higher values indicating less similarity—and obtained as a by-product of embedding extraction. On 840 Korean YouTube videos and 70 queries, we empirically examine whether late fusion of CLIP image and multilingual text embeddings improves retrieval over text-only, and whether the gap is associated with fusion-induced rank improvement <span class="tbd">&nbsp;&nbsp;</span>. Our contribution is not a new fusion technique but a metric and analysis for characterizing *when* visual information may help, providing a basis for exploring the adaptive extension of a metadata retrieval platform with visual embeddings for high-gap videos.</p>
-<p class="kw"><strong>키워드</strong><br>Multimodal retrieval, CLIP, Thumbnail–title semantic gap, Thumbnail, Korean YouTube</p>
+<h2 class="sec">키워드</h2>
+<p class="kwterms">Multimodal retrieval, CLIP, Thumbnail–title semantic gap, Thumbnail, Korean YouTube</p>
 </div>
 <div class="body">
 <h2 class="sec">Ⅰ. 서 론</h2>
