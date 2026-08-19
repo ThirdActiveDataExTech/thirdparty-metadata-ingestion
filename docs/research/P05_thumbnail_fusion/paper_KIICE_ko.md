@@ -25,8 +25,9 @@ E-mail : [email1] / [email2]
 영상 메타데이터 검색은 제목·설명 등 텍스트에 주로 의존하며, 썸네일의 시각 정보는 거의
 활용되지 않는다. 시각 정보를 텍스트와 결합(fusion)하면 검색 성능이 오른다는 것은 알려져
 있으나, **그 개선이 모든 영상에서 균일하게 나타나는지, 특정 조건에서만 나타나는지**는
-규명되지 않았다. 본 연구는 이 조건을 **라벨링 없이 자동 계산되는 연속 지표**인 **썸네일–제목
-의미 격차**(넓게는 시각–텍스트 의미 격차; visual–text semantic gap, 이하 gap)로 특성화한다.
+규명되지 않았다. 본 연구는 이 개선이 나타나는 조건을 설명할 **후보 변수**로, 라벨링 없이 자동
+계산되는 연속 지표인 **썸네일–제목 의미 격차**(넓게는 시각–텍스트 의미 격차; visual–text
+semantic gap, 이하 gap)를 제안한다.
 gap은 CLIP 공동 임베딩 공간에서 mean-centering 후 썸네일–제목 코사인 유사도를 역변환한(1−cos)
 영상 수준의 비정렬 지표로, 값이 클수록 두 표현이 공동공간에서 덜 유사하며 임베딩 추출의
 부산물로 얻어진다. 한국어 YouTube 영상 ⟦DATA:840⟧편과 검색어
@@ -41,9 +42,9 @@ text-only 대비 검색 성능을 향상시키는지, 그리고 gap이 융합에
 Video metadata retrieval relies mostly on textual fields such as titles, leaving the visual
 information in thumbnails largely unused. While fusing visual and textual signals is known to
 improve retrieval, whether this improvement is uniform across videos or arises only under
-specific conditions remains unclear. We characterize this condition with a continuous,
-label-free metric—the *thumbnail–title semantic gap* (broadly, a visual–text semantic gap)—
-defined as an inverse transform (1−cos) of the mean-centered thumbnail–title cosine similarity
+specific conditions remains unclear. As a candidate variable for this condition, we propose a
+continuous, label-free metric—the *thumbnail–title semantic gap* (broadly, a visual–text semantic
+gap)—defined as an inverse transform (1−cos) of the mean-centered thumbnail–title cosine similarity
 in the CLIP joint space—higher values indicating less similarity—and obtained as a by-product
 of embedding extraction. On
 ⟦DATA:840⟧ Korean YouTube videos and ⟦DATA:70⟧ queries, we empirically examine whether late
