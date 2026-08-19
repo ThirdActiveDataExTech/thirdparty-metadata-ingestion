@@ -298,7 +298,7 @@ ground truth가 아니며**, 본 연구의 어느 분석에서도 레이블로 �
 ### 4.4 평가 지표 및 통계 검정
 
 지표는 검색 성능(RQ2)에 MRR@10·NDCG@10·Recall@10, gap–개선 연관(RQ1)에 Spearman ρ(gap,
-median Δrank)와 효과 크기 Cohen's d를 쓴다. 본 논문은 연구 질문 RQ1·RQ2로 명칭을 통일하며,
+median Δrank)를 쓴다. 본 논문은 연구 질문 RQ1·RQ2로 명칭을 통일하며,
 각각을 아래 검정으로 확인한다.
 
 - **RQ2 검정(융합 효과)**: 유의성은 Text-only 대 Fusion(α=0.5)의 쿼리별 reciprocal rank@10에
@@ -310,7 +310,8 @@ median Δrank)와 효과 크기 Cohen's d를 쓴다. 본 논문은 연구 질문
   영상에 여러 쿼리가 붙어도 관측치 1개로 독립성 확보). 분석은 세 층으로 구분한다. **Primary**:
   `Spearman ρ(gap, median Δrank)`의 유의성(ρ>0, p<0.05)과 **부트스트랩 95% CI**. **Robustness**:
   카테고리 내 stratified 상관과 raw vs centered gap 민감도. **Exploratory**: 카테고리 교란을
-  통제하는 cluster-robust 회귀. 귀무 결과 시 표본의 최소탐지효과(MDES)로 해석을 보강한다.
+  통제하는 cluster-robust 회귀와, gap 상·하위군 간 효과 크기 Cohen's d. 귀무 결과 시 표본의
+최소탐지효과(MDES)로 해석을 보강한다.
   상관 유의성은 예측력의 직접 증거가 아니므로, 본 연구는 결과를 "예측"이 아니라 "연관"으로
   해석한다.
 - **Short 강건성**: 코퍼스의 12.5%가 Short이므로, Short 유병률을 보고하고 **Short 제외
