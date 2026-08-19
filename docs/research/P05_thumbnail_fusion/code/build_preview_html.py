@@ -128,7 +128,7 @@ PIPE_SVG = r"""
 .enc{fill:#eef3fb;stroke:#4a6fa5}
 .cmp{fill:#f2f7ee;stroke:#5a8a4a}
 .out{fill:#fbf3ee;stroke:#a5714a}
-text{font-size:13px;fill:#111}
+text{font-size:13px;fill:#111;font-weight:bold}
 .s{font-size:11px;fill:#333}
 line,path.e{stroke:#666;stroke-width:1.1;fill:none;marker-end:url(#ar)}
 .lay{font-size:10.5px;fill:#889;font-weight:bold}
