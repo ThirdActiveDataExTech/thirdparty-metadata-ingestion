@@ -119,7 +119,7 @@ def md_table(rows):
     hset = set(h.strip() for h in header)
     cls, colg = "", ""
     if {"역할", "인코더", "입력", "출력", "용도"} <= hset:  # 표 1(인코더): 열 폭 명시
-        ws = ["13%", "31%", "16%", "11%", "29%"]  # 역할·인코더·입력·출력·용도
+        ws = ["14%", "31%", "15%", "11%", "29%"]  # 역할·인코더·입력·출력·용도
         cls = ' class="t-enc"'
         colg = "<colgroup>" + "".join(f'<col style="width:{w}">' for w in ws) + "</colgroup>"
     out = [f"<table{cls}>{colg}<thead><tr>" + "".join(f"<th>{inline(c)}</th>" for c in header) + "</tr></thead><tbody>"]
@@ -293,7 +293,7 @@ code{ font-family:Consolas,"D2Coding",monospace; font-size:8.2pt; overflow-wrap:
 .tblbox{ margin:2mm 0; break-inside:avoid; }
 table{ border-collapse:collapse; width:100%; font-size:7pt; }
 table.t-enc{ table-layout:fixed; }
-table.t-enc td:nth-child(3),table.t-enc td:nth-child(4){ white-space:nowrap; }
+table.t-enc td:nth-child(4){ white-space:nowrap; }
 th,td{ border:1px solid #555; padding:.35mm .8mm; line-height:1.2; letter-spacing:-.2px; text-align:left; vertical-align:top;
        font-family:var(--serif); overflow-wrap:anywhere; word-break:keep-all; }
 th{ font-family:var(--gothic); background:#eef1f5; white-space:nowrap; }
