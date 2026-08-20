@@ -416,11 +416,6 @@ is_short로 라벨해 유병률·non-Shorts 민감도로 통제하나(§4.4), Sh
 수행된 연구임 (No.RS-2024-00340834, 써드파티 데이터의 활용성 증대를 위한 액티브 메타데이터
 기반 능동형 데이터 확장 기술 개발).
 
-This work was supported by Institute for Information & communications Technology
-Promotion(IITP) grant funded by the Korea government(MSIT) (No.RS-2024-00340834, Development
-active metadata-driven active data expansion technology to increase third-party data
-utilization).
-
 ## References
 
 [1] H. Fang, P. Xiong, L. Xu, and Y. Chen, "CLIP2Video: Mastering video-text retrieval via
