@@ -785,6 +785,16 @@ Politics), 26(Howto & Style), 27(Education), 28(Science & Technology). 나머지
   (b) NAV에 동종(언론사/프로그램) 보강, (c) **최종 정밀검수**(사전 선언 단계)에서 top-제목 sanity
   check로 채널/인물/무의미(매칭이 주제와 무관) 10건을 `MANUAL_EXCLUDE`로 제외→다음 MD5 후보로
   결정론적 교체. 결과: 신규 70쿼리(cap50 대비 55개 교체), coverage 재점검 **70/70 LIKELY·WEAK 0**.
-  재retrieval(pool 평균 23.5)·재시트(**1,648쌍/인**). 결과 미관측 시점 변경이라 preregistration 안전.
-  옛 산출물 백업: `queries_frozen_cap50_backup.json`, `retrieval/*_cap50_backup.*`. paper §4.2는
-  cap 수치 미기재라 변경 없음.
+  재retrieval·재시트. 옛 산출물 백업: `queries_frozen_cap50_backup.json`, `retrieval/*_cap50_backup.*`.
+- **🔒 2026-08-24b (선정 방식 전환: MD5 랜덤 → 기준 기반 사람 큐레이션 — 라벨 생성 前, HARKing 아님)**:
+  cap 비구속 후 풀이 커지자 **순수 MD5 랜덤이 채널·작품·기관명·무의미 초성결합을 그대로 끌어옴**이
+  확인됨(예: 광주전남 교육 통합=기관, 영화 피렌체=작품명, 코미디 테이프·유머 킹누=채널, 기술 나메=무의미).
+  자동 필터(NAV/META 렉시콘)로는 작품명·기관명·의미 노이즈를 원천 차단 불가. **개정**: 최종 선정을
+  **사전 정의 기준 기반 사람 큐레이션**으로 전환(IR 테스트컬렉션 표준). 기준=채널/프로그램/작품/인물/
+  기관명·category mismatch·상품/서비스·무의미·과도한 특정 **배제**, `[카테고리+주제]` topical 쿼리를
+  **카테고리 내 주제 다양성** 확보하도록 5개. **모든 선정 쿼리는 자동완성 후보 풀에 존재**(스크립트
+  `04f_final_curated.py`가 근거 검증, 경고 0). retrieval·라벨링 **前** 완료라 gap/융합 결과에 blind →
+  HARKing 아님. **선정 기준·최종 70쿼리·후보 pool 전량 공개**로 재현·검증 가능(랜덤 시드 대신 명시적
+  기준+최종셋으로 재현성 확보). 결과: 큐레이션 70쿼리, coverage **70/70 LIKELY·WEAK 0**, 재retrieval
+  (pool 평균 23.2)·재시트(**1,622쌍/인**). paper §4.2·METHODOLOGY §2.4 서술 동기화(“결정적 표집/MD5”
+  → “기준 기반 큐레이션”). 이전 MD5 세트는 `queries_frozen_cap50_backup.json`에 보존.

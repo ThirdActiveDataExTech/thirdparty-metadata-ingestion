@@ -11,7 +11,7 @@
       │
 [임베딩] 썸네일/제목 → CLIP·mpnet 벡터 → gap 자동계산(라벨 X)
       │
-[쿼리 결정] 초성 sweep → curation → MD5+filter 표집 → 70쿼리(14×5)  freeze
+[쿼리 결정] 초성 sweep → curation → 기준 기반 큐레이션 → 70쿼리(14×5)  freeze
       │
 [retrieval] 각 쿼리로 Text/Visual/Fusion이 840편을 정렬 → 순위
       │
@@ -87,13 +87,18 @@ exclusion funnel):
 - **content-search intent**(영상 콘텐츠를 찾는 검색)만 KEEP.
 - 애매한 것은 강제 제외하지 않고 REVIEW → 사람 판정(감사추적 보존).
 
-### 2.4 표집 — MD5 + content-filter(결정적)
-curation 통과 pool(eligible)에서 **카테고리당 동일 N**을 **결정적으로** 뽑는다:
-- 순서 = `md5(고정SALT + query)` 사전식(재현성 완벽, 난수 없음).
-- 앞에서부터 뽑되 **META(제작/역할/도구)·NAV(채널)·상품·near-duplicate는 skip**.
-- **왜 MD5인가**: MD5 / farthest-first / medoid 3방식을 **사전 정의 지표**(META/NAV 비율,
-  diversity, coverage)로 비교한 결과 **MD5가 META/NAV 최소·재현성 최고**로 나와 채택
-  (medoid는 coverage 최대화가 오히려 "게임 디렉터·뉴스 대본" 같은 제작/메타 쿼리를 끌어옴).
+### 2.4 선정 — 기준 기반 사람 큐레이션 (검색·라벨링 前, 결과 blind)
+curation 통과 pool(eligible)에서 **카테고리당 5개**를 **사전 정의 기준**으로 선정한다(IR
+테스트컬렉션의 표준적 토픽 구성 방식):
+- **배제**: 채널·프로그램·작품·인물·기관명(navigational), category mismatch, 상품/서비스,
+  무의미 초성결합, 과도하게 특정한 쿼리.
+- **선정**: `[카테고리 + 주제/활동]` 형태의 topical 쿼리를 **카테고리 내 주제 다양성**이
+  확보되도록 5개. 모든 선정 쿼리는 자동완성 후보 풀에 존재(사용자 검색어 근거 유지).
+- **blind 보장**: 선정은 retrieval·관련성 라벨링 **이전**에 완료 → gap/융합 결과를 보고
+  고르지 않음. **선정 기준·최종 쿼리·후보 pool 전량을 공개**해 검증 가능.
+- **배경(변경 이력 2026-08-24)**: 초기엔 `md5(SALT+query)` 결정적 표집을 썼으나, 초성 절단
+  편향 제거(cap 비구속)로 풀이 커지자 랜덤 표집이 채널·작품·기관명 등 비-topical 후보를
+  그대로 끌어오는 한계가 확인됨 → 기준 기반 큐레이션으로 전환(사전등록·라벨 前이라 HARKing 아님).
 
 ### 2.5 규모·동결
 - **N=70 (14 카테고리 × 5)**. §0.6 Query Pilot(pool 크기·라벨링 부담 실측)로 56~84 범위에서
