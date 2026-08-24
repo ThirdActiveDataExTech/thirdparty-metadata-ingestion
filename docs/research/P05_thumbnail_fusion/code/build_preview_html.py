@@ -32,6 +32,7 @@ def inline(s):
     s = html.escape(s)
     s = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", s)
     s = re.sub(r"`(.+?)`", r"<code>\1</code>", s)
+    s = s.replace("&lt;sup&gt;", "<sup>").replace("&lt;/sup&gt;", "</sup>")  # 교신저자 위첨자 * 복원
     return placeholders(s)
 
 
