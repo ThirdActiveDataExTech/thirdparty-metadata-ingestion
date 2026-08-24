@@ -43,14 +43,14 @@ Video metadata retrieval relies mostly on textual fields such as titles, leaving
 information in thumbnails largely unused. While fusing visual and textual signals is known to
 improve retrieval, whether this improvement is uniform across videos or arises only under
 specific conditions remains unclear. As a candidate variable for this condition, we propose a
-continuous, label-free metric—the *thumbnail–title semantic gap* (broadly, a visual–text semantic
+continuous, label-free metric—the thumbnail–title semantic gap (broadly, a visual–text semantic
 gap)—defined as an inverse transform (1−cos) of the mean-centered thumbnail–title cosine similarity
 in the CLIP joint space—higher values indicating less similarity—and obtained as a by-product
 of embedding extraction. On
 ⟦DATA:840⟧ Korean YouTube videos and ⟦DATA:70⟧ queries, we empirically examine whether late
 fusion of CLIP image and multilingual text embeddings improves retrieval over text-only, and
 whether the gap is associated with fusion-induced rank improvement ⟦DATA⟧. Our contribution is
-not a new fusion technique but a metric and analysis for characterizing *when* visual
+not a new fusion technique but a metric and analysis for characterizing when visual
 information may help, providing a basis for exploring the selective (conditional) index
 expansion of a metadata retrieval platform with visual embeddings for high-gap videos.
 
