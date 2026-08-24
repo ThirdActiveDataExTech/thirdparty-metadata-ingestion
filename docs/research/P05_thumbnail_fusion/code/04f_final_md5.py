@@ -35,27 +35,55 @@ META = ["디렉터", "대본", "녹음 프로그램", "만드는 프로그램", 
 NAV = ["뉴스타파", "뉴스데스크", "뉴스공장", "뉴스하이킥", "뉴스토마토", "뉴스룸", "뉴스바사삭", "음악중심",
        "동물농장", "동물의왕국", "게임오버", "과학드림", "과학쿠키", "과학을보다", "리뷰엉이", "데프콘",
        "노하우톡톡", "노하우플러스", "부산도배", "공부돼지", "스포츠니어스", "코미디빅리그", "취미는과학",
-       "라이브 kbs", "라이브 ytn", "라이브 sbs"]
+       "라이브 kbs", "라이브 ytn", "라이브 sbs",
+       # 2026-08-24 cap 비구속 재동결: 커진 풀에서 드러난 동종(언론사/프로그램/채널) navigational 보강
+       "시사타파", "시사포커스", "토익연구소", "가요대전", "동물탐험대"]
 PRODUCT = ["브라 추천", "고글 추천", "거치대", "스포츠브라", "스포츠 고글"]
 JUNK = ["게임 게임", "뉴스 뉴스", "여행 again", "과학 랩", "공부 랩",
         "브이로그 레전드", "뉴스 다시보기"]  # 중복/무의미/meta 토큰
+
+# 2026-08-24 최종 정밀 검수(사전 선언된 단계): cap 비구속 재동결 후 top-제목 sanity check로
+# 드러난 채널/인물/무의미 쿼리(coverage 텍스트 신호는 통과했으나 매칭이 카테고리 주제와 무관).
+# 균일 규칙(navigational/persona/무의미) 적용 → 각 카테고리에서 MD5 순 다음 후보로 결정론적 교체.
+MANUAL_EXCLUDE = ["연애콩", "시사 한 컵", "기술 나메", "스타일 주은 직캠",
+                  "깃털 유머 턱", "코미디 타이위", "관광 메들리 트로트", "일상 녹음중",
+                  # 위 8개 교체분 재검수에서 추가로 드러난 의도불명/내비게이셔널(매칭 무관)
+                  "기술 한국어", "시사 일본어 학원"]
 
 
 def okey(q):
     return hashlib.md5((SALT + q).encode("utf-8")).hexdigest()
 
 
+def _nospace(s):
+    return s.replace(" ", "")
+
+
 def bad(q):
-    return (any(m in q for m in META) or any(n in q for n in NAV)
-            or any(p in q for p in PRODUCT) or q in JUNK)
+    # 공백 무시 부분일치(띄어쓰기 변형 채널·프로그램명 회피 차단). JUNK만 정확일치.
+    qn = _nospace(q)
+    return (any(_nospace(m) in qn for m in META) or any(_nospace(n) in qn for n in NAV)
+            or any(_nospace(p) in qn for p in PRODUCT) or q in JUNK or q in MANUAL_EXCLUDE)
 
 
 def main():
     adj = json.loads((DATA / "query_curation_jamo_adjudicated.json").read_text(encoding="utf-8"))
     per_cat = {c["name"]: [it["query"] for it in c["items"] if it["adjudicated_decision"] == "KEEP"]
                for c in adj["categories"].values()}
-    z = np.load(DATA / "query_eligible_emb_jamo.npz", allow_pickle=True)
-    all_q = list(z["queries"]); emb = z["emb"].astype(np.float64)
+    # eligible 임베딩: 캐시가 현재 KEEP 집합과 일치하면 재사용, 아니면 재생성(완전 재현)
+    all_q = sorted({q for qs in per_cat.values() for q in qs})
+    cache = DATA / "query_eligible_emb_jamo.npz"
+    emb = None
+    if cache.exists():
+        z = np.load(cache, allow_pickle=True)
+        if list(z["queries"]) == all_q:
+            emb = z["emb"].astype(np.float64); print("임베딩 캐시 재사용")
+    if emb is None:
+        from sentence_transformers import SentenceTransformer
+        print(f"임베딩 재생성 {len(all_q)}쿼리(mpnet) …")
+        emb = SentenceTransformer("paraphrase-multilingual-mpnet-base-v2").encode(
+            all_q, convert_to_numpy=True, normalize_embeddings=True).astype(np.float64)
+        np.savez_compressed(cache, queries=np.array(all_q), emb=emb.astype(np.float32))
     idx = {q: i for i, q in enumerate(all_q)}
 
     selections = {}
@@ -91,10 +119,10 @@ def main():
     for name in sorted(selections):
         for q in selections[name]:
             frozen.append({"query_id": f"q{i:02d}", "query": q, "category": name}); i += 1
-    out = {"_meta": {"rule": "PREREGISTRATION §0.2 — MD5+content-filter (초성 pool, 2026-08-14)",
-                     "method": "md5(SALT+query) 순 + skip(META/NAV/PRODUCT/JUNK/near-dup≥0.5), 앞 4개",
-                     "salt": SALT, "n": len(frozen), "pool_topk": POOL_TOPK,
-                     "supersedes": "queries_frozen_v2.json(medoid), _v1(md5 음절)"},
+    out = {"_meta": {"rule": "PREREGISTRATION §0.2 — MD5+content-filter (초성 pool, cap 비구속 재동결 2026-08-24)",
+                     "method": f"md5(SALT+query) 순 + skip(META/NAV/PRODUCT/JUNK/near-dup≥{NEAR}), 앞 {K}개",
+                     "salt": SALT, "n": len(frozen), "pool_topk": POOL_TOPK, "cap_per_category": 300,
+                     "supersedes": "queries_frozen_cap50_backup.json(cap50), _v2(medoid), _v1(md5 음절)"},
            "queries": frozen}
     (DATA / "queries_frozen.json").write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"✅ MD5+filter 표집 {len(frozen)}쿼리 → queries_frozen.json (medoid는 _v2 백업)")

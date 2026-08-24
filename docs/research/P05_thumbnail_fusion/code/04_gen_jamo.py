@@ -20,7 +20,7 @@ from pathlib import Path
 CODE = Path(__file__).resolve().parent
 DATA = CODE.parent / "data"
 JAMO = ["ㄱ", "ㄴ", "ㄷ", "ㄹ", "ㅁ", "ㅂ", "ㅅ", "ㅇ", "ㅈ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"]
-MAX_PER_CATEGORY = 50
+MAX_PER_CATEGORY = 300   # 2026-08-24: 초성 절단 편향 제거(전 카테고리 uncapped≤295이라 비구속). 이전=50
 
 
 def _load(f, n):
