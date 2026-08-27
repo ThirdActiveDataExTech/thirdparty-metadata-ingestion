@@ -361,8 +361,8 @@ Text 대비 ΔNDCG +0.039(p=0.034), ΔRecall +0.071(p=0.019)의 개선 신호가
 | NDCG@10 | 0.561 | 0.584 | 0.594 | 0.587 | 0.556 |
 | Recall@10 | 0.637 | 0.681 | 0.698 | 0.671 | 0.627 |
 
-<!-- 최종 HWP: 그림 2 = α(x, 0~1) vs 세 지표(y) 곡선. 중간 가중치에서 상대적 고점. 결과 후 생성 -->
-**그림 2. 융합 가중치 α에 따른 검색 성능 변화**(탐색적) ⟦결과 후 생성⟧
+<!-- 최종 HWP: results/fig2_alpha_curve.png 삽입 -->
+**그림 2. 융합 가중치 α에 따른 검색 성능 변화**(탐색적) [results/fig2_alpha_curve.png]
 
 **순위 수준 분석.** 평균 지표는 정체였으나 융합은 관련 영상의 **전체 코퍼스 순위를 상당히
 변화**시켰다. 관련(query, video) 쌍의 Δrank(=rank_text − rank_fusion@0.5, 양수=융합이 순위 상승)를
@@ -398,8 +398,8 @@ Spearman 상관은 **ρ = −0.049(95% CI [−0.175, +0.080], p=0.42)** 로, 사
 검색 기여를 설명하는 데에는 한계가 있었다.
 
 <!-- 최종 HWP: 그림 3 = centered gap(x) vs 영상당 median Δrank(y) 산점도(카테고리 색상 최소).
-     추세선 거의 평평(ρ≈0). 결과 후 생성 -->
-**그림 3. 의미 격차(centered gap)와 영상당 median Δrank의 관계**(ρ≈0) ⟦결과 후 생성⟧
+     binned median 평평(ρ≈0). results/fig3_gap_scatter.png 삽입 -->
+**그림 3. 의미 격차(centered gap)와 영상당 median Δrank의 관계**(ρ≈0) [results/fig3_gap_scatter.png]
 
 ### 5.4 카테고리별 융합 효과 (탐색적)
 
