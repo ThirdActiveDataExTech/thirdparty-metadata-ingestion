@@ -1,16 +1,15 @@
 <!-- 한국정보통신학회 춘·추계 종합학술대회 제출용 초안 (KIICE format).
      본문 2단·국문 함초롱바탕 등 조판은 HWP 양식에서 적용. 이 파일은 내용 원고.
-     ⟦DATA⟧ = 라벨링·실험 후 실수치로 교체. 저자/소속/과제문구는 [ ] 플레이스홀더.
-     ⟦결과 후 재작성⟧ = §6.4·§7의 '낮은 gap→기여 작음/제거 시 손실 작음' 조건부 서술은
-     RQ1 결과가 그 방향이 아니면 재작성 필요(해당 절에 인라인 마커 있음). -->
+     ⟦DATA:x⟧ = 확정 실수치(x). 저자/소속/과제문구는 [ ] 플레이스홀더.
+     결과 반영 완료(2026-08-27): RQ2/RQ1 null·nuanced 결과로 §5~§7·초록·서론·제목 재작성됨.
+     남은 것 = 그림 2(α curve)·그림 3(gap 산점도) 생성, HWP 붙여넣기용 txt 재동기화. -->
 
-# 영상 검색에서 썸네일–제목 의미 격차와 시각 정보의 기여 분석
+# YouTube 검색에서 썸네일 시각정보의 검색 기여 분석: 텍스트–시각 융합과 의미 격차를 중심으로
 
-**Thumbnail–Title Semantic Gap and the Contribution of Visual Information in Video Retrieval**
+**Analyzing the Retrieval Contribution of Thumbnail Visual Information in YouTube Search: Text–Visual Fusion and the Semantic Gap**
 
-<!-- 제목 C안 확정(2026-08-15). 주 표기 = 썸네일–제목 의미 격차(thumbnail–title semantic gap);
-     넓은 개념명 '시각–텍스트 의미 격차(visual–text semantic gap)'는 초록 첫 등장에서 1회 병기.
-     실증 도메인(한국어 YouTube)은 초록·본문·한계에 명시. -->
+<!-- 제목 (a)안 확정(결과 반영, 2026-08-27). 질문형("언제 도움되는가")·"제안" 프레이밍 제거 →
+     실제 발견(검색 기여 분석)에 맞춤. 실증 도메인(한국어 YouTube)은 초록·본문 §4에 명시. -->
 
 [저자1] · [저자2]<sup>*</sup>  
 [소속1] · [소속2]  
@@ -23,36 +22,36 @@ E-mail : [email1] / [email2]
 ## 요 약
 
 영상 메타데이터 검색은 제목·설명 등 텍스트에 주로 의존하며, 썸네일의 시각 정보는 거의
-활용되지 않는다. 시각 정보를 텍스트와 결합(fusion)하면 검색 성능이 오른다는 것은 알려져
-있으나, **그 개선이 모든 영상에서 균일하게 나타나는지, 특정 조건에서만 나타나는지**는
-규명되지 않았다. 본 연구는 이 개선이 나타나는 조건을 설명할 **후보 변수**로, 라벨링 없이 자동
-계산되는 연속 지표인 **썸네일–제목 의미 격차**(넓게는 시각–텍스트 의미 격차; visual–text
-semantic gap, 이하 gap)를 제안한다.
-gap은 CLIP 공동 임베딩 공간에서 mean-centering 후 썸네일–제목 코사인 유사도를 역변환한(1−cos)
-영상 수준의 비정렬 지표로, 값이 클수록 두 표현이 공동공간에서 덜 유사하며 임베딩 추출의
-부산물로 얻어진다. 한국어 YouTube 영상 ⟦DATA:840⟧편과 검색어
-⟦DATA:70⟧개로 CLIP 이미지 임베딩과 다국어 텍스트 임베딩의 late fusion을 평가하여, **융합이
-text-only 대비 검색 성능을 향상시키는지, 그리고 gap이 융합에 의한 순위 개선과 관련되는지를
-실증적으로 검증한다** ⟦DATA⟧. 본 연구의 기여는 새로운 융합 기법이 아니라 시각 정보의 기여
-조건을 정량적으로 다루는 지표를 제안한 데 있으며, 이는 gap이 높은 영상에 시각 임베딩을 선별
-적용하는 **메타데이터 검색 플랫폼의 선택적(조건부) 색인 확장** 가능성을 탐색하는 근거가 될 수 있다.
+활용되지 않는다. 본 연구는 한국어 YouTube 영상 840편과 검색어 70개를 대상으로, CLIP 이미지
+임베딩과 다국어 텍스트 임베딩의 late fusion이 텍스트 단독 검색을 개선하는지, 그리고 시각
+정보의 기여를 **시각–텍스트 의미 격차**(썸네일–제목 기준; visual–text semantic gap, 이하 gap)로
+설명할 수 있는지를 분석한다. gap은 CLIP 공동 임베딩 공간에서 mean-centering 후 썸네일–제목
+코사인 유사도를 역변환한(1−cos) 영상 수준의 비정렬 지표로, 라벨링 없이 임베딩 추출의 부산물로
+얻어진다. 실험 결과, 썸네일 단독 검색은 텍스트보다 낮았고 동일가중 융합은 텍스트 대비 유의한
+개선을 보이지 않았으며, 관련 영상의 순위 변화는 상위보다 깊은 순위에서 두드러졌다. 탐색적
+분석에서는 시각을 낮은 가중으로 결합할 때 일부 지표의 개선 신호가 관찰되었으나 그 효과는
+카테고리에 따라 이질적이었다. 또한 사전등록된 gap–순위변화 관계는 유의하지 않았고, 관찰된 단순
+상관은 카테고리 수준의 이질성에 영향을 받았다. 요컨대 썸네일은 텍스트 검색을 대체할 강한 신호는
+아니었으나 보조적으로 검색 결과 구성을 변화시킬 가능성이 관찰되었으며, 그 기여를 단일 의미
+격차 지표만으로 설명하기에는 한계가 있었다.
 
 ## ABSTRACT
 
 Video metadata retrieval relies mostly on textual fields such as titles, leaving the visual
-information in thumbnails largely unused. While fusing visual and textual signals is known to
-improve retrieval, whether this improvement is uniform across videos or arises only under
-specific conditions remains unclear. As a candidate variable for this condition, we propose a
-continuous, label-free metric—the thumbnail–title semantic gap (broadly, a visual–text semantic
-gap)—defined as an inverse transform (1−cos) of the mean-centered thumbnail–title cosine similarity
-in the CLIP joint space—higher values indicating less similarity—and obtained as a by-product
-of embedding extraction. On
-⟦DATA:840⟧ Korean YouTube videos and ⟦DATA:70⟧ queries, we empirically examine whether late
-fusion of CLIP image and multilingual text embeddings improves retrieval over text-only, and
-whether the gap is associated with fusion-induced rank improvement ⟦DATA⟧. Our contribution is
-not a new fusion technique but a metric and analysis for characterizing when visual
-information may help, providing a basis for exploring the selective (conditional) index
-expansion of a metadata retrieval platform with visual embeddings for high-gap videos.
+information in thumbnails largely unused. On 840 Korean YouTube videos and 70 queries, we analyze
+whether late fusion of CLIP image and multilingual text embeddings improves retrieval over
+text-only, and whether the contribution of visual information can be explained by a visual–text
+semantic gap (thumbnail–title), defined as an inverse transform (1−cos) of the mean-centered
+thumbnail–title cosine similarity in the CLIP joint space and obtained label-free as a by-product
+of embedding extraction. Thumbnail-only retrieval was weaker than text, and equal-weight fusion
+did not significantly improve over text-only; changes in the ranks of relevant videos were more
+pronounced at deeper ranks than in the top results. An exploratory analysis showed marginal
+improvements when visual information was combined at a low weight, but the effect was heterogeneous
+across categories. Moreover, the preregistered association between the gap and rank change was not
+significant, and the observed raw association was influenced by category-level heterogeneity. In
+sum, thumbnails were not a strong signal capable of replacing text retrieval, yet showed potential
+to auxiliarily reshape result composition, and a single semantic-gap metric was insufficient to
+characterize their retrieval contribution.
 
 **키워드** : Multimodal retrieval, CLIP, Thumbnail–title semantic gap, Thumbnail, Korean YouTube
 
@@ -61,14 +60,13 @@ expansion of a metadata retrieval platform with visual embeddings for high-gap v
 ## Ⅰ. 서 론
 
 영상 메타데이터를 수집·색인해 검색을 제공하는 플랫폼은 제목·설명·태그 등 **텍스트
-메타데이터**에 의존한다. 반면 사용자가 클릭 판단에 크게 활용하는 **썸네일의 시각 정보**는,
-텍스트 메타데이터와 달리 검색 색인에 직접 활용하려면 **추가적인 시각 임베딩 계산**이 필요하다.
-시각 채널을 텍스트와 결합(late fusion)해 검색 성능을
-높이는 접근은 여러 차례 보고돼 왔으나[1][2], 시각 정보의 기여가 **어떤 영상에서 상대적으로
-크게 나타나는지**에 대한 분석은 제한적이다. 즉 기존 연구가 주로 "시각 정보를 더하면 검색이
-좋아지는가"를 물었다면, 본 연구는 "그 개선이 **어떤 영상에서** 나타나는가", 나아가 "따라서 시각
-임베딩을 **모든 영상에 계산·저장해야 하는가**"를 묻는다. 시각 임베딩의 계산·저장은 비용이 들어,
-이 구분에 따라 메타데이터 검색 플랫폼의 색인 확장 설계가 달라지기 때문이다.
+메타데이터**에 주로 의존하며, 사용자가 클릭 판단에 크게 활용하는 **썸네일의 시각 정보**는
+검색에 거의 반영되지 않는다. 시각 채널을 텍스트와 결합(late fusion)해 검색 성능을 높이는
+접근이 보고돼 왔으나[1][2], 그 개선이 **모든 영상에서 균일한지, 특정 조건에서만 나타나는지**,
+나아가 시각 정보가 실제로 검색에 기여하는지에 대한 분석은 제한적이다. 시각 임베딩의 계산·
+저장에는 비용이 들기 때문에, 시각 정보의 검색 기여 여부와 그 조건을 이해하는 것은 메타데이터
+검색 플랫폼의 색인 설계에도 함의를 갖는다. 본 연구는 이 문제를 한국어 YouTube 검색 환경에서
+실증적으로 분석한다.
 
 시각 정보의 기여가 영상마다 다른 이유는 다음 논리에서 출발한다. 텍스트 메타데이터가 이미
 내용을 충분히 담은 영상은 썸네일이 그 내용을 시각적으로 반복할 뿐이라 검색에 추가 정보를
@@ -92,10 +90,9 @@ expansion of a metadata retrieval platform with visual embeddings for high-gap v
   검색 성능을 향상시키는가?
 
 기여는 (1) **라벨링이 필요 없는 썸네일–제목 의미 격차(gap) 지표의 정의 및 자동 계산**,
-(2) **gap과 융합에 의한 검색 순위 개선의 관계 분석**(시각 정보가 "언제" 검색에 기여하는가),
-(3) **한국어 YouTube 환경에서의 실증**이다. 즉 새로운 융합 기법이 아니라 **시각 정보의 기여
-조건을 다루는 지표와 분석 틀**을 제안한다. gap 기반으로 시각 임베딩을 선별 적용하는 등의
-실무적 활용 가능성은 §6.4에서 논의한다.
+(2) **텍스트–시각 융합의 검색 효과와 gap–순위변화 관계에 대한 분석 틀**, (3) **한국어 YouTube
+환경에서의 실증**이다. 즉 새로운 융합 기법이 아니라, 시각 정보의 검색 기여와 그 설명 변수를
+다루는 분석을 제시한다. 시각 정보의 검색 활용에 대한 실무적 함의는 §6.4에서 논의한다.
 
 ## Ⅱ. 관련 연구
 
@@ -474,14 +471,31 @@ mean-centering 전처리에 의존한다. (3) 평가 코퍼스는 확률표본�
 
 ## Ⅶ. 결 론
 
-<!-- ⟦결과 후 재작성⟧ "낮은 gap 영상에서 시각 임베딩 제거 시 성능 손실이 작음을 확인하면…"은
-     조건부 서술. RQ1 결과가 그 방향이 아니면 이 문장과 §6.4를 함께 결과에 맞게 조정할 것. -->
-본 연구는 멀티모달 영상 검색에서 시각 정보의 기여 조건을, 라벨링 없이 자동 계산되는 시각–
-텍스트 의미 격차(gap)로 정량화하고, 이 격차가 융합에 의한 순위 개선과 관련되는지를 실증적으로
-검증하는 틀을 제시했다 ⟦DATA⟧. gap은 시각 임베딩을 **선택적으로 적용할 가능성을 탐색하는
-기준**으로 활용될 수 있으며, 낮은 gap 영상에서 시각 임베딩 제거 시 성능 손실이 작음을 확인하면
-비용 효율적 색인 확장의 근거가 된다. 향후 OCR-증강 썸네일로의 gap 확장과 선택적 색인 확장의
-실제 비용–성능 트레이드오프 측정을 계획한다.
+본 연구는 영상 검색에서 텍스트 정보와 함께 썸네일의 시각정보를 활용할 때 검색 성능이 어떻게
+변화하는지, 그리고 시각정보의 기여 조건을 시각–텍스트 의미 격차(gap)로 설명할 수 있는지를
+한국어 YouTube 검색 환경에서 분석하였다.
+
+실험 결과, 썸네일 단독 검색은 텍스트 검색보다 낮은 성능을 보였으며, 사전등록된 동일가중 late
+fusion 역시 텍스트 대비 유의한 향상을 보이지 않았다. 다만 순위 수준에서는 관련 영상의 위치가
+변화하였고, 이 변화는 상위 10위보다 그 이후의 깊은 순위에서 더 뚜렷하였다. 이는 썸네일 정보가
+검색 결과의 구성에는 영향을 줄 수 있으나, 첫 관련 결과의 노출이나 상위 결과의 품질을 안정적으로
+개선하는 강한 신호로 작동하지는 않았음을 시사한다.
+
+가중치 민감도 분석에서는 텍스트를 주 신호로 유지하고 시각정보를 낮은 가중으로 결합한 중간
+가중치에서 일부 지표가 상대적으로 높게 나타났으며, 카테고리별 융합 효과의 방향도 상이하였다.
+다만 이들은 탐색적 결과이므로 특정 조건에서 썸네일이 유효하다고 일반화하지는 않는다.
+
+한편 시각–텍스트 의미 격차와 순위 변화의 관계에서는, 사전등록된 centered gap과 Δrank 사이에
+유의한 관계가 확인되지 않았다. raw gap에서 관찰된 연관은 카테고리 수준의 이질성에 영향을 받은
+것으로 나타났고 카테고리 내부에서는 일관되지 않았다. 따라서 단일 의미 격차 지표만으로 시각
+정보의 검색 기여 조건을 설명하는 데에는 한계가 있었다.
+
+종합하면, **썸네일은 텍스트 검색을 대체할 만큼 강한 검색 신호는 아니었으나, 텍스트 검색을
+보조하면서 검색 결과의 구성을 변화시킬 가능성이 관찰되었으며, 그 기여를 단일 시각–텍스트 의미
+격차로 설명하기에는 한계가 있었다.** 향후에는 단일 gap 값에 의존하기보다 객체·장면·자막(OCR)·
+구도 등 썸네일의 구체적 시각 특성을 분해하고, 쿼리 의도 및 영상 장르와의 상호작용을 함께
+고려할 필요가 있다. 또한 본 연구는 제한된 쿼리와 표본을 대상으로 하였으므로, 다양한 검색 환경과
+데이터셋에서 동일한 패턴이 재현되는지 검증할 필요가 있다.
 
 ## Acknowledgement
 
