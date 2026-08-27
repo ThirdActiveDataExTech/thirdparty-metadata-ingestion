@@ -1,9 +1,10 @@
 # P05 — 썸네일-텍스트 융합 임베딩 검색 실험 워크스페이스
 
-논문 초안: [../paper_draft_P05_thumbnail_fusion.md](../paper_draft_P05_thumbnail_fusion.md)
+**제출 논문(최신)**: [paper_KIICE_ko.md](paper_KIICE_ko.md) · 미리보기 [paper_KIICE_preview.html](paper_KIICE_preview.html)
+(paper_draft_ko.md는 구 초안 — superseded)
 
-이 폴더는 P05 논문의 **실험 코드·데이터·결과**를 재현 가능하게 보관한다. 논문의
-`[DATA: ...]` 자리는 여기서 나온 결과로 채운다.
+이 폴더는 P05 논문의 **실험 코드·데이터·결과**를 재현 가능하게 보관한다. 실험 수치·그림은
+`code/`의 번호순 스크립트 산출물이며, 논문에 반영 완료(2026-08-27).
 
 ## 디렉토리 구조
 

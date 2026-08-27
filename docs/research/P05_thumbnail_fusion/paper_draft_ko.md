@@ -1,4 +1,8 @@
-# [논문 초안 · 한국어 · Analysis 중심 리라이팅]
+<!-- ⚠️ SUPERSEDED (2026-08-27) — 이 문서는 구 초안입니다. 제출 논문은
+     paper_KIICE_ko.md 로 대체되었으며(제목·프레이밍·결과 모두 변경), 최신 상태를 유지하지
+     않습니다. 이 파일은 이력 참고용으로만 남깁니다. -->
+
+# [구 초안 · SUPERSEDED → paper_KIICE_ko.md 참조]
 # 썸네일은 언제 검색에 도움이 되는가: 한국어 YouTube에서 시각-텍스트 의미 격차 분석
 
 > **버전**: v3.3 (2026-08-14) — v3.2 이후 [PREREGISTRATION.md](PREREGISTRATION.md) 갱신 반영.
