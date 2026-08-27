@@ -10,12 +10,25 @@
 실행: python3 docs/research/P05_thumbnail_fusion/code/build_preview_html.py
 """
 
+import base64
 import html
 import re
 from pathlib import Path
 
-DOC = Path(__file__).resolve().parent.parent / "paper_KIICE_ko.md"
-OUT = Path(__file__).resolve().parent.parent / "paper_KIICE_preview.html"
+PAPER_DIR = Path(__file__).resolve().parent.parent
+DOC = PAPER_DIR / "paper_KIICE_ko.md"
+OUT = PAPER_DIR / "paper_KIICE_preview.html"
+
+# 캡션의 [results/fig.png] 마커 → 이미지 임베드(png만) + 캡션에서 마커 제거
+FIG_MARK = re.compile(r"\s*\[(results/[^\]]+)\]")
+
+
+def _fig_img(rel):
+    p = PAPER_DIR / rel
+    if not (rel.endswith(".png") and p.exists()):
+        return ""
+    b64 = base64.b64encode(p.read_bytes()).decode()
+    return f'<div class="figbox"><img class="figimg" src="data:image/png;base64,{b64}" alt=""></div>'
 
 
 def strip_comments(t): return re.sub(r"<!--.*?-->", "", t, flags=re.DOTALL)
@@ -243,6 +256,12 @@ def render(blocks):
         else:  # para
             raw = pl.strip("*").strip()
             if CAP.match(raw):
+                mm = FIG_MARK.search(pl)
+                if mm:                                   # 그림 캡션: png면 이미지 임베드
+                    img = _fig_img(mm.group(1))
+                    if img:
+                        tgt.append(img)
+                    pl = FIG_MARK.sub("", pl)            # 캡션 텍스트에서 [results/...] 제거
                 tgt.append(f'<p class="caption">{inline(pl)}</p>')
             elif not in_body and (raw.startswith("키워드") or raw.startswith("Keywords")):
                 m = re.match(r"(키워드|Keywords)[\s:*]*(.*)", raw)
@@ -301,6 +320,7 @@ th{ font-family:var(--gothic); background:#eef1f5; white-space:nowrap; }
 td code{ font-size:6.6pt; }
 /* 그림: 한쪽 단 안, 컬럼 폭에 맞춰 축소 */
 .figbox{ text-align:center; margin:2mm 0; break-inside:avoid; }
+.figimg{ max-width:100%; height:auto; border:1px solid #e0e0e0; border-radius:4px; }
 svg.pipe{ width:100%; max-width:100%; height:auto; border:1px solid #e0e0e0; border-radius:4px; background:#fff; }
 pre.fig{ font-family:Consolas,monospace; font-size:7pt; line-height:1.3; white-space:pre-wrap; margin:2mm 0;
          padding:2mm; background:#f6f6f8; border:1px solid #ddd; border-radius:3px; break-inside:avoid; }
