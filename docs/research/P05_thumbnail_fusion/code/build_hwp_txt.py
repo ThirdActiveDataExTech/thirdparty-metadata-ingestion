@@ -42,9 +42,17 @@ PREAMBLE = f"""{BAR}
  - 표·그림 캡션: 왼쪽 정렬, 국문 돋움 9pt / 영문 Arial 9pt.
  - 참고문헌: 영문 표기, Times New Roman 9pt, 인용(등장) 순서.
 
+■ 블록별 스타일 한눈에 (pt·서체는 실제 양식 파일에서 확인 후 확정 — 아래는 위치·정렬 가이드)
+ · 국문 제목      : 가운데 정렬, 대형 제목체            · 영문 제목  : 가운데 정렬, 영문체
+ · 저자/소속      : 가운데 정렬, 교신저자에 * 표시       · 키워드     : 가운데 정렬, 영문
+ · 요약/ABSTRACT  : 헤더=고딕, 본문=바탕/TNR, 1단, 들여쓰기2
+ · 장 제목(Ⅰ~Ⅶ)  : 가운데, 고딕/Arial                   · 절 제목(2.1 등): 좌측
+ · 본문           : 국문 함초롱바탕 9pt / 영문 TNR 9pt, 들여쓰기2, 줄간격130
+ · 표·그림 캡션   : 좌측, 돋움/Arial                      · 참고문헌   : TNR, 등장 순서
+
 ■ 수작업 체크리스트(스크립트가 대신 못 하는 것)
  [ ] 서론(Ⅰ)부터 2단 설정
- [ ] 식 (1)(2)(3)을 한글 수식편집기로 입력(본문 〔식〕 블록 참조)
+ [ ] 식 (1)(2)(3)을 한글 수식편집기로 입력(파일 하단 ■ 부록: 수식 원고의 LaTeX/HWP 줄 복사)
  [ ] 그림 1(파이프라인)·그림 2(α 곡선)·그림 3(gap 산점도) 작도/삽입
  [ ] 표 1~5 테두리·정렬, 캡션 폰트(본문 〔표〕 블록의 텍스트를 표로 재작성)
  [ ] 참고문헌 TNR 9pt, 저자 * (교신) 표시·E-mail
@@ -55,8 +63,29 @@ PREAMBLE = f"""{BAR}
 {BAR}
 """
 
-# 식 (1): $$...$$ 블록을 붙여넣기용 readable 식으로 치환
-EQ1 = "〔식 (1) — 수식편집기로 입력〕\ngap_i = 1 − cos( center(v_img,i) , center(g_txt,i) )        … (1)"
+# 식 (1): $$...$$ 블록을 붙여넣기용 readable 식으로 치환(부록에 LaTeX·HWP 스크립트 제공)
+EQ1 = "〔식 (1) — 수식편집기로 입력(원고: 파일 하단 ■ 부록 수식 원고)〕\ngap_i = 1 − cos( center(v_img,i) , center(g_txt,i) )        … (1)"
+
+# 수식편집기 직접 붙여넣기용 원고(LaTeX 우선, HWP 스크립트 병기)
+EQ_APPENDIX = f"""
+{BAR}
+ ■ 부록: 수식 원고 (한글 수식편집기 붙여넣기용)
+   · 권장: HWP 수식편집기의 LaTeX 입력 사용 → 아래 LaTeX 줄을 복사해 붙여넣기.
+   · 대안: HWP 스크립트 줄을 수식편집기 입력창에 붙여넣기(LEFT/RIGHT=자동괄호, ~=간격).
+{BAR}
+
+식 (1) 썸네일–제목 의미 격차
+ LaTeX : \\mathrm{{gap}}_i = 1 - \\cos\\!\\left(\\mathrm{{center}}(v^{{\\mathrm{{img}}}}_i),\\ \\mathrm{{center}}(g^{{\\mathrm{{txt}}}}_i)\\right)
+ HWP   : gap _{{i}} = 1 - cos LEFT ( center ( v _{{i}} ^{{img}} ) ,~ center ( g _{{i}} ^{{txt}} ) RIGHT )
+
+식 (2) Late Fusion 점수
+ LaTeX : \\mathrm{{score}} = \\alpha \\cdot \\mathrm{{norm}}(\\mathrm{{sim}}_{{\\mathrm{{text}}}}) + (1-\\alpha)\\cdot \\mathrm{{norm}}(\\mathrm{{sim}}_{{\\mathrm{{visual}}}})
+ HWP   : score = alpha cdot norm ( sim _{{text}} ) + ( 1 - alpha ) cdot norm ( sim _{{visual}} )
+
+식 (3) 순위 개선폭 (양수 = 융합이 순위 개선)
+ LaTeX : \\Delta\\mathrm{{rank}}(v,q) = \\mathrm{{rank}}_{{\\mathrm{{text}}}}(v\\,|\\,q) - \\mathrm{{rank}}_{{\\mathrm{{fusion}}}}(v\\,|\\,q)
+ HWP   : DELTA rank ( v,q ) = rank _{{text}} ( v | q ) - rank _{{fusion}} ( v | q )
+"""
 
 
 def strip_inline(s: str) -> str:
@@ -158,9 +187,9 @@ def convert(md: str) -> str:
 def main():
     md = SRC.read_text(encoding="utf-8")
     body = convert(md)
-    OUT.write_text(PREAMBLE + "\n" + body + "\n", encoding="utf-8")
+    OUT.write_text(PREAMBLE + "\n" + body + "\n" + EQ_APPENDIX, encoding="utf-8")
     n = len(body.split("\n"))
-    print(f"생성: {OUT}  (본문 {n}줄)")
+    print(f"생성: {OUT}  (본문 {n}줄 + 수식 부록)")
 
 
 if __name__ == "__main__":
