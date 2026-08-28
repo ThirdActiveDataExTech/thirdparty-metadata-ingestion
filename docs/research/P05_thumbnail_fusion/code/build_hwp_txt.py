@@ -107,13 +107,26 @@ def convert(md: str) -> str:
     md = md.replace("＊", "*")                       # 교신저자 표시 복원
     md = md.replace("`", "")                        # 인라인 코드 마커
     lines = md.split("\n")
-    out, i = [], 0
-    eq_no = {"fusion": False}
+    out, buf, i = [], [], 0
+
+    def flush():
+        """버퍼에 모인 강제 줄바꿈(hard-wrap) 문단을 한 줄로 이어붙여 출력."""
+        if not buf:
+            return
+        t = " ".join(x.strip() for x in buf)
+        t = re.sub(r"\s{2,}", " ", t)               # 중복 공백 정리
+        t = re.sub(r"\s+([,.;)\]])", r"\1", t)       # 닫는 문장부호 앞 공백 제거(콜론은 보존)
+        t = re.sub(r"(?<=\S)·[ ]+(?=\S)", "·", t)    # 가운뎃점 연결어 줄바꿈 공백 제거(계산· 저장→계산·저장)
+        out.append(t.strip())
+        buf.clear()
+
     while i < len(lines):
         ln = lines[i]
+        hardbreak = ln.endswith("  ")                 # 마크다운 후행 2칸 = 줄 유지(저자·소속 등)
 
         # $$ 수식 블록 → 식 (1)
         if ln.strip().startswith("$$"):
+            flush()
             j = i + 1
             while j < len(lines) and not lines[j].strip().startswith("$$"):
                 j += 1
@@ -121,14 +134,14 @@ def convert(md: str) -> str:
             i = j + 1
             continue
 
-        # 펜스 코드블록
+        # 펜스 코드블록(도식·수식은 줄 구조 유지)
         if ln.strip().startswith("```"):
+            flush()
             j = i + 1
             block = []
             while j < len(lines) and not lines[j].strip().startswith("```"):
                 block.append(lines[j]); j += 1
             body = "\n".join(block)
-            # Late Fusion score 식 포함 블록 → 식 (2) 주석 부여
             if "score = α" in body:
                 body = body.replace(
                     "Late Fusion : score = α·norm(sim_text) + (1−α)·norm(sim_visual)",
@@ -140,13 +153,13 @@ def convert(md: str) -> str:
             i = j + 1
             continue
 
-        # 마크다운 표
+        # 마크다운 표(행 구조 유지)
         if ln.lstrip().startswith("|"):
-            # 표 블록 수집
+            flush()
             tbl = []
             while i < len(lines) and lines[i].lstrip().startswith("|"):
                 row = lines[i].strip()
-                if re.match(r"^\|[\s:|-]+\|$", row):  # 구분행 |---|
+                if re.match(r"^\|[\s:|-]+\|$", row):
                     i += 1; continue
                 cells = [c.strip() for c in row.strip("|").split("|")]
                 tbl.append(" | ".join(strip_inline(c) for c in cells))
@@ -158,25 +171,36 @@ def convert(md: str) -> str:
         # 헤더
         m = re.match(r"^(#{1,6})\s+(.*)$", ln)
         if m:
+            flush()
             out.append(strip_inline(m.group(2)).strip())
             i += 1
             continue
 
-        # 구분선 --- → 빈 줄
+        # 구분선 ---
         if ln.strip() == "---":
-            out.append("")
-            i += 1
-            continue
+            flush(); out.append(""); i += 1; continue
 
-        # 리스트 마커 - → ·
+        # 빈 줄 = 문단 경계
+        if not ln.strip():
+            flush(); out.append(""); i += 1; continue
+
+        # 리스트 항목(새 항목마다 새 줄; 이어지는 줄은 합쳐짐)
         m = re.match(r"^(\s*)-\s+(.*)$", ln)
         if m:
-            out.append(f"{m.group(1)}· {strip_inline(m.group(2))}")
+            flush()
+            buf.append("· " + strip_inline(m.group(2)))
+            if hardbreak:
+                flush()
             i += 1
             continue
 
-        out.append(strip_inline(ln))
+        # 일반 산문/리스트 연속 줄 → 버퍼에 모아 한 줄로 이어붙임
+        buf.append(strip_inline(ln))
+        if hardbreak:
+            flush()
         i += 1
+
+    flush()
 
     text = "\n".join(out)
     # 3개 이상 연속 빈 줄 → 2개로
