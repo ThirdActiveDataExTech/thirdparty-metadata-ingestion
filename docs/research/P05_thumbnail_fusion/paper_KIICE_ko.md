@@ -20,38 +20,30 @@ E-mail : [email1] / [email2]
 
 ## 요 약
 
-영상 메타데이터 검색은 제목·설명 등 텍스트에 주로 의존하며, 썸네일의 시각 정보를 검색 색인에
-직접 활용하는 사례는 제한적이다. 본 연구는 한국어 YouTube 영상 840편과 검색어 70개를 대상으로, CLIP 이미지
-임베딩과 다국어 텍스트 임베딩의 late fusion이 텍스트 단독 검색을 개선하는지, 그리고 시각
-정보의 기여를 **시각–텍스트 의미 격차**(썸네일–제목 기준; visual–text semantic gap, 이하 gap)로
-설명할 수 있는지를 분석한다. gap은 CLIP 공동 임베딩 공간에서 mean-centering 후 썸네일–제목
-코사인 유사도를 역변환한(1−cos) 영상 수준의 비정렬 지표로, 별도의 라벨링 없이 임베딩 추출
-과정에서 산출된다. 실험 결과, 썸네일 단독 검색은 텍스트보다 낮았고 동일가중 융합은 텍스트 대비 유의한 개선을
-보이지 않았다. 다만 융합은 관련 영상의 순위 구성을 재배치하였고, 이 변화는 상위 결과보다 깊은
-순위에서 두드러졌다. 탐색적 가중치 분석에서는 텍스트 가중치 α=0.7에서 세 지표가 가장 높게 나타났으나,
-이는 확증적 결과로 해석하지 않았다. 카테고리별 융합 효과의 방향은 상이하였다. 또한 사전등록된 gap–순위변화 관계는 유의하지 않았고, raw gap–순위변화 상관은 카테고리 수준의
-이질성에 영향을 받았다. 요컨대 썸네일은 텍스트 검색을 대체할 강한 신호는
-아니었으며, 융합 시 검색 결과의 순위 구성이 변화하는 양상이 관찰되었으나, 그 기여를 단일
-의미 격차 지표만으로 설명하기에는 한계가 있었다.
+영상 메타데이터 검색은 주로 텍스트에 의존하며, 썸네일의 시각 정보는 검색 색인에 직접 활용되기
+어렵다. 본 연구는 한국어 YouTube 영상 840편과 검색어 70개에서, CLIP 이미지 임베딩과 다국어 텍스트
+임베딩의 late fusion이 텍스트 단독 검색을 개선하는지, 그리고 시각 정보의 기여를 라벨링 없이
+산출되는 영상 수준의 **썸네일–제목 의미 격차(gap)** 로 설명할 수 있는지를 사전등록 기반으로
+분석한다. 실험 결과 썸네일 단독은 텍스트보다 약했고 동일가중 융합도 평균 검색 성능을 유의하게
+개선하지 못했다. 다만 융합은 관련 영상의 순위 구성을 재배치했으며, 이 변화는 상위 결과보다 깊은
+순위에서 두드러졌고 그 방향은 카테고리에 따라 상이했다. 또한 사전등록된 gap–순위변화 관계는
+유의하지 않았고, 관찰된 상관은 카테고리 수준의 이질성에 영향을 받았다. 요컨대 썸네일은 텍스트
+검색을 대체하는 강한 신호는 아니었으나 융합 시 검색 결과의 순위 구성을 변화시켰으며, 그 기여를
+단일 의미 격차 지표만으로 설명하기에는 한계가 있었다.
 
 ## ABSTRACT
 
-Video metadata retrieval relies mostly on textual fields such as titles, and the visual
-information in thumbnails is rarely used directly for retrieval indexing. On 840 Korean YouTube videos and 70 queries, we analyze
-whether late fusion of CLIP image and multilingual text embeddings improves retrieval over
-text-only, and whether the contribution of visual information can be explained by a visual–text
-semantic gap (thumbnail–title), defined as an inverse transform (1−cos) of the mean-centered
-thumbnail–title cosine similarity in the CLIP joint space and obtained label-free from the
-embedding-extraction process. Thumbnail-only retrieval was weaker than text, and equal-weight fusion
-did not significantly improve over text-only. However, fusion reshaped the rank composition of
-relevant videos, and this change was more pronounced at deeper ranks than in the top results. An
-exploratory weighting analysis showed the highest values for all three metrics at α=0.7, where text
-remained the primary signal, but this result was not interpreted confirmatorily, and the direction
-of the fusion effect varied across categories. Moreover, the preregistered association between the gap and rank change was not
-significant, and the observed raw association was influenced by category-level heterogeneity. In
-sum, thumbnails were not a strong signal capable of replacing text retrieval; fusion reshaped the
-rank composition of results, yet a single semantic-gap metric was insufficient to characterize
-their retrieval contribution.
+Video metadata retrieval relies mostly on text, and the visual information in thumbnails is rarely
+used directly for indexing. On 840 Korean YouTube videos and 70 queries, we analyze—under a
+pre-registered protocol—whether late fusion of CLIP image and multilingual text embeddings improves
+over text-only, and whether the contribution of visual information can be explained by a label-free,
+video-level thumbnail–title semantic gap. Thumbnail-only retrieval was weaker than text, and
+equal-weight fusion did not significantly improve average performance. However, fusion reshaped the
+rank composition of relevant videos—more at deeper ranks than in the top results—with directions
+varying across categories. The pre-registered gap–rank association was not significant, and the
+observed correlation was influenced by category-level heterogeneity. In sum, thumbnails were not a
+strong signal capable of replacing text retrieval but did reshape the rank composition of results,
+and a single semantic-gap metric was insufficient to characterize their contribution.
 
 **키워드** : Multimodal retrieval, CLIP, Thumbnail–title semantic gap, Thumbnail, Korean YouTube
 
