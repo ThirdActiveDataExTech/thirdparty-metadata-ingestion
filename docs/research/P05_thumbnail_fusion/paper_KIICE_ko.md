@@ -28,9 +28,9 @@ E-mail : [email1] / [email2]
 코사인 유사도를 역변환한(1−cos) 영상 수준의 비정렬 지표로, 별도의 라벨링 없이 임베딩 추출
 과정에서 산출된다. 실험 결과, 썸네일 단독 검색은 텍스트보다 낮았고 동일가중 융합은 텍스트 대비 유의한 개선을
 보이지 않았다. 다만 융합은 관련 영상의 순위 구성을 재배치하였고, 이 변화는 상위 결과보다 깊은
-순위에서 두드러졌다. 탐색적 가중치 분석에서는 텍스트를 주 신호로 유지하는 중간 가중치에서
-상대적으로 높은 성능이 관찰되었으며, 카테고리별 융합 효과의 방향은 상이하였다. 또한 사전등록된 gap–순위변화 관계는 유의하지 않았고, 관찰된 단순
-상관은 카테고리 수준의 이질성에 영향을 받았다. 요컨대 썸네일은 텍스트 검색을 대체할 강한 신호는
+순위에서 두드러졌다. 탐색적 가중치 분석에서는 텍스트를 주 신호로 유지하는 α=0.7에서 세 지표가 가장 높게 나타났으나,
+이는 확증적 결과로 해석하지 않았다. 카테고리별 융합 효과의 방향은 상이하였다. 또한 사전등록된 gap–순위변화 관계는 유의하지 않았고, raw gap–순위변화 상관은 카테고리 수준의
+이질성에 영향을 받았다. 요컨대 썸네일은 텍스트 검색을 대체할 강한 신호는
 아니었으며, 융합 시 검색 결과의 순위 구성이 변화하는 양상이 관찰되었으나, 그 기여를 단일
 의미 격차 지표만으로 설명하기에는 한계가 있었다.
 
@@ -45,8 +45,9 @@ thumbnail–title cosine similarity in the CLIP joint space and obtained label-f
 embedding-extraction process. Thumbnail-only retrieval was weaker than text, and equal-weight fusion
 did not significantly improve over text-only. However, fusion reshaped the rank composition of
 relevant videos, and this change was more pronounced at deeper ranks than in the top results. An
-exploratory weighting analysis showed relatively higher performance at intermediate weights that
-kept text as the primary signal, but the effect was heterogeneous across categories. Moreover, the preregistered association between the gap and rank change was not
+exploratory weighting analysis showed the highest values for all three metrics at α=0.7, where text
+remained the primary signal, but this result was not interpreted confirmatorily, and the direction
+of the fusion effect varied across categories. Moreover, the preregistered association between the gap and rank change was not
 significant, and the observed raw association was influenced by category-level heterogeneity. In
 sum, thumbnails were not a strong signal capable of replacing text retrieval; fusion reshaped the
 rank composition of results, yet a single semantic-gap metric was insufficient to characterize
@@ -68,8 +69,8 @@ their retrieval contribution.
 실증적으로 분석한다.
 
 시각 정보의 기여는 영상마다 다를 수 있다. 텍스트가 이미 내용을 충분히 담은 영상은 썸네일이
-이를 시각적으로 반복할 뿐이라 검색에 추가 정보를 더하기 어려운 반면, 텍스트가 부족하거나
-썸네일이 제목에 없는 내용을 담으면 시각 채널이 정보를 보완할 **여지**가 생긴다. 이에 본 연구는
+이를 시각적으로 반복할 뿐이라 검색에 추가 정보를 더하기 어렵지만, 텍스트와 썸네일의 정보가 서로
+다를 경우 시각 채널이 추가 정보를 제공할 **가능성**이 있다. 이에 본 연구는
 **썸네일과 제목의 의미적 차이가 시각 정보의 검색 기여와 관련될 가능성**에 주목하여, 이를 정량화한
 **썸네일–제목 의미 격차(gap)** 를 후보 지표로 삼고 그 관련성을 실험으로 검증한다. 다만 gap이
 크더라도 그 시각 정보가 특정 쿼리와 무관하면 도움이 안 될 수 있으므로, 본 연구는 gap을 "시각
@@ -175,10 +176,10 @@ CLIPScore[5]는 CLIP 유사도를 캡션 품질의 자동 평가에 사용했고
 | CLIP 정렬 텍스트 | `sentence-transformers/clip-ViT-B-32-multilingual-v1` | 제목·쿼리 | 512 | CLIP 이미지와 **같은 공간**에서 gap·시각 검색용 텍스트 표현 |
 | 검색 텍스트 | `paraphrase-multilingual-mpnet-base-v2` | 제목·쿼리 | 768 | 한국어 텍스트 검색 유사도 |
 
-두 텍스트 인코더는 동일한 입력을 서로 다른 목적의 표현 공간으로 변환한다: mpnet은 한국어 검색
-유사도, CLIP-text는 이미지와의 공동공간에서 gap·시각 유사도 계산에 쓴다. 따라서 **Text-only 검색
-점수와 gap은 서로 다른 표현 공간에서 산출되며, gap을 검색 점수의 일부로 사용하지 않는다**. 구현:
-모든 임베딩은 L2 정규화, 유사도는 코사인, 채널 결합 전 쿼리별 min–max 정규화를 적용한다.
+mpnet은 한국어 검색 유사도, CLIP-text는 이미지와의 공동공간에서 gap·시각 유사도 계산에 쓴다.
+따라서 **Text-only 검색 점수와 gap은 서로 다른 표현 공간에서 산출되며, gap을 검색 점수의 일부로
+사용하지 않는다**. 구현: 모든 임베딩은 L2 정규화, 유사도는 코사인, 채널 결합 전 쿼리별 min–max
+정규화를 적용한다.
 
 ### 3.2 썸네일–제목 의미 격차(gap)
 
@@ -199,10 +200,10 @@ $$
 방향 차이(비등방성·모달 간 차이)의 영향을 줄여 **영상별 상대적 비정렬 정도를 비교**하기 위한
 것이다[10][11][12].
 
-이 전처리는 **어떤 retrieval 점수·Δrank·qrels도 보기 전에 고정**했으며, 그 적절성은 검색 성능이
-아니라 **자기매칭 기반 타당성 점검(self-matching validation)**으로 사전 점검했다 — 각 영상의 자기
-제목–썸네일 정합도를 다른 영상의 제목과 짝지었을 때와 비교하면, 전체 840편 중 **84.6%** 에서
-자기 조합의 정합도가 더 높아 이 표현이 영상별 대응 관계를 반영할 가능성을 확인하였다. raw gap도 민감도 분석으로 병기한다(§4.4).
+이 전처리는 **어떤 retrieval 점수·Δrank·qrels도 보기 전에 고정**했으며, 이 표현이 영상별 대응
+관계를 반영하는지는 검색 성능이 아니라 **자기매칭 기반 점검(self-matching validation)**으로 사전
+확인했다 — 각 영상의 자기 제목–썸네일 정합도를 다른 영상의 제목과 짝지었을 때와 비교하면, 전체
+840편 중 **84.6%** 에서 자기 조합의 정합도가 더 높았다. raw gap도 민감도 분석으로 병기한다(§4.4).
 
 gap은 추가 라벨링 없이 산출되는 영상 수준 변수로, 검색 단계의 **쿼리별 순위 변화(Δrank)** 와
 결합해 시각 정보의 검색 기여 조건을 분석하는 데 쓴다(§3.3–3.4).
@@ -302,7 +303,7 @@ median Δrank)를 쓴다. 본 논문은 연구 질문 RQ1·RQ2로 명칭을 통�
   **중앙값(median)** 으로 집계한다(극단적 순위 변화의 영향 완화; 영상이 카테고리에 내포되어 완전한
   독립은 주장하지 않는다). **Primary**는 `Spearman ρ(gap, median Δrank)`의 유의성(ρ>0)과 **부트스트랩
   95% CI**, **Robustness**는 raw/centered 민감도·between/within 분해·cluster-robust 회귀, **Exploratory**는
-  카테고리별 분석이며, 귀무 결과는 **MDES**로 해석을 보강한다. 상관은 예측의 직접 증거가 아니므로
+  카테고리별 분석이며, 귀무 결과의 정보성을 평가하기 위해 **MDES**를 함께 보고한다. 상관은 예측의 직접 증거가 아니므로
   결과를 "예측"이 아니라 "연관"으로 해석한다.
 - **Short 강건성**: 코퍼스의 12.5%가 Short이므로, Short 유병률을 보고하고 **Short 제외
   부분표본(non-Shorts)으로 RQ1·RQ2를 재실행**해 결과가 Short 포함에 좌우되지 않음을
@@ -317,8 +318,8 @@ median Δrank)를 쓴다. 본 논문은 연구 질문 RQ1·RQ2로 명칭을 통�
 **77.2–77.8%** 였다. 라벨러
 쌍별 **Cohen's κ는 0.462–0.523** 범위로, 특정 라벨러에 불일치가 집중되는 양상은 관찰되지
 않았다. 전체 사례의 **69.0%** 는 세 라벨러가 동일 등급을 부여하였고, **17.2%** 는 인접 등급 간,
-**13.8%** 는 0과 2가 함께 나타나는 극단적 불일치였다. 불일치는 주로 의미 범위가 넓거나 관련성
-경계가 모호한 쿼리에서 나타났다. 최종 관련도는 세 판단의 **중앙값(median)** 으로 결정하였다.
+**13.8%** 는 0과 2가 함께 나타나는 극단적 불일치였다. 불일치는 일부 의미 범위가 넓거나 관련성
+경계가 모호한 쿼리에서 관찰되었다. 최종 관련도는 세 판단의 **중앙값(median)** 으로 결정하였다.
 
 최종 관련도가 0인(관련 영상 0개) **7개 쿼리를 사전 정의된 zero-relevance 규칙에 따라 제외**하여
 **63개 쿼리**로 검색 평가를 수행하였다. 제외된 7개는 6개 카테고리에 분산(음악 2, 그 외 각 1)되어
@@ -390,7 +391,7 @@ Spearman 상관은 **ρ = −0.049(95% CI [−0.175, +0.080], p=0.42)** 로, 사
 확인되지 않았다. 이 표본(n=270)은 |ρ|≥0.17을 80% 검정력으로 탐지할 수 있으므로, 본 자료는
 적어도 |ρ|≈0.17 이상의 관계는 뒷받침하지 않는다.
 
-**Robustness — 관계는 카테고리 수준에 영향받았다.** raw gap에서는 약한 음의 상관이 관찰되었으나
+**Robustness — 관계는 카테고리 수준의 차이에 영향받았다.** raw gap에서는 약한 음의 상관이 관찰되었으나
 (ρ = −0.226, p<0.001), 이를 **카테고리 간(between; 카테고리 평균값끼리의 상관)과 카테고리 내
 (within; 각 변수에서 카테고리 평균을 제거한 뒤의 상관)** 로 분해하면 between-category 상관은
 강한 음의 상관(ρ = −0.679, 카테고리 14개 평균값으로 계산), within-category 상관은 약했다
