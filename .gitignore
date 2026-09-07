@@ -34,3 +34,9 @@ logs/
 build/
 dist/
 *.egg-info/
+
+# ML model weights (ultralytics 등에서 자동 다운로드 — 커밋 금지)
+*.pt
+
+# Open Images 라벨 다운로드 캐시 (대용량, 재다운 가능)
+perf_eval/video_metadata_extraction/data/obj/_oi_cache/
