@@ -78,13 +78,19 @@ EQ_APPENDIX = f"""
  LaTeX : \\mathrm{{gap}}_i = 1 - \\cos\\!\\left(\\mathrm{{center}}(v^{{\\mathrm{{img}}}}_i),\\ \\mathrm{{center}}(g^{{\\mathrm{{txt}}}}_i)\\right)
  HWP   : gap _{{i}} = 1 - cos LEFT ( center ( v _{{i}} ^{{img}} ) ,~ center ( g _{{i}} ^{{txt}} ) RIGHT )
 
-식 (2) Late Fusion 점수
- LaTeX : \\mathrm{{score}} = \\alpha \\cdot \\mathrm{{norm}}(\\mathrm{{sim}}_{{\\mathrm{{text}}}}) + (1-\\alpha)\\cdot \\mathrm{{norm}}(\\mathrm{{sim}}_{{\\mathrm{{visual}}}})
- HWP   : score = alpha cdot norm ( sim _{{text}} ) + ( 1 - alpha ) cdot norm ( sim _{{visual}} )
+식 (2) 채널 유사도 및 Late Fusion 점수  (세 비교 시스템의 점수식 — 세 줄을 한 묶음으로 배치, 번호는 (2) 하나)
+ · 채널 유사도(식 (2)의 구성 항 — 별도 번호 없이 융합식 위에 함께 배치)
+   Text 유사도   LaTeX : s_{{\\mathrm{{text}}}} = \\cos(q_{{\\mathrm{{txt}}}}, d_{{\\mathrm{{txt}}}})
+                 HWP   : s _{{text}} = cos ( q _{{txt}} ,~ d _{{txt}} )
+   Visual 유사도 LaTeX : s_{{\\mathrm{{visual}}}} = \\cos(q_{{\\mathrm{{clip}}}}, d_{{\\mathrm{{img}}}})   [교차모달]
+                 HWP   : s _{{visual}} = cos ( q _{{clip}} ,~ d _{{img}} )
+ · Late Fusion 점수 … (2)
+   LaTeX : \\mathrm{{score}} = \\alpha \\cdot \\mathrm{{norm}}(s_{{\\mathrm{{text}}}}) + (1-\\alpha)\\cdot \\mathrm{{norm}}(s_{{\\mathrm{{visual}}}})
+   HWP   : score = alpha cdot norm ( s _{{text}} ) + ( 1 - alpha ) cdot norm ( s _{{visual}} )
 
 식 (3) 순위 개선폭 (양수 = 융합이 순위 개선)
  LaTeX : \\Delta\\mathrm{{rank}}(v,q) = \\mathrm{{rank}}_{{\\mathrm{{text}}}}(v\\,|\\,q) - \\mathrm{{rank}}_{{\\mathrm{{fusion}}}}(v\\,|\\,q)
- HWP   : DELTA rank ( v,q ) = rank _{{text}} ( v | q ) - rank _{{fusion}} ( v | q )
+ HWP   : DELTA rank ( v ,~ q ) = rank _{{text}} ( v | q ) - rank _{{fusion}} ( v | q )
 """
 
 
@@ -105,7 +111,7 @@ def convert(md: str) -> str:
     md = md.replace("**", "")                       # 굵게 마커
     md = re.sub(r"\*([^*]+?)\*", r"\1", md)         # 이탤릭 *...*(멀티라인 참고문헌 포함) 제거
     md = md.replace("＊", "*")                       # 교신저자 표시 복원
-    md = md.replace("`", "")                        # 인라인 코드 마커
+    md = md.replace("```", "").replace("`", "").replace("", "```")  # 단일 백틱만 제거, 펜스(```) 보존
     lines = md.split("\n")
     out, buf, i = [], [], 0
 
@@ -144,8 +150,8 @@ def convert(md: str) -> str:
             body = "\n".join(block)
             if "score = α" in body:
                 body = body.replace(
-                    "Late Fusion : score = α·norm(sim_text) + (1−α)·norm(sim_visual)",
-                    "〔식 (2) — 수식편집기로 입력〕\nscore = α·norm(sim_text) + (1−α)·norm(sim_visual)        … (2)")
+                    "Late Fusion : score = α·norm(s_text) + (1−α)·norm(s_visual)",
+                    "〔식 (2) — 수식편집기로 입력〕\nscore = α·norm(s_text) + (1−α)·norm(s_visual)        … (2)")
             if "Δrank(v,q) = rank_text" in body:
                 body = body.rstrip() + "        … (3)"
                 out.append("〔식 (3) — 수식편집기로 입력〕")
