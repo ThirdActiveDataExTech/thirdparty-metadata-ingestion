@@ -162,13 +162,13 @@ line,path.e{stroke:#666;stroke-width:1.1;fill:none;marker-end:url(#ar)}
 <!-- 구성 -->
 <rect x="15" y="12" width="330" height="34" rx="6" class="b"/>
 <text x="24" y="27" class="s">검색어: 자동완성 초성 → 기준 기반 큐레이션</text>
-<text x="24" y="41" class="s">⇒ Query 70 (14×5)</text>
+<text x="24" y="41" class="s">⇒ 검색어 70 (14×5)</text>
 <rect x="375" y="12" width="330" height="34" rx="6" class="b"/>
 <text x="384" y="27" class="s">코퍼스: search + videos.list</text>
-<text x="384" y="41" class="s">⇒ Video 840 (14×60; 제목 + 썸네일)</text>
+<text x="384" y="41" class="s">⇒ 영상 840 (14×60; 제목 + 썸네일)</text>
 <!-- 입력 -->
 <text x="4" y="80" class="lay">입력</text>
-<rect x="95" y="66" width="120" height="26" rx="6" class="b"/><text x="130" y="83">Query</text>
+<rect x="95" y="66" width="120" height="26" rx="6" class="b"/><text x="130" y="83">검색어</text>
 <rect x="300" y="66" width="120" height="26" rx="6" class="b"/><text x="345" y="83">제목</text>
 <rect x="520" y="66" width="150" height="26" rx="6" class="b"/><text x="565" y="83">썸네일</text>
 <!-- 인코더 -->
@@ -185,9 +185,9 @@ line,path.e{stroke:#666;stroke-width:1.1;fill:none;marker-end:url(#ar)}
 <!-- 계산 -->
 <text x="4" y="230" class="lay">채널 계산</text>
 <rect x="60" y="205" width="200" height="46" rx="6" class="b cmp"/>
-<text x="70" y="223" class="s">Text 유사도</text><text x="70" y="239" class="s">cos(Query·mpnet, 제목·mpnet)</text>
+<text x="70" y="223" class="s">Text 유사도</text><text x="70" y="239" class="s">cos(검색어·mpnet, 제목·mpnet)</text>
 <rect x="285" y="205" width="210" height="46" rx="6" class="b cmp"/>
-<text x="295" y="223" class="s">Visual 유사도</text><text x="295" y="239" class="s">cos(Query·CLIP-t, 썸네일·CLIP-i)</text>
+<text x="295" y="223" class="s">Visual 유사도</text><text x="295" y="239" class="s">cos(검색어·CLIP-t, 썸네일·CLIP-i)</text>
 <rect x="510" y="205" width="195" height="46" rx="6" class="b cmp"/>
 <text x="520" y="223" class="s">gap = 1 − cos</text><text x="520" y="239" class="s">(제목·CLIP-t, 썸네일·CLIP-i)</text>
 <!-- 인코더→계산 -->
