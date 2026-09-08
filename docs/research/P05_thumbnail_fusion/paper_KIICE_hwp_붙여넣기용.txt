@@ -39,7 +39,7 @@
 
 영상 검색에서 썸네일과 텍스트의 후기 융합에 따른 검색 순위 변화와 의미 간극 분석
 
-Analyzing Ranking Changes and the Semantic Gap in Thumbnail–Text Late Fusion for Video Search
+Analysis of Search Ranking Changes and Semantic Gap in Video Retrieval with Late Fusion of Thumbnail and Textual Information
 
 [저자1] · [저자2]*
 [소속1] · [소속2]
@@ -53,7 +53,7 @@ E-mail : [email1] / [email2]
 
 ABSTRACT
 
-This study analyzes, under a pre-registered protocol, the ranking changes induced by late fusion of thumbnail and text in YouTube video search. On 840 Korean YouTube videos and 70 queries, using CLIP image embeddings and multilingual text embeddings, we compare text-only, thumbnail-only, and late-fusion retrieval, and analyze the relationship between the thumbnail–title semantic gap and the change in retrieval ranking. Thumbnail-only retrieval performed worse than text-only retrieval, and equal-weight late fusion did not significantly improve average retrieval performance. However, late fusion recomposed the ranking of results, and the pattern of change varied with rank depth and video category. In contrast, the pre-registered association between the semantic gap and ranking change was not observed. Overall, thumbnail information alone did not replace text retrieval, but its late fusion with text could reshape the rank composition of results, and a single semantic-gap metric was insufficient to characterize this ranking change.
+This study analyzes changes in search rankings resulting from the late fusion of thumbnail and textual information in YouTube video retrieval based on a preregistered analysis. Using 840 Korean YouTube videos and 70 search queries, we compared text-only, thumbnail-only, and late-fusion retrieval using CLIP image embeddings and multilingual text embeddings. We also analyzed the relationship between the semantic gap between thumbnails and titles and changes in search rankings. The results showed that thumbnail-only retrieval performed worse than text-only retrieval, and equally weighted late fusion did not significantly improve average retrieval performance. However, late fusion re-ranked the search results, and the patterns of ranking changes varied depending on ranking depth and video category. In contrast, no significant relationship was found between the preregistered semantic gap and changes in rankings. Overall, thumbnail-only information could not replace text-based retrieval, but its late fusion with textual information can alter the ranking composition of search results. These findings confirm that such ranking changes cannot be adequately explained by a single semantic gap measure.
 
 키워드 : Multimodal retrieval, CLIP, Late fusion, Thumbnail–title semantic gap, Ranking change, Korean YouTube
 

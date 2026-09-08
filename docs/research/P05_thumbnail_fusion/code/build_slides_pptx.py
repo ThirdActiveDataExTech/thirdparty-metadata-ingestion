@@ -129,7 +129,7 @@ band = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, Inches(2.15), SW, Inches(2.7))
 band.fill.solid(); band.fill.fore_color.rgb = ACCENT; band.line.fill.background(); band.shadow.inherit = False
 tb = s.shapes.add_textbox(Inches(0.8), Inches(2.35), Inches(11.7), Inches(2.3)); tf = tb.text_frame; tf.word_wrap = True
 p = tf.paragraphs[0]; _run(p, "영상 검색에서 썸네일과 텍스트의 후기 융합에 따른 검색 순위 변화와 의미 간극 분석", 28, WHITE, bold=True)
-p = tf.add_paragraph(); _run(p, "Analyzing Ranking Changes and the Semantic Gap in Thumbnail–Text Late Fusion", 18, WHITE)
+p = tf.add_paragraph(); _run(p, "Analysis of Search Ranking Changes and Semantic Gap in Video Retrieval with Late Fusion of Thumbnail and Textual Information", 16, WHITE)
 p = tf.add_paragraph(); p.space_before = Pt(10)
 _run(p, "사전등록 기반 실증 연구 · 한국어 YouTube 840편 · 70쿼리", 14, RGBColor(0xD6, 0xE4, 0xF0))
 tb = s.shapes.add_textbox(Inches(0.8), Inches(5.15), Inches(11.7), Inches(1.4)); tf = tb.text_frame
