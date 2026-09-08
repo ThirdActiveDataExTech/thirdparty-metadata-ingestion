@@ -347,7 +347,7 @@ def main():
     blocks = parse(DOC.read_text(encoding="utf-8"))
     front_html, body_html = render(blocks)
     out = f"""<!doctype html><html lang="ko"><head><meta charset="utf-8">
-<title>KIICE 미리보기 — 썸네일–제목 의미 격차</title>
+<title>KIICE 미리보기 — 썸네일–제목 의미 간극</title>
 <style>{CSS}{BANNER_CSS}</style></head><body>
 {BANNER}
 <div class="doc">

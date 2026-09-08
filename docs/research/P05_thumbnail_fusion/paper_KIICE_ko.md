@@ -3,12 +3,12 @@
      저자/소속/과제문구만 [ ] 플레이스홀더. 실험 수치·그림 모두 확정 반영됨(2026-08-27).
      HWP 붙여넣기용 txt는 code/build_hwp_txt.py로 자동 생성(이 파일 수정 후 재실행). -->
 
-# 영상 검색에서 썸네일 시각정보의 검색 기여 분석: 텍스트–시각 융합과 의미 격차를 중심으로
+# 영상 검색에서 썸네일과 텍스트의 후기 융합에 따른 검색 순위 변화와 의미 간극 분석
 
-**Analyzing the Retrieval Contribution of Thumbnail Visual Information in Video Search: Text–Visual Fusion and the Semantic Gap**
+**Analyzing Ranking Changes and the Semantic Gap in Thumbnail–Text Late Fusion for Video Search**
 
-<!-- 제목 1안 확정(2026-08-27). 질문형·"제안" 프레이밍 제거, 도메인 일반화(영상 검색);
-     실증 도메인(한국어 YouTube)은 초록·본문 §4에 명시. -->
+<!-- 제목 개정(2026-09-08): 발견 중심(검색 순위 변화) + 두 축(순위 변화·의미 간극)으로 국문 제목 변경.
+     ※ 영문 제목·초록 동기화 및 용어 '의미 간극' 본문 통일 반영(2026-09-08). -->
 
 [저자1] · [저자2]<sup>*</sup>  
 [소속1] · [소속2]  
@@ -20,30 +20,32 @@ E-mail : [email1] / [email2]
 
 ## 요 약
 
-영상 검색은 주로 텍스트에 의존하며, 썸네일의 시각 정보는 색인에 직접 쓰이기 어렵다. 본 연구는
-한국어 YouTube 영상 840편과 검색어 70개에서 CLIP 이미지 임베딩과 다국어 텍스트 임베딩의 late fusion이 텍스트 단독
-검색을 개선하는지, 그리고 시각 정보의 기여를 라벨링 없이 산출되는 영상 수준의 **썸네일–제목 의미
-격차(gap)** 로 설명할 수 있는지를 사전등록 기반으로 분석한다. 썸네일 단독은 텍스트보다 약했고,
-동일가중 융합도 평균 검색 성능을 유의하게 개선하지 못했다. 다만 융합은 관련 영상의 순위 구성을
-재배치했으며, 이 변화는 상위보다 깊은 순위에서 두드러졌고 그 방향은 카테고리에 따라 달랐다.
-사전등록된 gap–순위변화 관계도 유의하지 않았다. 요컨대 썸네일은 텍스트 검색을 대체하는 신호는
-아니었으나 융합 시 순위 구성을 바꾸었으며, 그 기여를 단일 의미 격차 지표만으로 설명하기에는 한계가
-있었다.
+본 연구는 YouTube 영상 검색에서 썸네일과 텍스트의 후기 융합(Late Fusion)에 따른 검색 순위 변화를
+사전등록 기반으로 분석하였다. 한국어 YouTube 영상 840편과 검색어 70개를 대상으로 CLIP 이미지
+임베딩과 다국어 텍스트 임베딩을 활용하여 텍스트 단독, 썸네일 단독, 후기 융합 검색을 비교하고,
+썸네일과 제목 간 의미 간극(semantic gap)과 검색 순위 변화의 관계를 분석하였다. 분석 결과, 썸네일
+단독 검색은 텍스트 단독 검색보다 성능이 낮았으며, 동일가중 후기 융합도 평균 검색 성능을 유의하게
+개선하지 못했다. 그러나 후기 융합은 검색 결과의 순위를 재배치했으며, 변화의 양상은 순위 깊이와 영상
+카테고리에 따라 달랐다. 반면 사전등록된 의미 간극과 순위 변화 간의 유의한 관계는 확인되지 않았다.
+결과적으로 썸네일 단독 정보로는 텍스트 검색을 대체하지 못했으나, 텍스트와의 후기 융합은 검색 결과의
+순위 구성을 변화시킬 수 있음을 보여주며, 이러한 순위 변화를 단일 의미 간극 지표만으로 설명하기에는
+한계가 있음을 확인하였다.
 
 ## ABSTRACT
 
-Video search relies mostly on text, and the visual information in thumbnails is rarely used directly
-for indexing. On 840 Korean YouTube videos and 70 queries, we analyze—under a pre-registered
-protocol—whether late fusion of CLIP image and multilingual text embeddings improves over text-only,
-and whether the contribution of visual information can be explained by a label-free, video-level
-thumbnail–title semantic gap. Thumbnail-only retrieval was weaker than text, and equal-weight fusion
-did not significantly improve average performance. However, fusion reshaped the rank composition of
-relevant videos—more at deeper ranks than in the top results—with directions varying across
-categories. The pre-registered gap–rank association was also not significant. In sum, thumbnails
-were not a signal capable of replacing text retrieval but did reshape the rank composition of
-results, and a single semantic-gap metric was insufficient to characterize their contribution.
+This study analyzes, under a pre-registered protocol, the ranking changes induced by late fusion of
+thumbnail and text in YouTube video search. On 840 Korean YouTube videos and 70 queries, using CLIP
+image embeddings and multilingual text embeddings, we compare text-only, thumbnail-only, and
+late-fusion retrieval, and analyze the relationship between the thumbnail–title semantic gap and the
+change in retrieval ranking. Thumbnail-only retrieval performed worse than text-only retrieval, and
+equal-weight late fusion did not significantly improve average retrieval performance. However, late
+fusion recomposed the ranking of results, and the pattern of change varied with rank depth and video
+category. In contrast, the pre-registered association between the semantic gap and ranking change was
+not observed. Overall, thumbnail information alone did not replace text retrieval, but its late fusion
+with text could reshape the rank composition of results, and a single semantic-gap metric was
+insufficient to characterize this ranking change.
 
-**키워드** : Multimodal retrieval, CLIP, Thumbnail–title semantic gap, Thumbnail, Korean YouTube
+**키워드** : Multimodal retrieval, CLIP, Late fusion, Thumbnail–title semantic gap, Ranking change, Korean YouTube
 
 ---
 
@@ -62,7 +64,7 @@ results, and a single semantic-gap metric was insufficient to characterize their
 추가 정보를 제공하기 어려울 수 있는 반면, 텍스트와 썸네일의 정보가 다를 경우 시각 채널이 추가
 정보를 제공할 **가능성**이 있다. 이에 본 연구는
 **썸네일과 제목의 의미적 차이가 시각 정보의 검색 기여와 관련될 가능성**에 주목하여, 이를 정량화한
-**썸네일–제목 의미 격차(gap)** 를 후보 지표로 삼고 그 관련성을 실험으로 검증한다. 다만 gap이
+**썸네일–제목 의미 간극(gap)** 를 후보 지표로 삼고 그 관련성을 실험으로 검증한다. 다만 gap이
 크더라도 그 시각 정보가 특정 쿼리와 무관하면 도움이 안 될 수 있으므로, 본 연구는 gap을 "시각
 정보의 유용성"과 동일시하지 않는다.
 
@@ -76,7 +78,7 @@ results, and a single semantic-gap metric was insufficient to characterize their
 - **RQ2(성능)**: CLIP 썸네일 임베딩과 다국어 텍스트 임베딩의 late fusion은 text-only 대비
   검색 성능을 향상시키는가?
 
-기여는 (1) **라벨링이 필요 없는 썸네일–제목 의미 격차(gap) 지표의 정의 및 자동 계산**,
+기여는 (1) **라벨링이 필요 없는 썸네일–제목 의미 간극(gap) 지표의 정의 및 자동 계산**,
 (2) **텍스트–시각 융합의 검색 효과와 gap–순위변화 관계를 검증하는 분석 프레임**, (3) **한국어
 YouTube를 대상으로 한 실증 평가**이다. 시각 정보의 검색 활용에 대한 실무적 함의는 §6.4에서
 논의한다.
@@ -84,7 +86,7 @@ YouTube를 대상으로 한 실증 평가**이다. 시각 정보의 검색 활�
 본 연구는 가설, 표집 절차, 평가 지표 및 주요 검정 방법을 결과 관찰 이전에 사전등록하고,
 사전등록된 분석과 결과 이후의 탐색적 분석을 구분하여 보고하였다. 본 연구의 주요 관찰은 동일가중
 융합이 평균적인 검색 성능을 향상시키지는 않았으나, 관련 영상의 순위를 특히 깊은 순위 영역에서
-재배치하는 양상이 나타났다는 점이다. 또한 이러한 순위 변화는 단일한 텍스트–시각 의미 격차(gap)
+재배치하는 양상이 나타났다는 점이다. 또한 이러한 순위 변화는 단일한 텍스트–시각 의미 간극(gap)
 만으로 일관되게 설명되지 않았다.
 
 ## Ⅱ. 관련 연구
@@ -171,7 +173,7 @@ mpnet은 한국어 검색 유사도, CLIP-text는 이미지와의 공동공간�
 사용하지 않는다**. 구현: 모든 임베딩은 L2 정규화, 유사도는 코사인, 채널 결합 전 쿼리별 min–max
 정규화를 적용한다.
 
-### 3.2 썸네일–제목 의미 격차(gap)
+### 3.2 썸네일–제목 의미 간극(gap)
 
 영상 *i*의 gap은 CLIP 결합 공간에서 모달별 mean-centering을 적용한 썸네일·제목 임베딩의 코사인
 유사도를 역변환(1 − cos)하여 정의하는 영상 수준의 비정렬 지표다.
@@ -181,7 +183,7 @@ $$
 \mathrm{gap}_i = 1 - \cos\!\big(\,\mathrm{center}(v^{\mathrm{img}}_i),\ \mathrm{center}(g^{\mathrm{txt}}_i)\,\big) \tag{1}
 $$
 
-즉 **gap이 클수록 썸네일과 제목의 표현이 공동공간에서 유사도가 낮다**. 여기서 '의미 격차'는
+즉 **gap이 클수록 썸네일과 제목의 표현이 공동공간에서 유사도가 낮다**. 여기서 '의미 간극'은
 **인간의 의미 판단에 따른 직접적 의미 차이가 아니라, CLIP 공동 임베딩 공간에서 측정한
 썸네일–제목 표현 간 비유사도**를 가리킨다. 본 연구는 이 비정렬 정도가 검색에서 시각 정보의
 추가 기여와 관련되는지를 실험으로 검증한다.
@@ -373,7 +375,7 @@ NDCG·Recall의 변화도 작아 신뢰구간이 모두 0을 포함하였다(ΔN
 융합은 유의한 개선을 보이지 않았고(ΔMRR +0.033, Wilcoxon p=0.30), 아래 gap–순위변화 관계도
 유의하지 않았다(centered ρ = −0.06). 따라서 본 결과가 Short 포함 여부에 크게 좌우되지는 않은 것으로 나타났다.
 
-### 5.3 의미 격차와 순위 변화의 관계 (RQ1)
+### 5.3 의미 간극과 순위 변화의 관계 (RQ1)
 
 **Primary는 유의하지 않았다.** 영상 수준에서 category-centered gap과 영상당 median Δrank의
 Spearman 상관은 **ρ = −0.049(95% CI [−0.175, +0.080], p=0.42)** 로, 사전등록된 관계(ρ>0)는
@@ -392,11 +394,11 @@ Spearman 상관은 **ρ = −0.049(95% CI [−0.175, +0.080], p=0.42)** 로, 사
 cluster-robust 회귀, n=440 쿼리–영상 쌍)에서는 gap 계수가 유의한 양(+)으로 나타났으나(p=0.024), 이는
 within 분석의 음(−)의 상관과 방향이 달랐다. 또한 14개 카테고리 중 8개에서만 양의 상관이 나타나
 방향도 일관되지 않아, gap과 순위 변화의 관계는 분석 명세에 따라 달라지는 것으로 나타났다. 따라서
-**단일 의미 격차 지표만으로 영상 수준에서 시각정보의 검색 기여를 설명하는 데에는 한계가 있었다.**
+**단일 의미 간극 지표만으로 영상 수준에서 시각정보의 검색 기여를 설명하는 데에는 한계가 있었다.**
 
 <!-- 최종 HWP: 그림 3 = centered gap(x) vs 영상당 median Δrank(y) 산점도(카테고리 색상 최소).
      binned median 평평(ρ≈0). results/fig3_gap_scatter.png 삽입 -->
-**그림 3. 의미 격차(centered gap)와 영상당 median Δrank의 관계**(ρ≈0) [results/fig3_gap_scatter.png]
+**그림 3. 의미 간극(centered gap)와 영상당 median Δrank의 관계**(ρ≈0) [results/fig3_gap_scatter.png]
 
 ## Ⅵ. 논 의
 
@@ -417,13 +419,13 @@ fusion(α=0.5)이 개선을 보이지 못한 것도 이와 부합한다. 이는 
 직접 개선하지는 않으나, recall 지향
 검색이나 재순위(re-ranking) 단계에서는 활용될 여지가 있다.
 
-### 6.2 의미 격차의 설명력 (RQ1)
+### 6.2 의미 간극의 설명력 (RQ1)
 
 사전등록된 centered gap과 순위 변화의 관계는 유의하지 않았다(§5.3). raw gap에서 관찰된 약한
 음의 상관은 카테고리 간 차이(between)에 주로 기인하였고 카테고리 내부(within)에서는 약화되었다.
 gap이 크다는 것은 썸네일과 제목이 표현 공간에서 멀다는 것을 의미하지만, 그 거리가 영상 수준에서
 융합에 의한 순위 개선으로 이어지지는 않았다. 또한 분석 명세에 따라 관계의 방향도 달라져, 단일 gap
-지표의 설명력이 일관되지 않았다. 따라서 **단일 의미 격차 지표만으로 시각정보의 검색 기여 조건을
+지표의 설명력이 일관되지 않았다. 따라서 **단일 의미 간극 지표만으로 시각정보의 검색 기여 조건을
 설명하기에는 한계가 있었다.** 즉 "하나의 gap 값으로 시각 기여를 설명할 수 있는가"라는 물음에 대해, 본
 데이터·설정에서는 충분하지 않다는 답을 얻었다.
 
@@ -460,7 +462,7 @@ bias). 이에 따라 Recall이 과소추정될 수 있고, 낮은 순위 관련 
 ## Ⅶ. 결 론
 
 본 연구는 한국어 YouTube 환경에서 썸네일 시각정보가 텍스트 기반 영상 검색에 어떤 변화를
-가져오는지, 그리고 그 변화를 썸네일–제목 의미 격차(gap)로 설명할 수 있는지를 분석하였다.
+가져오는지, 그리고 그 변화를 썸네일–제목 의미 간극(gap)로 설명할 수 있는지를 분석하였다.
 
 썸네일 단독 검색은 텍스트보다 약했고 동일가중 융합도 평균적으로 개선하지 못했다. 다만 융합은
 관련 영상의 전체 순위를 변화시켰으며, 이 변화는 상위 10위 내 첫 관련 결과를 안정적으로 개선하기
@@ -469,7 +471,7 @@ bias). 이에 따라 Recall이 과소추정될 수 있고, 낮은 순위 관련 
 카테고리에 따라 달라, 평균 성능만으로는 시각정보의 기여 양상을 충분히 설명하기 어려웠다.
 
 사전등록된 centered gap과 순위 변화의 관계는 확인되지 않았다. raw 상관은 카테고리 수준의
-이질성에 영향을 받았고 카테고리 내부에서도 일관되지 않아, **단일 의미 격차 지표만으로 시각정보의
+이질성에 영향을 받았고 카테고리 내부에서도 일관되지 않아, **단일 의미 간극 지표만으로 시각정보의
 검색 기여 조건을 설명하기는 어려웠다.**
 
 따라서 본 결과에서 썸네일은 텍스트 검색을 대체하는 강한 신호라기보다 융합 과정에서 검색 결과의

@@ -74,7 +74,7 @@ EQ_APPENDIX = f"""
    · 대안: HWP 스크립트 줄을 수식편집기 입력창에 붙여넣기(LEFT/RIGHT=자동괄호, ~=간격).
 {BAR}
 
-식 (1) 썸네일–제목 의미 격차
+식 (1) 썸네일–제목 의미 간극
  LaTeX : \\mathrm{{gap}}_i = 1 - \\cos\\!\\left(\\mathrm{{center}}(v^{{\\mathrm{{img}}}}_i),\\ \\mathrm{{center}}(g^{{\\mathrm{{txt}}}}_i)\\right)
  HWP   : gap _{{i}} = 1 - cos LEFT ( center ( v _{{i}} ^{{img}} ) ,~ center ( g _{{i}} ^{{txt}} ) RIGHT )
 

@@ -128,8 +128,8 @@ s = blank()
 band = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, Inches(2.15), SW, Inches(2.7))
 band.fill.solid(); band.fill.fore_color.rgb = ACCENT; band.line.fill.background(); band.shadow.inherit = False
 tb = s.shapes.add_textbox(Inches(0.8), Inches(2.35), Inches(11.7), Inches(2.3)); tf = tb.text_frame; tf.word_wrap = True
-p = tf.paragraphs[0]; _run(p, "영상 검색에서 썸네일 시각정보의 검색 기여 분석", 30, WHITE, bold=True)
-p = tf.add_paragraph(); _run(p, "텍스트–시각 융합과 의미 격차(gap)를 중심으로", 22, WHITE)
+p = tf.paragraphs[0]; _run(p, "영상 검색에서 썸네일과 텍스트의 후기 융합에 따른 검색 순위 변화와 의미 간극 분석", 28, WHITE, bold=True)
+p = tf.add_paragraph(); _run(p, "Analyzing Ranking Changes and the Semantic Gap in Thumbnail–Text Late Fusion", 18, WHITE)
 p = tf.add_paragraph(); p.space_before = Pt(10)
 _run(p, "사전등록 기반 실증 연구 · 한국어 YouTube 840편 · 70쿼리", 14, RGBColor(0xD6, 0xE4, 0xF0))
 tb = s.shapes.add_textbox(Inches(0.8), Inches(5.15), Inches(11.7), Inches(1.4)); tf = tb.text_frame
@@ -154,7 +154,7 @@ s = blank(); title_bar(s, "연구 질문과 핵심 지표(gap)", kicker="RESEARC
 bullets(s, [
     "RQ1 (조건): 영상별 gap이 클수록 융합에 의한 검색 순위 개선(Δrank)이 큰가?",
     "RQ2 (성능): CLIP 썸네일 + 다국어 텍스트 late fusion이 text-only 대비 검색을 개선하는가?",
-    "핵심 지표 — 썸네일–제목 의미 격차(gap)",
+    "핵심 지표 — 썸네일–제목 의미 간극(gap)",
     (1, "gap = 1 − cos( center(썸네일 임베딩), center(제목 임베딩) )  (모달별 mean-centering)"),
     (1, "라벨링 불필요 · 자동·재현 가능 · 영상 수준 연속 지표"),
     (1, "주의: gap은 ‘표현 공간의 비유사도’이며, ‘시각 정보의 유용성’과 동일시하지 않는다."),
@@ -163,7 +163,7 @@ bullets(s, [
 # S4 — 기여
 s = blank(); title_bar(s, "연구 기여", kicker="CONTRIBUTIONS")
 bullets(s, [
-    "(1) 라벨링이 필요 없는 썸네일–제목 의미 격차(gap) 지표의 정의 및 자동 계산",
+    "(1) 라벨링이 필요 없는 썸네일–제목 의미 간극(gap) 지표의 정의 및 자동 계산",
     "(2) 텍스트–시각 융합의 검색 효과와 gap–순위변화 관계를 검증하는 분석 프레임",
     "(3) 한국어 YouTube를 대상으로 한 실증 평가",
     "사전등록(pre-registration): 가설·표집·지표·검정을 결과 관찰 이전에 고정",
@@ -272,7 +272,7 @@ bullets(s, [
     "② 동일가중(0.5:0.5) 융합은 평균 성능엔 중립 — 단, 시각을 낮은 가중(30%)으로 쓰면 탐색적으로 유망했다.",
     "③ 융합은 관련 영상의 순위 구성을 특히 ‘깊은 순위’에서 재배치했다.",
     "④ 융합 효과의 방향은 카테고리에 따라 상이했다.",
-    "⑤ 단일 의미 격차(gap) 지표만으로 시각 기여를 설명하기엔 한계가 있었다.",
+    "⑤ 단일 의미 간극(gap) 지표만으로 시각 기여를 설명하기엔 한계가 있었다.",
     "향후: 객체·장면·OCR 등 풍부한 시각 신호 × 쿼리 특성의 상호작용 검증 · 다양한 환경에서 재현성 확인",
 ], top=1.5, size=16, height=4.05)
 callout(s, "관점 전환: ‘평균 성능이 오르는가’가 아니라 — 시각 정보는 순위 구성과 조건을 바꾸며, 그 기여엔 단일 gap을 넘어선 신호가 필요하다.",
@@ -294,7 +294,7 @@ p = tf.add_paragraph(); _run(p, "(No.RS-2024-00340834, 써드파티 데이터의
 # ─────────────────────────── 발표 노트(구두 스크립트) ───────────────────────────
 NOTES = [
     # S1 표지
-    "안녕하세요. 모비젠의 김시황입니다. 오늘 ‘영상 검색에서 썸네일 시각정보의 검색 기여 분석’이라는 제목으로 "
+    "안녕하세요. 모비젠의 김시황입니다. 오늘 ‘영상 검색에서 썸네일과 텍스트의 후기 융합에 따른 검색 순위 변화와 의미 간극 분석’이라는 제목으로 "
     "발표하겠습니다. 한국어 유튜브 영상 840편과 검색어 70개를 대상으로, 썸네일의 시각 정보가 텍스트 기반 영상 "
     "검색에 어떤 기여를 하는지를 사전등록 방식으로 분석했습니다. 이 연구의 핵심은, ‘썸네일이 평균 검색 성능을 "
     "올리는가’라는 익숙한 질문을 넘어서, 썸네일이 검색 결과의 순위 구성을 어떻게 바꾸는지, 그리고 그 기여를 하나의 "
@@ -307,7 +307,7 @@ NOTES = [
     "대한 분석은 부족했습니다. 시각 임베딩은 계산·저장 비용이 들기 때문에, ‘언제 도움이 되는가’를 아는 것은 실무 "
     "색인 설계에도 중요합니다.",
     # S3 RQ
-    "그래서 두 가지 질문을 세웠습니다. RQ1은 ‘조건’에 대한 질문으로, 영상별로 썸네일과 제목의 의미 격차, 즉 gap이 "
+    "그래서 두 가지 질문을 세웠습니다. RQ1은 ‘조건’에 대한 질문으로, 영상별로 썸네일과 제목의 의미 간극, 즉 gap이 "
     "클수록 융합에 의한 순위 개선이 커지는가입니다. RQ2는 ‘성능’ 질문으로, 썸네일과 텍스트의 late fusion이 텍스트 "
     "단독보다 검색을 개선하는가입니다. 핵심 지표인 gap은 CLIP 공동 공간에서 썸네일과 제목 임베딩의 코사인 유사도를 "
     "1에서 뺀 값으로, 라벨링 없이 자동으로 계산됩니다. 다만 gap은 ‘표현이 얼마나 다른가’를 재는 것이지, ‘시각 정보가 "
