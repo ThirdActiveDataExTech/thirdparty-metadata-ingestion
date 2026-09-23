@@ -60,7 +60,7 @@ line,path.e{stroke:#666;stroke-width:1.1;fill:none;marker-end:url(#ar)}
 <path class="e" d="M390,320 L320,345"/>
 <!-- 분석 -->
 <rect x="450" y="345" width="255" height="30" rx="6" class="b out"/>
-<text x="460" y="364" class="s">RQ1: gap ↔ Δrank 연관 / RQ2: 성능</text>
+<text x="460" y="364" class="s">RQ1: 성능 / RQ2: gap ↔ Δrank 연관</text>
 <path class="e" d="M400,360 L450,360"/>
 <path class="e" d="M600,251 C640,300 620,330 600,345"/>
 </svg>
