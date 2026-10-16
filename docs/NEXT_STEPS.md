@@ -1,6 +1,6 @@
 # 다음 작업 로드맵
 
-> **Last Updated:** 2026-08-03
+> **Last Updated:** 2026-10-16
 > **목적:** 세션이 끊겨도 여기서부터 바로 이어갈 수 있도록, 남은 작업을 순서대로 기록한다.
 > 완료된 작업의 상세 이력은 `git log` 참조 — 이 문서는 "지금 무엇을 해야 하는가"만 담는다.
 > 항목을 끝내면 체크하고, 새로 발견한 항목은 해당 순서 구간에 추가한다.
@@ -10,18 +10,18 @@
 
 ---
 
-## ⭐ 현재 최우선: P05 논문 작성 (2026-08-03 방향 전환)
+## ⭐ 현재 상태: P05 논문 완료 → 발표 준비 중 (2026-10-16 갱신)
 
-**아래 구현 로드맵(§1~§6)은 잠정 보류**하고, **P05 논문(썸네일-텍스트 융합 임베딩
-검색)을 최우선으로 진행**하기로 함. 특히 아래 §5(AI 메타데이터)는 논문 완료 후 재개.
+**P05 논문(썸네일–텍스트 후기 융합 검색) 완료.** 2026-08-03에 "구현 로드맵(§1~§6) 보류,
+논문 최우선"으로 전환했고 그 작업이 끝남 — 실험·논문·투고본까지 완성됨.
 
-- **논문 초안**: [research/paper_draft_P05_thumbnail_fusion.md](research/paper_draft_P05_thumbnail_fusion.md)
-  (v2, 실험 데이터 미삽입 상태 — `[DATA:...]` 자리를 실험 결과로 채우면 됨)
-- **목표**: 실험 코드 작성 → 실 데이터로 실험 → 결과 수치 삽입 → 학술대회용 단편(5p 내외) 완성
-- **원칙**: 레퍼런스 철저 기록, 실험 데이터·코드 별도 보관해 재현성 확보
-- **주의**: P05가 초반에 논리적 모순/난이도로 막히면 다른 P0x 주제로 변경 가능
-  (`research/paper_topics.md`, `research/research_proposals.md`에 P01~P07 후보)
-- AI 메타데이터(§5) 진행 계획·필드·결정사항은 **아래 §5에 그대로 보존** — 논문 후 재개
+- **최종 산출물**: `research/P05_thumbnail_fusion/` 하위폴더
+  - 논문: `paper_KIICE_최종본.md`(실험 수치 전부 삽입, `[DATA:]` 0개) + `KIICE_논문_최종본.pdf` + HWP 본문/초록
+  - 실험: `code/`(44) · `results/`(16) · `data/`(50) + `PREREGISTRATION.md` + 피어리뷰 평가서
+  - 발표자료: `paper_KIICE_발표자료.pptx` (제60회 KIICE, **2026-10-23 발표**) — 22슬라이드, 막판 점검 단계
+- **현재 최우선 = 2026-10-23 발표자료 마무리.**
+- 이후 보류했던 구현 로드맵(§1~§6)·§7(와이즈넛) 재개 여부 결정. §5(AI 메타데이터) 계획은 아래 §5에 그대로 보존.
+- (참고) `research/paper_draft_P05_thumbnail_fusion.md`는 7월 템플릿 잔재 — `[DATA:]` 21개 그대로나, 실제 작업은 위 하위폴더로 대체됨
 
 ---
 
@@ -42,6 +42,8 @@
    배포·파일럿 검증 완료 → 다음은 §5(AI 필드 실측·DDL·collector에 통합) 또는
    §6.2(Airflow 오케스트레이션) → §6.3(프론트엔드 API), 그 사이 성능 개선(커넥션
    재사용)·YouTube 트랜스크립트 백로그 소진도 병행 가능
+   → **(2026-08-03) 위 '다음' 대신 P05 논문으로 전환 → 논문 완료(⭐ 참조), 현재 10/23 발표
+   준비 중. 보류됐던 §6.2/§7 재개 여부는 발표 후 결정.**
 
 ---
 
@@ -76,7 +78,7 @@
 
 ---
 
-## 1. (거의 완료) 실제 DB 반영
+## 1. (완료) 실제 DB 반영
 
 **2026-07-23 실제 서버에 반영 완료.** 기존 데이터는 전부 예시/시드 데이터라 재생성해도
 무방하다고 확인 후 진행 — 롤백 아니라 실제 커밋.
@@ -387,6 +389,67 @@
 - [ ] `dataset_id` 채번 로직 — slug + 랜덤 접미사, `unique_violation` 시 재시도 (§7.1)
 - [ ] `dataset_origin`은 요청 바디로 받지 않고 서버가 caller 권한으로 결정 (§5.7 보안 주의사항)
 - [ ] 위 전체가 `docs/api/`로 정식 문서화 필요 (지금 완전히 비어있음)
+
+---
+
+## 7. 와이즈넛 정형(공공데이터) 저장 설계 반영 (⏳ 와이즈넛 협의 후 진행)
+
+> **2026-10-16 기록.** 와이즈넛 「백엔드 설계 초안 v2」(+ 별첨 테이블정의서) 검토 완료,
+> 메일로 회신 전달함. 모비젠은 **대부분 수용** + 추가 의견 몇 건만 전달. **와이즈넛과
+> 협의가 확정되면** 아래 DB 작업(테이블 생성·컬럼 추가)과 규칙 변경을 함께 진행한다.
+>
+> 배경: data.go.kr 등 **정형(엑셀/파일) 데이터**를 플랫폼에 저장하기 위한 계층 추가.
+> 우리 비정형(video/news/blog/shopping/persona)과 `source_type`이 다른 **별개 축으로
+> 가산**이며, 기존 `dcat_dataset`/`dcat_provenance`/`data_registry`/`dcat_dataset_vec`
+> 뼈대를 그대로 재사용한다. (원문 PDF 2종은 레포 밖 — 메일 첨부 참조)
+
+### 7.1 신규 테이블 생성 (8종)
+
+- [ ] `dcat_dataset_attr` — 데이터셋 현황 메타 17항목 (DCAT 미대응 정형 고유), 1:1
+- [ ] `active_meta_dataset` — 데이터셋 단위 지표 시계열 (EAV·관측값만). **정형+비정형 공용** (별첨 지표표준값 + 모비젠 비정형 코드 추가)
+- [ ] `dcat_dataset_relation` — 데이터셋 간 관계. **정형+비정형 공용**
+- [ ] `meta_datagokr_file` — 파일 단위 메타 + `column_names`/`column_profile` 기술통계
+- [ ] `active_meta_file` — 파일/아이템 지표 시계열 (EAV·관측값만). 정형 전용 (비정형은 기존 active_meta_* wide가 그 역할)
+- [ ] `meta_file_relation` — 파일·컬럼 간 관계
+- [ ] `meta_datagokr_file_vec` — 파일 임베딩, 1:1
+- [ ] `dcat_dataset_draft` — 표준 매핑 초안·검토 큐 + 원본 스냅샷 참조 (원본 실체는 SeaweedFS raw)
+
+### 7.2 레지스트리 2종 신설 (모비젠 추가 제안)
+
+- [ ] `metric_registry` — 지표 코드 표준값 (8컬럼, `applies_to` JSONB로 적용 source_type 관리)
+- [ ] `relation_type_registry` — 관계 유형 표준값 (6컬럼, `applies_to` + `scope`)
+- 목적: 정형·비정형 코드가 한 테이블(`active_meta_*`, `*_relation`)에 섞여도 **범위 밖 적재·오생성 차단**. 별첨의 지표/관계 "표준값 시트"를 DB 테이블로 승격 + FK 강제. (`["*"]` = 전체 공통)
+
+### 7.3 기존 `dcat_dataset` 컬럼 추가 (6종) + backfill
+
+- [ ] 컬럼 추가: `source`, `publisher_code`, `theme`(jsonb,GIN), `external_ids`(jsonb,GIN), `party`, `visibility`
+- [ ] backfill: 기존 18개 데이터셋 — 현 `publisher`의 원천값(Naver/YouTube)을 `source`로 이전, `publisher`는 실제 제공기관으로 재설정; `visibility` NOT NULL 기본값(PUBLIC/ORG) 지정
+- 전제: `dataset_id`/`file_id`는 **TEXT 자연키 유지**(대리키 없음) — 3시스템(모비젠·케이웨어·포털) 참조 경로 일치. 단 **URN 불변·병합 시 survivor ID 유지·생성규칙 합의** 조건 (회신에 명시함)
+
+### 7.4 규칙/방식 변경
+
+- [ ] **이력 지표 delta**: 신규 정형(active_meta_dataset/file)은 **관측값만 저장 + 뷰(LAG) 계산**. 기존 비정형(active_meta_youtube/news/blog)은 현재 delta 저장 유지 → 리스크 낮아 **후속 전환**(여유 시 delta 컬럼 제거 + 뷰 교체). `v_*_latest`(최신값+증감) 인터페이스는 양쪽 동일 유지. (근거: 누락·백필 시 저장 delta가 틀어짐)
+- [ ] **지표 표현 EAV**: `metric_code` EAV는 신규 정형에만. 기존 비정형은 타입 컬럼(wide) 유지. shopping/persona 다차원·blog `reaction_breakdown`은 전용 테이블 유지(평면 EAV 부적합)
+- [ ] **재수집 시점 분리**: `next_registration_date`(원천 공시, dcat_dataset_attr) vs `next_collect_at`(스케줄러, data_registry). 비정형은 `next_registration_date` NULL. `next_collect_at` 산정 로직을 "예정일 우선 → `accrual_periodicity` → 주간"으로 보강
+- [ ] **컬럼 관계 산출**: 데이터셋 관계로 후보 쌍을 좁힌 뒤 종속 산출(와이즈넛 알고리즘 — 조합 폭발·도메인 교차 오탐 방지). 우리 스키마 조치 없음
+- [ ] **임베딩**: 1:1 `*_vec` 분리 유지 (이미 우리 방식)
+
+### 7.5 모비젠이 회신에 전달한 추가 의견
+
+- `metadata_entry`(미분류 EAV) 재사용 **재검토 요청** — 원본은 이미 SeaweedFS raw + JSON-LD + `dcat_dataset_draft.raw_storage_key`에 있음. 필요 시 `raw_metadata jsonb`로 갈음(별도 EAV 재적재 실익 재검토)
+- 위 7.2 레지스트리 + `applies_to` 제안
+- active_meta_dataset/dcat_dataset_relation 정형·비정형 공용 사용
+
+### 7.6 레거시 정리 (이 작업과 함께)
+
+- Model B(`catalog_entry`·`metadata_entry`·`column_relation`) — 예전 공공데이터 카탈로그 시도의 잔재, **폐기 예정**. 와이즈넛이 `metadata_entry` 재사용 안 하기로 확정되면 정리
+- `ad_keyword_naver_category_map` — **2026-10-15 삭제 완료**(코드 참조 0건·FK/뷰 의존 없음, 고아 테이블)
+- `users`(빈 테이블, 임시) — 계정 통합은 타 팀 협의 중(§3-8과 연결), `owner_id` FK는 그 후
+
+### 7.7 문서 갱신
+
+- [ ] `docs/database/datagokr_schema.md`에 신규 테이블/컬럼/레지스트리 반영, ERD 갱신
+- [ ] 필요 시 ADR 추가(정형 저장 설계 채택, 관측값-온리 전환 등)
 
 ---
 
