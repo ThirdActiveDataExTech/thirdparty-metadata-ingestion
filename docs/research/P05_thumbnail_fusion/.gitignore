@@ -1,9 +1,0 @@
-# 코드로 재생성 가능한 대용량 산출물은 git 제외 (재현성은 매니페스트 + 코드로 보장)
-data/embeddings/
-data/thumbnails/
-*.npy
-*.npz
-*.pt
-*.pkl
-
-# manifest/queries/qrels/결과 표는 커밋 대상이므로 제외하지 않음
