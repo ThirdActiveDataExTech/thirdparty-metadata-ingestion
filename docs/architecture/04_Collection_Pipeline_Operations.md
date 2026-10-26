@@ -1,7 +1,7 @@
 # 04. Collection Pipeline Operations — 운영 중 수집 파이프라인 설계
 
-> **Last Updated:** 2026-07-27
-> **Status:** 설계안 (구현 전) — Airflow 도입을 전제로 함
+> **Last Updated:** 2026-10-26
+> **Status:** §6.1 Collector 수집 로직은 **구현·실서버 검증 완료(2026-07-28)**. §3·§6.2 Airflow 오케스트레이션은 **설계만**(도입 전).
 >
 > Airflow 도입은 [ADR-007](../adr/007_Airflow_Adoption.md)로 확정됐다
 > ([ADR-002](../adr/002_KubernetesCronJob_before_Airflow.md) Superseded). 이 문서는 그
@@ -496,7 +496,7 @@ def run(dataset_id: str, triggered_by: str):
 > 1.0으로 죽는다** — `pseudo_volume`의 존재 이유(여러 수집 구간을 하나의 연속
 > 시계열로 잇는 것) 자체가 무력화되는 실질적 버그였다.
 >
-> **수정**: 매 실행마다 "DB에 저장된 마지막 날짜 - `OVERLAP_DAYS`(7일)부터 어제까지"를
+> **수정**: 매 실행마다 "DB에 저장된 마지막 날짜 - `OVERLAP_DAYS`(14일)부터 어제까지"를
 > 다시 가져온다. `ON CONFLICT UPSERT`라 겹치는 날짜를 다시 써도 중복 행은 안 생기고,
 > 최신 계산된 `scale_factor`로 재계산돼 덮어써진다. 부수 효과로 Airflow가 며칠
 > 멈췄다 재개돼도 `OVERLAP_DAYS`(14일) 범위 안의 결측은 자동으로 보충된다(그보다
@@ -747,4 +747,4 @@ POST   /api/datasets/{id}/collect-now   즉시 수집 트리거 (§5.4, MVP 이�
 - 기존 source_type 내 새 데이터셋을 추가하는 가벼운 절차: [runbooks/04_Add_New_Dataset_Existing_Source.md](../runbooks/04_Add_New_Dataset_Existing_Source.md)
 - 자격증명 관리: [infrastructure/05_Secrets_ConfigMaps.md](../infrastructure/05_Secrets_ConfigMaps.md)
 - CronJob 관련 (이 문서로 사실상 대체됨): [infrastructure/02_Kubernetes.md](../infrastructure/02_Kubernetes.md) §CronJob 운영 계획
-- P01 연구 기획서 (pseudo_volume 방법론, §6.2 shopping intra/inter_scale과 동일 개념): [research/research_proposals.md](../research/research_proposals.md)
+- P01 연구 기획서 (pseudo_volume 방법론, §6.2 shopping intra/inter_scale과 동일 개념): `research/research_proposals_2027.md` (로컬 전용 — gitignore)

@@ -41,7 +41,7 @@ def run_dataset(dataset_id: str, triggered_by: Optional[str] = None) -> None:
     module_path = PIPELINE_MODULES.get(source_type)
     if module_path is None:
         raise NotImplementedError(
-            f"source_type={source_type!r}는 아직 구현되지 않았습니다 (Phase 2 예정)"
+            f"지원하지 않는 source_type={source_type!r} (PIPELINE_MODULES 미등록)"
         )
     import importlib
 

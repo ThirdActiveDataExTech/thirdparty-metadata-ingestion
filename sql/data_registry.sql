@@ -34,7 +34,7 @@ CREATE TABLE data_registry (
 
     pg_active_table     TEXT,
     -- 소스별 시계열 Active Meta 테이블명
-    -- 예) 'active_naver_shopping', 'active_youtube_video'
+    -- 예) 'active_meta_naver_shopping', 'active_meta_youtube'
     -- NULL = 아직 테이블 미생성
 
     -- ── 저장 위치 : Vector ────────────────────────────────────
@@ -56,7 +56,7 @@ CREATE TABLE data_registry (
     -- dcat_provenance 의 MAX(ended_at) WHERE status='success' 와 동기화
 
     next_collect_at     TIMESTAMPTZ,
-    -- 다음 수집 예정 시각 (K8s CronJob 스케줄 기준)
+    -- 다음 수집 예정 시각 (DB가 스케줄을 보유, Airflow가 폴링 — ADR-007)
     -- 예) 매일 02:00 → 오늘 수집 완료 후 내일 02:00 로 갱신
 
     last_error          TEXT,

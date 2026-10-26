@@ -47,3 +47,6 @@ perf_eval/video_metadata_extraction/data/obj/_oi_cache/
 
 # docs/research — 논문·실험 작업물(대용량, 로컬 전용 보관). git 추적 제외.
 /docs/research/
+
+# 연구개발계획서 등 대외비 원문 PDF(대용량) — 로컬 전용, git 추적 금지(실수 커밋 방지)
+/docs/*.pdf

@@ -31,7 +31,7 @@ CREATE TABLE dcat_dataset (
     source_type         TEXT NOT NULL,
     -- (확장) 출처 유형 분류 — data_registry.pg_meta_table 라우팅과
     -- "1 dataset = 1 source_type" 불변 규칙이 이 값의 존재를 전제로 함
-    -- 예) 'shopping', 'video', 'news', 'blog', 'sns', 'government'
+    -- 값) 'video', 'news', 'blog', 'shopping_insight', 'persona_insight'
 
     landing_page        TEXT,
     -- dcat:landingPage | 플랫폼 공식 소개 페이지 (사람이 읽는 페이지)

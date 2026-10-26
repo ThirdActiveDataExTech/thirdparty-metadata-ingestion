@@ -1,7 +1,8 @@
 # datagokr DB Schema
 
-> **Last Updated:** 2026-07-23
+> **Last Updated:** 2026-10-26
 > PostgreSQL 17.4 (postgres-174) — NodePort 30433
+> **ERD**: [datagokr_erd.png](datagokr_erd.png) · 간략형 [datagokr_erd_compact.png](datagokr_erd_compact.png) (동일 폴더에 `.svg`도 있음)
 
 ---
 
@@ -250,7 +251,7 @@ active_meta_youtube
 ### 처리 흐름 (YouTube 예시)
 
 ```
-트랜스크립트 (youtube-transcript-api)
+트랜스크립트 (자체 STT: yt-dlp + faster-whisper)
     ↓ 전처리 (타임스탬프 제거, 줄 합치기)
     ↓
 사전학습 모델 호출 (Groq LLM 프롬프트 또는 HuggingFace 사전학습 모델 — 필드별로 선택)
@@ -264,8 +265,8 @@ meta_youtube_video_ai INSERT
 
 ### YouTube — `meta_youtube_video_ai` (트랜스크립트 + 썸네일)
 
-기존에 트랜스크립트 기반 5개 필드만 정리돼 있었는데, `research/paper_topics.md`
-연구주제 #6(VLM 썸네일 메타데이터)에서 이미 제안된 썸네일 기반 4개 필드가 이 문서엔
+기존에 트랜스크립트 기반 5개 필드만 정리돼 있었는데, `research/paper_topics_2027.md`(로컬 전용)
+연구주제(VLM 썸네일 메타데이터)에서 이미 제안된 썸네일 기반 4개 필드가 이 문서엔
 반영이 안 돼 있었다 — 아래 표로 통합.
 
 | 필드 | 설명 | 입력 소스 |
@@ -282,7 +283,7 @@ meta_youtube_video_ai INSERT
 
 트랜스크립트 없는 영상은 title+description으로 fallback(위 5개 필드), 썸네일
 4개 필드는 트랜스크립트 유무와 무관하게 항상 추출 가능. 상세 연구 설계는
-[research/paper_topics.md](../research/paper_topics.md) #3, #6 참조.
+`research/paper_topics_2027.md`(로컬 전용) 참조.
 
 ### 뉴스 — `meta_naver_news_ai` (신규 제안, 필드 확정 전)
 

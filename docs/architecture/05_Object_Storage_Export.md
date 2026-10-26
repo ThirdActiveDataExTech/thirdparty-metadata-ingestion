@@ -1,8 +1,9 @@
-# 05. SeaweedFS Raw/JSON-LD Export — 설계 초안
+# 05. SeaweedFS Raw/JSON-LD Export — 설계·결정 근거
 
-> **Last Updated:** 2026-07-27
-> **Status:** 설계 초안 (구현 전) — 이 문서 안의 세부 항목(파일명 규칙, JSON-LD 스키마 등)은
-> 사용자와 계속 논의하며 확정해나간다. 확정된 항목은 아래 각 절에 "(확정)"으로 표시.
+> **Last Updated:** 2026-07-27 (구현 완료)
+> **Status:** 구현 완료 — 이 문서는 저장 구조의 **설계 의도·대안 비교·결정 이력**을 담는 근거 문서다.
+> **현행 저장 형식(경로·형식·JSON-LD 구조)의 확정 명세는 → [06_Object_Storage_Format_Spec.md](06_Object_Storage_Format_Spec.md)** 를 참조.
+> (본 문서의 "(초안)" 표기는 당시 논의 기록이며, 최종 구현은 위 정의서 기준.)
 
 인프라(SeaweedFS 배포, 버킷, 자격증명)는 [infrastructure/04_ObjectStorage.md](../infrastructure/04_ObjectStorage.md)
 참조. 이 문서는 **그 인프라 위에 실제로 무엇을, 언제, 어떤 형태로 쓰는지**를 다룬다.

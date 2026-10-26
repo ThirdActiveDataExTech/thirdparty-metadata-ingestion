@@ -331,7 +331,7 @@
       실 서버로 기존 채널 재실행(회귀 없음) + 채널 없이 개별 영상 2개만으로 신규
       등록·재실행(신규→기존 전환 정상 확인) 검증 완료.
 - [x] ~~**SeaweedFS raw/JSON-LD 저장**~~ — 구현·검증 완료 (2026-07-27, 설계는
-      [architecture/05_Object_Storage_Export.md](../architecture/05_Object_Storage_Export.md)):
+      [architecture/05_Object_Storage_Export.md](architecture/05_Object_Storage_Export.md)):
       `src/storage/{s3_client,raw_export,jsonld_export}.py` 신설, `src/collectors/
       youtube_transcript_collector.py`(yt-dlp+faster-whisper 자체 STT) 신설, 5개
       파이프라인 전부 통합, `meta_youtube_video.has_transcript`/`transcribed_at`
@@ -353,7 +353,7 @@
       종류) 결정하는 이 시점에 반드시 같이 확인할 것. 멀티스레드 방식으로 갈 경우
       `psycopg2.pool`로 마이그레이션(인터페이스 유지되므로 `db.py` 내부만 수정하면 됨)
 - [ ] **YouTube 트랜스크립트 안전망 태스크 — 확정, Airflow 착수 시 같이 구현**
-      (2026-07-28 결정, [architecture/05_Object_Storage_Export.md](../architecture/05_Object_Storage_Export.md) §4.6):
+      (2026-07-28 결정, [architecture/05_Object_Storage_Export.md](architecture/05_Object_Storage_Export.md) §4.6):
       기존 백로그(2,076개, 실측 순수 연산 52~77시간)는 **지금 처리하지 않는다** —
       현재 YouTube 데이터셋 2개는 개발/테스트용이라 실제 서비스 데이터셋으로 교체될
       가능성이 커서, 지워질 수도 있는 데이터에 미리 연산을 쏟지 않기로 함(기능
@@ -450,6 +450,13 @@
 
 - [ ] `docs/database/datagokr_schema.md`에 신규 테이블/컬럼/레지스트리 반영, ERD 갱신
 - [ ] 필요 시 ADR 추가(정형 저장 설계 채택, 관측값-온리 전환 등)
+
+### 7.8 (예정) 정형데이터 오브젝트 저장소
+
+- **배경**: 현재 오브젝트 스토리지(SeaweedFS `raw/` · `jsonld/`)는 영상·뉴스·블로그·인사이트 등 **발견형/선언형 소스** 중심. 공공데이터포털(data.go.kr) 등 **정형(엑셀·CSV·파일) 데이터 원본**을 담을 저장 구획이 아직 없음.
+- **방향(예정)**: 기존 `raw/`/`jsonld/` 패턴을 따라 **정형 데이터용 저장 경로·형식을 신설**. (예: `raw/structured/{dataset_id}/...` 원본 파일 보관 + 데이터셋 단위 JSON-LD/카탈로그 연계) — 세부 경로·네이밍·포맷은 **와이즈넛 정형 저장 설계(§7.1~7.4)와 함께 확정 예정**.
+- **연계**: `active_meta_dataset`/`active_meta_file`(지표 EAV), `data_registry`의 `s3_*_prefix` 기록 규칙을 정형에도 동일 적용 검토.
+- **상태**: ⏳ **예정** — 현재는 기록·문서화만. 저장 형식 명세 문서([architecture/06_Object_Storage_Format_Spec.md](architecture/06_Object_Storage_Format_Spec.md) §7)에 "예정" 섹션으로 반영해 둠.
 
 ---
 

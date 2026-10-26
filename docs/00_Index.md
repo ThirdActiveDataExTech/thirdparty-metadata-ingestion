@@ -1,6 +1,6 @@
 # Metadata Ingestion — Documentation
 
-> **Last Updated:** 2026-07-28
+> **Last Updated:** 2026-10-26
 > **Project:** metadata-ingestion
 > **Purpose:** 다양한 공공데이터 및 외부 API를 수집하여 메타데이터를 정제·저장하는 플랫폼
 
@@ -38,7 +38,8 @@
 | 2.2 | [Metadata Flow](architecture/02_Metadata_Flow.md) | 수집 → 저장 → 임베딩 흐름 | 완료(수동 트리거 기준), AI 메타데이터만 설계 단계 |
 | 2.3 | [Component Architecture](architecture/03_Component_Architecture.md) | 컴포넌트 역할 및 관계 | 완료 |
 | 2.4 | [Collection Pipeline Operations](architecture/04_Collection_Pipeline_Operations.md) | Airflow 기반 동적 수집 스케줄링 설계, 신규 데이터셋 온보딩 흐름, §6.1 실제 구현 로직 | 설계 완료, §6.1(Collector)은 구현·검증 완료, §6.2(Airflow)는 설계만 |
-| 2.5 | [Object Storage Export](architecture/05_Object_Storage_Export.md) | SeaweedFS raw/JSON-LD 저장 설계 및 구현(YouTube 자체 STT 포함) | 구현·검증 완료 |
+| 2.5 | [Object Storage Export](architecture/05_Object_Storage_Export.md) | SeaweedFS raw/JSON-LD 저장 **설계·결정 근거**(YouTube 자체 STT 포함) | 구현 완료(근거 문서) |
+| 2.6 | [Object Storage Format Spec](architecture/06_Object_Storage_Format_Spec.md) | 원본·JSON-LD **현행 저장 형식 명세**(경로·형식, 대외 전달용) | 현행 |
 
 ---
 
@@ -89,7 +90,7 @@ DB 스키마, 테이블 정의. **테이블이 추가되거나 컬럼이 변경�
 | 문서 | 설명 | 상태 |
 |------|------|------|
 | [datagokr Schema](database/datagokr_schema.md) | metadata-ingestion 메인 DB | 완성 (테이블 대부분 생성 완료) |
-| [thirdparty Schema](database/thirdparty_schema.md) | 기존 thirdparty DB | 미작성 |
+| thirdparty Schema | 기존 thirdparty DB | 미작성(예정) |
 
 ---
 
@@ -99,8 +100,8 @@ DB 스키마, 테이블 정의. **테이블이 추가되거나 컬럼이 변경�
 
 | 문서 | 설명 | 상태 |
 |------|------|------|
-| [Metadata API](api/Metadata_API.md) | 메타데이터 조회 API | 미작성 |
-| [Catalog API](api/Catalog_API.md) | 카탈로그 API | 미작성 |
+| Metadata API | 메타데이터 조회 API | 미작성(예정) |
+| Catalog API | 카탈로그 API | 미작성(예정) |
 
 ---
 
@@ -125,11 +126,12 @@ DB 스키마, 테이블 정의. **테이블이 추가되거나 컬럼이 변경�
 이 플랫폼의 데이터·인프라를 활용한 논문 주제 기획 및 초안. 프로젝트 개발 문서와는
 별도 트랙이며, 인프라/스키마가 바뀌어도 자동 동기화되지 않으니 참고 시 주의.
 
-| 문서 | 설명 |
-|------|------|
-| [연구 주제 후보 요약](research/paper_topics.md) | 주제 7개 개요 + 우선순위 |
-| [연구 기획서 모음](research/research_proposals.md) | P01–P07 상세 기획서 (연구질문·방법·평가·해석기준) |
+> ⚠️ `research/`는 **로컬 전용(git 미추적, `.gitignore`)**이라 아래 파일은 클론 환경에 없을 수 있다.
 
-각 주제(P01–P07)마다 논문 형식 초안이 2개씩 있다 (`research/` 폴더, `paper_draft_P0X_*.md` /
-`paper_P0X_*_mock_draft.md`): `[DATA: ...]` 자리만 채우면 되는 템플릿과, 그 자리를 가상
-수치로 채운 예시본. 가상 수치본은 파일 상단에 경고 배너가 있다.
+| 문서(로컬) | 설명 |
+|------|------|
+| `research/paper_topics_2027.md` | 2027 연구 주제 후보 (핵심 클러스터 + 다양한 방향) |
+| `research/research_proposals_2027.md` | 주제별 상세 기획 초안 |
+| `research/_archive_2026_round1/` | 2026년 1차 기획(P01~P07) 아카이브 |
+
+P05(썸네일–텍스트 후기 융합)는 **2026년 학술대회 발표 완료**, 그 외 주제는 기획 단계.
