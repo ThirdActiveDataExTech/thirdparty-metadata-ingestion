@@ -66,17 +66,9 @@ CREATE INDEX idx_relation_type_registry_scope   ON relation_type_registry (scope
 --  '겹치는 구간 30포인트 이상인 쌍만 산출하고 다중비교 보정(BH FDR)을 적용한다. '
 --  'KEYWORD_OVERLAP(기간 중첩 여부)과 달리 "같이 움직이는가"를 본다');
 --
--- ② 모델 산출 엣지 분리용 — 접미 '_MODEL' 규약
+
+-- ② 모델 산출 엣지는 유형을 늘리지 않는다
 --
--- 배경: UNIQUE(source, target, relation_type) 때문에 같은 쌍·같은 유형에는 1행만
---      존재할 수 있다. method 컬럼은 UNIQUE에 없어 구분자가 되지 못한다.
---      따라서 규칙 산출과 모델 산출을 동시에 보관하려면 유형을 분리해야 한다.
--- 효과: 규칙 엣지만으로 만든 그래프와 규칙+모델 그래프를 각각 산출해 비교할 수 있고,
---      그 차이(커뮤니티 변화·modularity 변화)가 협력사 모델 기여의 정량 증거가 된다.
---
--- INSERT INTO relation_type_registry
---     (relation_type, label, scope, applies_to, required_fields, description) VALUES
--- ('SEMANTICALLY_RELATED_MODEL', '의미 유사(모델)', 'dataset', '["*"]'::jsonb,
---  '["title","description"]'::jsonb,
---  '외부 언어모델·GNN이 산출한 의미 유사 관계. 규칙 기반 SEMANTICALLY_RELATED와 '
---  '같은 쌍에 공존시키기 위해 유형을 분리한다. method에 산출기를 기록한다');
+-- 초안에서는 '_MODEL' 접미 유형을 제안했으나, UNIQUE에 method를 포함하는 쪽으로
+-- 방향을 바꿨다(2026-10-27). 표준 유형 수가 두 배로 늘어나는 것을 피한다.
+-- 상세는 sql/dcat_dataset_relation.sql 하단 "모비젠 변경 제안" 참조.

@@ -41,12 +41,27 @@
 | `meta_datagokr_file` | **CASCADE** | 자동 |
 | `data_registry` | NO ACTION | **FK 재생성 필요** |
 | `dcat_dataset_vec` | NO ACTION | **FK 재생성 필요** |
-| `dcat_provenance` | NO ACTION | **FK 재생성 필요** (또는 §2.5 정책 변경과 함께) |
+| `dcat_provenance` | **FK 없음** | ⚠️ **명시적 UPDATE 필요** — 아래 참조 |
 | `dataset_credentials` | NO ACTION | **FK 재생성 필요** |
 | `meta_youtube_video` | NO ACTION | **FK 재생성 필요** |
 | `meta_naver_news` / `blog` / `shopping` / `persona` | NO ACTION | **FK 재생성 필요** |
 
-→ 우리 8개 FK에 `ON UPDATE CASCADE`를 먼저 부여하면 **`UPDATE dcat_dataset SET dataset_id=...`
+> ⚠️ **`dcat_provenance`는 FK를 제거했다**(2026-10-27, 별첨 공통 규약 "dcat_provenance 제외").
+> 데이터셋 폐기 후에도 이력을 보존하기 위한 결정인데, 그 대가로 **dataset_id 변경이
+> 전파되지 않는다.** URN 전환 시 이 테이블만 별도로 UPDATE해야 한다.
+>
+> ```sql
+> UPDATE dcat_provenance p SET dataset_id = <urn>
+>  WHERE p.dataset_id = <old_slug>;   -- dcat_dataset UPDATE와 같은 트랜잭션에서
+> ```
+> 순서 주의: FK가 없으므로 어느 쪽을 먼저 해도 제약 위반은 안 나지만, **빠뜨리면
+> 조용히 끊어진 참조가 남는다.** 전환 후 아래로 확인한다.
+> ```sql
+> SELECT DISTINCT p.dataset_id FROM dcat_provenance p
+>   LEFT JOIN dcat_dataset d USING (dataset_id) WHERE d.dataset_id IS NULL;
+> ```
+
+→ 우리 7개 FK에 `ON UPDATE CASCADE`를 먼저 부여하면 **`UPDATE dcat_dataset SET dataset_id=...`
 한 번으로 DB 전체가 끝난다.** 구문은
 [sql/migration_2026_10_27_wisenut_alignment.sql](../../sql/migration_2026_10_27_wisenut_alignment.sql) §A 참조.
 
@@ -122,7 +137,8 @@ jsonld/{source_type}/{dataset_id}/{dataset_id}.jsonld
 
 - [ ] URN 생성 규칙 확정
 - [ ] 케이웨어 전달 여부 확인 (이미 받아갔으면 통보 일정 협의)
-- [ ] 우리 FK 8개 `ON UPDATE CASCADE` 부여
+- [ ] 우리 FK 7개 `ON UPDATE CASCADE` 부여 (dcat_provenance 제외 — FK 없음)
+- [ ] `dcat_provenance.dataset_id` 명시적 UPDATE + 끊어진 참조 확인
 - [ ] `external_ids`에 legacy_slug 보존 확인
 - [ ] S3 경로 정책 결정 (유지 / 이전)
 - [ ] `UPDATE` 실행 (트랜잭션, 롤백 가능 상태에서)

@@ -50,6 +50,24 @@ CREATE INDEX IF NOT EXISTS idx_dcat_dataset_visibility   ON dcat_dataset (visibi
 CREATE INDEX IF NOT EXISTS idx_dcat_dataset_external_ids ON dcat_dataset USING GIN (external_ids);
 CREATE INDEX IF NOT EXISTS idx_dcat_dataset_theme        ON dcat_dataset USING GIN (theme);
 
+-- ── 4. dcat_provenance 연쇄 삭제 제외 (2026-10-27 확정) ──────
+--
+-- 별첨 공통 규약: "전 자식 테이블 ON DELETE CASCADE (dcat_provenance 제외)"
+-- 데이터셋을 폐기해도 수집 이력은 남긴다. CASCADE만 빼면 FK가 부모 삭제를 막으므로
+-- FK 자체를 제거하고 값만 보존한다 — SET NULL은 "무엇에 대한 이력인가"를 잃는다.
+--
+-- 수집 스케줄은 data_registry.next_collect_at으로 돌아가고 dcat_provenance는
+-- 이력 전용이므로, FK가 없어도 수집 동작에는 영향이 없다.
+
+ALTER TABLE dcat_provenance DROP CONSTRAINT IF EXISTS dcat_provenance_dataset_id_fkey;
+
+COMMENT ON COLUMN dcat_provenance.dataset_id IS
+  'dcat_dataset 논리 참조. 데이터셋 폐기 후에도 이력 보존을 위해 FK를 두지 않는다';
+
+-- FK 인덱스가 사라지므로 데이터셋별 이력 조회용 인덱스를 명시적으로 둔다
+CREATE INDEX IF NOT EXISTS idx_dcat_provenance_dataset
+    ON dcat_provenance (dataset_id, started_at DESC);
+
 COMMIT;
 
 
@@ -80,13 +98,13 @@ COMMIT;
 --   - 이미 생성된 JSON-LD 문서의 @id
 --   - data_registry.s3_raw_prefix / s3_jsonld_prefix 문자열
 --   - 케이웨어가 이미 우리 dataset_id를 받아갔다면 변경 통보
-
--- ── B. dcat_provenance 연쇄 삭제 제외 ─────────────────────────
+-- ── B. dcat_dataset_relation UNIQUE 확장 ─────────────────────
 --
--- 별첨 공통 규약: "전 자식 테이블 ON DELETE CASCADE (dcat_provenance 제외)"
--- 데이터셋을 폐기해도 수집 실행 이력은 남긴다는 취지인데, 현재는 CASCADE라 함께 지워진다.
--- FK를 제거하고 값만 보존하는 안을 권장한다 — SET NULL은 "무엇이 지워졌는지"를 잃는다.
+-- 규칙 산출 엣지와 모델 산출 엣지를 같은 쌍·같은 유형에 공존시키기 위한 변경.
+-- 제안 내용과 함께 합의해야 할 3가지(UPSERT 충돌 대상·정본 우선순위·method 값 통제)는
+-- sql/dcat_dataset_relation.sql 하단 주석 참조.
 --
--- ALTER TABLE dcat_provenance DROP CONSTRAINT dcat_provenance_dataset_id_fkey;
--- COMMENT ON COLUMN dcat_provenance.dataset_id IS
---   'dcat_dataset 논리 참조. 데이터셋 폐기 후에도 이력 보존을 위해 FK를 두지 않는다';
+-- ALTER TABLE dcat_dataset_relation
+--     DROP CONSTRAINT dcat_dataset_relation_source_dataset_id_target_dataset_id_r_key,
+--     ADD  CONSTRAINT uq_dcat_dataset_relation
+--          UNIQUE (source_dataset_id, target_dataset_id, relation_type, method);

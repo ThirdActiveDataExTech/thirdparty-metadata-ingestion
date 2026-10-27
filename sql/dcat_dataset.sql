@@ -10,8 +10,13 @@
 --   기존 DB에 적용할 때는 DROP이 아니라 sql/migration_2026_10_27_wisenut_alignment.sql 사용
 -- ═══════════════════════════════════════════════════════════════
 
--- 부모 테이블이므로 CASCADE 로 자식 테이블(dcat_provenance, data_registry,
--- dcat_dataset_vec)까지 함께 삭제됨. 재구성 시 자식 DDL을 이후에 순서대로 실행.
+-- 부모 테이블이므로 CASCADE 로 자식 테이블(data_registry, dcat_dataset_vec,
+-- dataset_credentials, meta_* 계열, dcat_dataset_attr, active_meta_dataset,
+-- dcat_dataset_relation, meta_datagokr_file)까지 함께 삭제됨.
+-- 재구성 시 자식 DDL을 이후에 순서대로 실행.
+--
+-- 예외: dcat_provenance는 FK를 두지 않아 삭제되지 않는다 — 데이터셋을 폐기해도
+--       수집 이력은 보존한다 (와이즈넛 별첨 공통 규약, sql/dcat_provenance.sql 참조).
 DROP TABLE IF EXISTS dcat_dataset CASCADE;
 
 CREATE TABLE dcat_dataset (
