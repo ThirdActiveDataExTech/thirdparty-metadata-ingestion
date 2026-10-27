@@ -129,78 +129,128 @@ dcat_dataset (1)  ─── "무엇인가" (명세)
 
 ### ERD
 
-위 ASCII 다이어그램의 주석·설계 의도를 뺀, 표준 ER 다이어그램 형태 (GitHub에서 렌더링됨).
-`_ai` 테이블은 아직 DDL이 없어 점선으로 표시.
+> **소스는 별도 파일로 관리한다.** 이미지만 두면 재생성 방법이 사라진다(2026-10-27 실제로 그랬다).
+>
+> | 파일 | 용도 |
+> |---|---|
+> | [datagokr_erd.mmd](datagokr_erd.mmd) | 전체 ERD 소스 |
+> | [datagokr_erd_compact.mmd](datagokr_erd_compact.mmd) | 핵심 골격 소스 |
+>
+> 재생성:
+> ```bash
+> npx -y @mermaid-js/mermaid-cli -i datagokr_erd.mmd -o datagokr_erd.svg -b white
+> npx -y @mermaid-js/mermaid-cli -i datagokr_erd.mmd -o datagokr_erd.png -b white -s 2
+> ```
+> 점선(`..`)은 외래키가 없는 논리 참조이거나 아직 생성되지 않은 테이블이다.
 
 ```mermaid
+%% datagokr DB — 전체 ERD
+%%
+%% 명명 규칙 (2026-10-27): 비정형 테이블은 meta_{source_type} / active_meta_{source_type}
+%% 점선(..)은 외래키가 없는 논리 참조 또는 아직 생성되지 않은 테이블
 erDiagram
-    dcat_dataset ||--o{ dcat_provenance : "실행 이력"
+    %% ── 카탈로그와 부속 ──────────────────────────────
+    dcat_dataset ||..o{ dcat_provenance : "수집 이력 (FK 없음 — 폐기 후에도 보존)"
     dcat_dataset ||--|| data_registry : "운영 현황"
-    dcat_dataset ||--|| dcat_dataset_vec : "임베딩"
+    dcat_dataset ||--|| dcat_dataset_vec : "데이터셋 임베딩"
     dcat_dataset ||--o{ dataset_credentials : "API Key"
-    dcat_dataset ||--o{ meta_video : "영상"
-    dcat_dataset ||--o{ meta_shopping_insight : "쇼핑 카테고리"
-    dcat_dataset ||--o{ meta_persona_insight : "Persona 카테고리"
-    dcat_dataset ||--o{ meta_news : "뉴스 기사"
-    dcat_dataset ||--o{ meta_blog : "블로그 게시물"
+    dcat_dataset ||--o| dcat_dataset_attr : "정형 현황 메타 17종"
+    dcat_dataset ||--o{ active_meta_dataset : "데이터셋 지표 시계열"
+    dcat_dataset ||--o{ dcat_dataset_relation : "데이터셋 간 관계"
 
-    meta_video ||--o{ active_meta_video : "시계열"
+    %% ── 표준값 레지스트리 ────────────────────────────
+    metric_registry ||--o{ active_meta_dataset : "metric_code"
+    metric_registry ||--o{ active_meta_file : "metric_code"
+    relation_type_registry ||--o{ dcat_dataset_relation : "relation_type"
+    relation_type_registry ||--o{ meta_file_relation : "relation_type"
+
+    %% ── 비정형 계층 (source_type별) ──────────────────
+    dcat_dataset ||--o{ meta_video : "video"
+    dcat_dataset ||--o{ meta_news : "news"
+    dcat_dataset ||--o{ meta_blog : "blog"
+    dcat_dataset ||--o{ meta_shopping_insight : "shopping_insight"
+    dcat_dataset ||--o{ meta_persona_insight : "persona_insight"
+
+    meta_video ||--o{ active_meta_video : "조회수 시계열"
     meta_video ||--|| meta_video_vec : "임베딩"
-    meta_video ||..o| meta_video_ai : "AI 메타 (예정)"
-
+    meta_news ||--o{ active_meta_news : "댓글 시계열"
+    meta_news ||--|| meta_news_vec : "임베딩"
+    meta_blog ||--o{ active_meta_blog : "반응 시계열 (ADR-006)"
+    meta_blog ||--|| meta_blog_vec : "임베딩"
     meta_shopping_insight ||--o{ active_meta_shopping_insight : "일별 지수"
     meta_persona_insight ||--o{ active_meta_persona_insight : "일별 Persona Index"
 
-    meta_news ||--o{ active_meta_news : "댓글 시계열"
-    meta_news ||--|| meta_news_vec : "임베딩"
-    meta_news ||..o| meta_news_ai : "AI 메타 (예정)"
+    %% ── 정형 계층 ────────────────────────────────────
+    dcat_dataset ||--o{ meta_datagokr_file : "structured_file"
+    meta_datagokr_file ||--o{ active_meta_file : "파일 지표 시계열"
+    meta_datagokr_file ||--o{ meta_file_relation : "파일·컬럼 간 관계"
+    meta_datagokr_file ||--|| meta_datagokr_file_vec : "파일 임베딩"
 
-    meta_blog ||--o{ active_meta_blog : "반응 시계열 (ADR-006)"
-    meta_blog ||--|| meta_blog_vec : "임베딩"
-    meta_blog ||..o| meta_blog_ai : "AI 메타 (예정)"
+    %% ── 등재 대기 / 미분류 ───────────────────────────
+    dcat_dataset_draft }o..|| dcat_dataset : "검토 후 등재"
+
+    %% ── AI 생성 메타 (예정 — ADR-009 공통 단일 테이블) ─
+    dcat_dataset ||..o{ meta_ai_annotation : "AI 생성 메타 (예정)"
+    ai_generator_registry ||..o{ meta_ai_annotation : "generator_version (예정)"
 
     dcat_dataset {
-        text dataset_id PK
-        text title
+        text dataset_id PK "URN 전환 예정"
+        text source "원천 포털"
+        text publisher "제공기관"
         text source_type
-        text dataset_origin
-        text owner_id "FK 예정, 계정테이블 미정"
-        bigint item_count
+        jsonb theme "원천 분류 원문"
+        jsonb category "공통 분류"
+        jsonb external_ids
+        text party
+        text visibility
     }
-    dataset_credentials {
+    dcat_dataset_attr {
+        text dataset_id PK_FK
+        date next_registration_date
+        text stat_name "KOSIS 통계명"
+        text spatial_unit "NATION/SIDO/SIGUNGU/EMD"
+    }
+    active_meta_dataset {
+        bigint id PK
         text dataset_id FK
-        text credential_type
-        bytea encrypted_value
+        text metric_code FK
+        numeric metric_value "관측값만"
+        timestamptz observed_at
+    }
+    dcat_dataset_relation {
+        bigint id PK
+        text source_dataset_id FK
+        text target_dataset_id FK
+        text relation_type FK
+        real score
+        text method "rule/embedding/llm"
+        text status "PENDING/APPROVED/REJECTED"
+    }
+    meta_datagokr_file {
+        text file_id PK "내용 해시"
+        text dataset_id FK
+        jsonb column_names
+        jsonb column_profile
     }
     meta_video {
         bigint id PK
         text dataset_id FK
         text video_id
+        boolean has_transcript
         boolean is_removed
-    }
-    meta_shopping_insight {
-        bigint id PK
-        text dataset_id FK
-        text category_id
-        boolean is_anchor
-    }
-    meta_persona_insight {
-        bigint id PK
-        text dataset_id FK
-        text category_id
     }
     meta_news {
         bigint id PK
         text dataset_id FK
         text article_url
-        boolean is_naver_hosted
+        boolean has_content
         boolean is_removed
     }
     meta_blog {
         bigint id PK
         text dataset_id FK
         text post_url
-        text platform
+        boolean has_content
         boolean is_removed
     }
 ```
@@ -237,6 +287,11 @@ active_meta_video
 ---
 
 ## AI 메타데이터 파이프라인 (예정)
+
+> ⚠️ **아래 소스별 `meta_*_ai` 설계는 [ADR-009](../adr/009_AI_Metadata_Single_Table.md)로 대체되었다(2026-10-27).**
+> 소스가 늘어날 때마다 테이블·DDL·백필 로직이 함께 증식하는 문제 때문에
+> **공통 단일 테이블 `meta_ai_annotation` + JSONB**로 바꿨다.
+> 아래 필드 설계는 어떤 항목을 생성할지에 대한 참고로만 읽고, 저장 구조는 ADR-009를 따른다.
 
 `meta_video_ai`/`meta_news_ai`/`meta_blog_ai` 공통 설계. 수집 코드
 완성 후 성능 테스트를 거쳐 도입 — 아직 DDL 없음(필드 후보만 정리된 상태).

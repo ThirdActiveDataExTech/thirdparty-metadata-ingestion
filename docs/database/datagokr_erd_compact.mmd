@@ -1,0 +1,25 @@
+%% datagokr DB — 핵심 ERD (골격만)
+%% 재생성: npx -y @mermaid-js/mermaid-cli -i datagokr_erd_compact.mmd -o datagokr_erd_compact.svg
+erDiagram
+    dcat_dataset ||--o| dcat_dataset_attr : "정형 현황 메타"
+    dcat_dataset ||--|| data_registry : "운영 현황"
+    dcat_dataset ||--|| dcat_dataset_vec : "임베딩"
+    dcat_dataset ||..o{ dcat_provenance : "수집 이력 (FK 없음)"
+    dcat_dataset ||--o{ active_meta_dataset : "지표 시계열"
+    dcat_dataset ||--o{ dcat_dataset_relation : "데이터셋 간 관계"
+
+    dcat_dataset ||--o{ meta_video : "video"
+    dcat_dataset ||--o{ meta_news : "news"
+    dcat_dataset ||--o{ meta_blog : "blog"
+    dcat_dataset ||--o{ meta_shopping_insight : "shopping_insight"
+    dcat_dataset ||--o{ meta_persona_insight : "persona_insight"
+    dcat_dataset ||--o{ meta_datagokr_file : "structured_file"
+
+    meta_datagokr_file ||--o{ active_meta_file : "파일 지표"
+    meta_datagokr_file ||--o{ meta_file_relation : "파일·컬럼 관계"
+    meta_datagokr_file ||--|| meta_datagokr_file_vec : "임베딩"
+
+    metric_registry ||--o{ active_meta_dataset : "metric_code 표준값"
+    metric_registry ||--o{ active_meta_file : "metric_code 표준값"
+    relation_type_registry ||--o{ dcat_dataset_relation : "relation_type 표준값"
+    relation_type_registry ||--o{ meta_file_relation : "relation_type 표준값"

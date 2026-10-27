@@ -1,0 +1,110 @@
+%% datagokr DB — 전체 ERD
+%% 재생성: npx -y @mermaid-js/mermaid-cli -i datagokr_erd.mmd -o datagokr_erd.svg
+%%
+%% 명명 규칙 (2026-10-27): 비정형 테이블은 meta_{source_type} / active_meta_{source_type}
+%% 점선(..)은 외래키가 없는 논리 참조 또는 아직 생성되지 않은 테이블
+erDiagram
+    %% ── 카탈로그와 부속 ──────────────────────────────
+    dcat_dataset ||..o{ dcat_provenance : "수집 이력 (FK 없음 — 폐기 후에도 보존)"
+    dcat_dataset ||--|| data_registry : "운영 현황"
+    dcat_dataset ||--|| dcat_dataset_vec : "데이터셋 임베딩"
+    dcat_dataset ||--o{ dataset_credentials : "API Key"
+    dcat_dataset ||--o| dcat_dataset_attr : "정형 현황 메타 17종"
+    dcat_dataset ||--o{ active_meta_dataset : "데이터셋 지표 시계열"
+    dcat_dataset ||--o{ dcat_dataset_relation : "데이터셋 간 관계"
+
+    %% ── 표준값 레지스트리 ────────────────────────────
+    metric_registry ||--o{ active_meta_dataset : "metric_code"
+    metric_registry ||--o{ active_meta_file : "metric_code"
+    relation_type_registry ||--o{ dcat_dataset_relation : "relation_type"
+    relation_type_registry ||--o{ meta_file_relation : "relation_type"
+
+    %% ── 비정형 계층 (source_type별) ──────────────────
+    dcat_dataset ||--o{ meta_video : "video"
+    dcat_dataset ||--o{ meta_news : "news"
+    dcat_dataset ||--o{ meta_blog : "blog"
+    dcat_dataset ||--o{ meta_shopping_insight : "shopping_insight"
+    dcat_dataset ||--o{ meta_persona_insight : "persona_insight"
+
+    meta_video ||--o{ active_meta_video : "조회수 시계열"
+    meta_video ||--|| meta_video_vec : "임베딩"
+    meta_news ||--o{ active_meta_news : "댓글 시계열"
+    meta_news ||--|| meta_news_vec : "임베딩"
+    meta_blog ||--o{ active_meta_blog : "반응 시계열 (ADR-006)"
+    meta_blog ||--|| meta_blog_vec : "임베딩"
+    meta_shopping_insight ||--o{ active_meta_shopping_insight : "일별 지수"
+    meta_persona_insight ||--o{ active_meta_persona_insight : "일별 Persona Index"
+
+    %% ── 정형 계층 ────────────────────────────────────
+    dcat_dataset ||--o{ meta_datagokr_file : "structured_file"
+    meta_datagokr_file ||--o{ active_meta_file : "파일 지표 시계열"
+    meta_datagokr_file ||--o{ meta_file_relation : "파일·컬럼 간 관계"
+    meta_datagokr_file ||--|| meta_datagokr_file_vec : "파일 임베딩"
+
+    %% ── 등재 대기 / 미분류 ───────────────────────────
+    dcat_dataset_draft }o..|| dcat_dataset : "검토 후 등재"
+
+    %% ── AI 생성 메타 (예정 — ADR-009 공통 단일 테이블) ─
+    dcat_dataset ||..o{ meta_ai_annotation : "AI 생성 메타 (예정)"
+    ai_generator_registry ||..o{ meta_ai_annotation : "generator_version (예정)"
+
+    dcat_dataset {
+        text dataset_id PK "URN 전환 예정"
+        text source "원천 포털"
+        text publisher "제공기관"
+        text source_type
+        jsonb theme "원천 분류 원문"
+        jsonb category "공통 분류"
+        jsonb external_ids
+        text party
+        text visibility
+    }
+    dcat_dataset_attr {
+        text dataset_id PK_FK
+        date next_registration_date
+        text stat_name "KOSIS 통계명"
+        text spatial_unit "NATION/SIDO/SIGUNGU/EMD"
+    }
+    active_meta_dataset {
+        bigint id PK
+        text dataset_id FK
+        text metric_code FK
+        numeric metric_value "관측값만"
+        timestamptz observed_at
+    }
+    dcat_dataset_relation {
+        bigint id PK
+        text source_dataset_id FK
+        text target_dataset_id FK
+        text relation_type FK
+        real score
+        text method "rule/embedding/llm"
+        text status "PENDING/APPROVED/REJECTED"
+    }
+    meta_datagokr_file {
+        text file_id PK "내용 해시"
+        text dataset_id FK
+        jsonb column_names
+        jsonb column_profile
+    }
+    meta_video {
+        bigint id PK
+        text dataset_id FK
+        text video_id
+        boolean has_transcript
+        boolean is_removed
+    }
+    meta_news {
+        bigint id PK
+        text dataset_id FK
+        text article_url
+        boolean has_content
+        boolean is_removed
+    }
+    meta_blog {
+        bigint id PK
+        text dataset_id FK
+        text post_url
+        boolean has_content
+        boolean is_removed
+    }
