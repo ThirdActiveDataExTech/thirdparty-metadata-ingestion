@@ -766,7 +766,7 @@ CPU에서 VLM 캡셔닝은 이미지 인코더(ViT) + 수백~수천 이미지 �
 
 | 대상 | 컬럼 |
 |---|---|
-| `dcat_dataset` | `source`·`publisher_code`·`external_ids`·`party`·`visibility` (마이그레이션 작성 완료, 적용 대기) |
+| `dcat_dataset` | `source`·`publisher_code`·`theme`·`external_ids`·`party`·`visibility` — ✅ **적용 완료(2026-10-27)** |
 | `dcat_dataset` | `search_tokens`·`tokenizer_ver`·`search_tsv` (C1) |
 | `dcat_dataset.category` | 컬럼은 와이즈넛이 반영 완료. **값 부여가 미착수**(A2 부속 과업) |
 | `data_registry` | `adaptive_interval`·`consecutive_failures`·`consecutive_no_change` (C4) |

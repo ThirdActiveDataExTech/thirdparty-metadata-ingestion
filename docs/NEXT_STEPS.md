@@ -431,7 +431,7 @@
 - [ ] `relation_type_registry` — 관계 유형 표준값 (6컬럼, `applies_to` + `scope`)
 - 목적: 정형·비정형 코드가 한 테이블(`active_meta_*`, `*_relation`)에 섞여도 **범위 밖 적재·오생성 차단**. 별첨의 지표/관계 "표준값 시트"를 DB 테이블로 승격 + FK 강제. (`["*"]` = 전체 공통)
 
-### 7.3 기존 `dcat_dataset` 컬럼 추가 (6종) + backfill — 🔄 **마이그레이션 작성 완료, 적용 대기**
+### 7.3 기존 `dcat_dataset` 컬럼 추가 (6종) + backfill — ✅ **적용 완료 (2026-10-27)**
 
 > [sql/migration_2026_10_27_wisenut_alignment.sql](../sql/migration_2026_10_27_wisenut_alignment.sql)
 > 테이블 정의서대로 **6종 전부 추가**한다(`theme` 포함).
