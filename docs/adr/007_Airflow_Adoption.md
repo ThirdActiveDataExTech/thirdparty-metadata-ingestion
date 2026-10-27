@@ -1,7 +1,7 @@
 # ADR 007: Airflow 도입 확정 (ADR-002 Superseded)
 
 > **Date:** 2026-07-23
-> **Status:** Accepted
+> **Status:** Superseded by [ADR-008](008_Lightweight_Scheduler.md) (2026-10-27)
 > **Supersedes:** [ADR-002](002_KubernetesCronJob_before_Airflow.md)
 
 ---

@@ -52,6 +52,7 @@
 | 3.1 | [Local Development](development/01_Local_Development.md) | 로컬 환경 구성 | 작성 중 |
 | 3.2 | [Deployment](development/02_Deployment.md) | Git → Docker → Kubernetes 배포 | 작성 중 |
 | 3.3 | [Coding Convention](development/03_Coding_Convention.md) | 코드 작성 규칙 | 완성 |
+| 3.4 | [Implementation Methods](development/04_Implementation_Methods.md) | 연구개발계획서 과업별 구현 방법·기술 선정 근거 | 완성 (2026-10-27) |
 
 ---
 
@@ -117,7 +118,13 @@ DB 스키마, 테이블 정의. **테이블이 추가되거나 컬럼이 변경�
 | ADR-004 | [Object Storage 전략 — MinIO → SeaweedFS 전환](adr/004_ObjectStorage_Strategy.md) | Accepted |
 | ADR-005 | [Naver 뉴스 수집 가능 지표 결정](adr/005_Naver_News_Metrics_Decision.md) | Accepted |
 | ADR-006 | [Naver 블로그 수집 가능 지표 결정](adr/006_Naver_Blog_Metrics_Decision.md) | Accepted |
-| ADR-007 | [Airflow 도입 확정](adr/007_Airflow_Adoption.md) | Accepted |
+| ADR-007 | [Airflow 도입 확정](adr/007_Airflow_Adoption.md) | Superseded by ADR-008 |
+| ADR-008 | [경량 자체 스케줄러 채택](adr/008_Lightweight_Scheduler.md) | Accepted |
+| ADR-009 | [AI 생성 메타데이터 공통 단일 테이블](adr/009_AI_Metadata_Single_Table.md) | Accepted |
+| ADR-010 | [한국어 전문검색 — 앱단 토큰화 + tsvector](adr/010_Korean_Fulltext_Search.md) | Accepted |
+| ADR-011 | [데이터 패키징 표준 — RO-Crate](adr/011_Packaging_ROCrate.md) | Accepted |
+| ADR-012 | [관계 그래프 저장 — PostgreSQL + NetworkX](adr/012_Graph_Storage_PostgreSQL.md) | Accepted |
+| ADR-013 | [외부 LLM API 미사용 — 로컬 추론 전용](adr/013_No_External_LLM_API.md) | Accepted |
 
 ---
 
