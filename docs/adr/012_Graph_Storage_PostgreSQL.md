@@ -57,9 +57,16 @@ FK로 묶여 있어 **등록되지 않은 유형은 INSERT 자체가 불가능�
 - **relation_type을 분리**한다 (예: 모델 산출용 유형을 registry에 별도 등록)
 - `evidence`에 이전 산출 이력을 누적한다
 
-전자가 깔끔하므로 **와이즈넛에 유형 분리를 제안**한다.
+**전자(유형 분리)를 채택한다.** 유형 추가가 가능하다는 회신을 받았다(2026-10-27).
+
+접미 `_MODEL` 규약을 쓴다 — 예: 규칙 산출은 `SEMANTICALLY_RELATED`,
+모델 산출은 `SEMANTICALLY_RELATED_MODEL`. 같은 의미축을 유지하므로
+**두 그래프를 같은 기준으로 비교**할 수 있다.
+제안 DDL은 [sql/relation_type_registry.sql](../../sql/relation_type_registry.sql) 하단 주석 참조.
+
 재생성 시 `method='rule'` 행만 선택적으로 교체하는 운용도 UNIQUE 때문에 불가능하므로,
-**재계산 범위를 relation_type 단위로 관리**한다.
+**재계산 범위를 relation_type 단위로 관리**한다 — 규칙 유형만 재계산하고 모델 유형은 건드리지 않는다.
+(초안에서 "만료 처리를 `origin='rule'`로 한정"이라 했던 것이 이 구조에서는 유형 단위로 바뀐다.)
 
 ### 4. 그래프 분석 지표는 `active_meta_dataset`에 적재한다
 
@@ -67,7 +74,8 @@ FK로 묶여 있어 **등록되지 않은 유형은 INSERT 자체가 불가능�
 `active_meta_dataset`(EAV, `metric_code` + `metric_value` + `observed_at`)이 이미 있고,
 그래프 지표도 "특정 시점의 데이터셋 단위 수치"라는 점에서 구조가 맞는다.
 
-- 신규 `metric_code` 3종을 `metric_registry`에 등록 제안: 중심성(degree), PageRank, 커뮤니티 ID
+- 신규 `metric_code` 3종을 `metric_registry`에 등록 제안: `graph_degree`, `graph_pagerank`,
+  `graph_community_id` — 제안 DDL은 [sql/metric_registry.sql](../../sql/metric_registry.sql) 하단 주석 참조
 - `observed_at`에 그래프 산출 실행 시각을 넣으면 **시점별 네트워크 변화**를 그대로 얻는다
 - ⚠️ 의미상 유의: 이 테이블은 본래 "관측값"을 담고 그래프 지표는 "분석 산출물"이다.
   구조는 맞지만 성격이 다르므로 `source` 컬럼에 산출 주체를 명시해 구분한다

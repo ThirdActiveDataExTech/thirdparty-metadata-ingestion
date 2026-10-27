@@ -434,8 +434,10 @@
 ### 7.3 기존 `dcat_dataset` 컬럼 추가 (6종) + backfill — 🔄 **마이그레이션 작성 완료, 적용 대기**
 
 > [sql/migration_2026_10_27_wisenut_alignment.sql](../sql/migration_2026_10_27_wisenut_alignment.sql)
-> 5종만 추가한다 — `theme`은 같은 용도의 `category`(jsonb NOT NULL)가 이미 DB에 있어
-> **명칭이 같은 것인지 확인 전까지 보류**한다(중복 컬럼 방지).
+> 테이블 정의서대로 **6종 전부 추가**한다(`theme` 포함).
+> 분류 저장은 **`theme` 하나로 통일**하고, 용도가 겹치는 `category`(별첨에 없고 DB에만 있던
+> 컬럼, 18건 전부 빈 배열)는 **미사용 처리**한다. 우리가 만든 컬럼이 아니므로 단독 삭제하지
+> 않고 와이즈넛 확인 후 제거한다.
 > `dataset_id` URN 전환은 [database/dataset_id_urn_migration.md](database/dataset_id_urn_migration.md) 참조.
 
 

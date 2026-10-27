@@ -45,3 +45,25 @@ CREATE TABLE metric_registry (
 -- 적용 범위 조회용
 CREATE INDEX idx_metric_registry_applies ON metric_registry USING GIN (applies_to);
 CREATE INDEX idx_metric_registry_layer   ON metric_registry (layer);
+
+
+-- ═══════════════════════════════════════════════════════════════
+-- 모비젠 추가 제안 (2026-10-27) — 와이즈넛 합의 후 적재
+--
+-- 그래프 분석 산출물(중심성·커뮤니티)을 별도 테이블 없이 active_meta_dataset에
+-- 적재하기 위한 지표 코드. observed_at에 그래프 산출 실행 시각을 넣으면
+-- 시점별 네트워크 변화를 그대로 얻는다 (ADR-012).
+--
+-- 유의: 이 테이블은 본래 "관측값"을 담고 그래프 지표는 "분석 산출물"이다.
+--      구조는 맞지만 성격이 다르므로 source 컬럼에 산출 주체를 명시해 구분한다
+--      (예: source='GRAPH_ANALYZER').
+-- ═══════════════════════════════════════════════════════════════
+--
+-- INSERT INTO metric_registry
+--     (metric_code, label, layer, value_type, unit, applies_to, default_source, description) VALUES
+-- ('graph_degree', '연결 차수', 'dataset', 'count', '개', '["*"]'::jsonb, 'GRAPH_ANALYZER',
+--  '관계 그래프에서 해당 데이터셋에 연결된 엣지 수. 가중 차수는 weight 합'),
+-- ('graph_pagerank', 'PageRank', 'dataset', 'ratio', NULL, '["*"]'::jsonb, 'GRAPH_ANALYZER',
+--  '관계 그래프 내 영향력 지표. 추천 랭킹에 사용. seed 고정 필요'),
+-- ('graph_community_id', '커뮤니티 ID', 'dataset', 'index', NULL, '["*"]'::jsonb, 'GRAPH_ANALYZER',
+--  'Louvain 커뮤니티 탐지 결과의 군집 번호. 같은 run 안에서만 의미가 있다');

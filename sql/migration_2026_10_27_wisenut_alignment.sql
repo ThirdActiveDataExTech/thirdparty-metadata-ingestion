@@ -23,13 +23,15 @@ BEGIN;
 -- ── 1. dcat_dataset 신규 컬럼 ─────────────────────────────────
 ALTER TABLE dcat_dataset ADD COLUMN IF NOT EXISTS source         TEXT;
 ALTER TABLE dcat_dataset ADD COLUMN IF NOT EXISTS publisher_code TEXT;
+ALTER TABLE dcat_dataset ADD COLUMN IF NOT EXISTS theme          JSONB;
 ALTER TABLE dcat_dataset ADD COLUMN IF NOT EXISTS external_ids   JSONB;
 ALTER TABLE dcat_dataset ADD COLUMN IF NOT EXISTS party          TEXT;
 ALTER TABLE dcat_dataset ADD COLUMN IF NOT EXISTS visibility     TEXT NOT NULL DEFAULT 'ORG';
 -- visibility 기본값을 ORG로 두는 이유: PUBLIC을 기본으로 하면 등록 실수가 곧 외부 공개가 된다.
 
--- ※ theme은 추가하지 않는다 — 같은 용도의 category(jsonb NOT NULL)가 이미 존재한다.
---   둘이 동일한 것인지 와이즈넛 확인 후 처리한다(중복 컬럼 생성 방지).
+-- 분류 저장은 theme 하나로 통일한다 (2026-10-27 결정).
+-- category(jsonb NOT NULL, 18건 전부 빈 배열)는 용도가 겹치므로 신규 적재하지 않는다.
+-- 별첨에 없고 DB에만 있던 컬럼이라 우리가 단독으로 DROP하지 않고 와이즈넛 확인 후 제거한다.
 
 -- ── 2. backfill ───────────────────────────────────────────────
 -- 비정형은 source = publisher 원천값을 사용한다 (모비젠 회신 의견)
@@ -46,7 +48,7 @@ ALTER TABLE dcat_dataset ALTER COLUMN source SET NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_dcat_dataset_source       ON dcat_dataset (source);
 CREATE INDEX IF NOT EXISTS idx_dcat_dataset_visibility   ON dcat_dataset (visibility);
 CREATE INDEX IF NOT EXISTS idx_dcat_dataset_external_ids ON dcat_dataset USING GIN (external_ids);
-CREATE INDEX IF NOT EXISTS idx_dcat_dataset_category     ON dcat_dataset USING GIN (category);
+CREATE INDEX IF NOT EXISTS idx_dcat_dataset_theme        ON dcat_dataset USING GIN (theme);
 
 COMMIT;
 

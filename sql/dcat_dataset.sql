@@ -4,7 +4,8 @@
 -- 1회 수집 코드 실행 = 1행 생성
 --
 -- 2026-10-27: 와이즈넛 「백엔드 설계 초안」 v2 별첨 테이블정의서에 맞춰 컬럼 추가
---   source / publisher_code / external_ids / party / visibility (+ category 명칭 확인 중)
+--   source / publisher_code / theme / external_ids / party / visibility
+--   (category는 theme와 용도 중복 — 미사용 처리, 와이즈넛 확인 후 제거 예정)
 --   정형(source_type='structured_file')과 비정형이 이 카탈로그를 공용한다
 --   기존 DB에 적용할 때는 DROP이 아니라 sql/migration_2026_10_27_wisenut_alignment.sql 사용
 -- ═══════════════════════════════════════════════════════════════
@@ -111,14 +112,23 @@ CREATE TABLE dcat_dataset (
     -- 와이즈넛 KEYWORD_OVERLAP 관계 판정의 근거 컬럼이다
     -- (relation_type_registry.required_fields = ["keywords"])
 
-    category            JSONB NOT NULL DEFAULT '[]'::jsonb,
-    -- 분류체계 | '대분류 - 소분류'를 배열로 분해해 보관
-    -- 비정형은 사용자가 등록 시 카테고리를 설정하는 방향 (모비젠 회신 의견)
+    theme               JSONB,
+    -- dct:subject | 분류체계 | '대분류 - 소분류' 문자열을 배열로 분해해 보관
+    -- 와이즈넛 별첨 테이블정의서 기준 신규 컬럼. 정형·비정형 공용.
+    -- 예) ["보건의료","의료서비스"]
+    -- 비정형은 사용자가 등록 시 분류를 설정하는 방향 (모비젠 회신 의견)
     --
-    -- ⚠️ 명칭 확인 필요 (2026-10-27): 와이즈넛 별첨 테이블정의서는 같은 용도의 컬럼을
-    --    theme(dct:subject)로 기술한다. 실제 DB에는 category로 생성돼 있어
-    --    둘이 같은 것인지 확인 중이다. 같다면 이 컬럼이 theme의 구현 명칭이고,
-    --    다르다면 theme를 별도로 추가해야 한다. 중복 생성을 피하려고 보류 중.
+    -- ★ 분류 저장은 이 컬럼 하나로 통일한다 (2026-10-27 결정).
+    --   DCAT 표준 속성(dct:subject)에 대응하는 쪽이 theme이고, 분류를 보려고
+    --   두 컬럼을 모두 조회해야 하는 상황을 만들지 않는다.
+    --   원천 공식 분류와 사용자 지정 분류를 구분해야 하면 배열 원소를 객체로 확장한다.
+    --   예) [{"scheme":"data.go.kr","path":["보건의료","의료서비스"]}]
+
+    category            JSONB NOT NULL DEFAULT '[]'::jsonb,
+    -- ⚠️ 미사용 (2026-10-27). theme와 용도가 겹친다.
+    --   별첨 테이블정의서에는 없고 DB에만 생성돼 있던 컬럼으로, 18건 전부 빈 배열이다.
+    --   theme로 일원화하기로 했으므로 신규 적재하지 않는다.
+    --   와이즈넛 확인 후 제거 예정 — 우리가 만든 컬럼이 아니라 단독 삭제하지 않는다.
 
     -- ── 이용 조건 ─────────────────────────────────────────────
     license             TEXT,
