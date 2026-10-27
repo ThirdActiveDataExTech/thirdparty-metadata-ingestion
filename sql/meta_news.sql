@@ -1,12 +1,12 @@
 -- ═══════════════════════════════════════════════════════════════
--- meta_naver_news : Naver 뉴스 기사 단위 메타데이터 (Schema.org NewsArticle 기반)
+-- meta_news : Naver 뉴스 기사 단위 메타데이터 (Schema.org NewsArticle 기반)
 -- dcat_dataset 1개에 N개의 기사 행이 연결됨
 -- 같은 article_url이라도 dataset_id가 다르면 별도 행으로 관리
 -- (동일 기사를 여러 데이터셋에서 독립적으로 추적하기 위함)
 -- ═══════════════════════════════════════════════════════════════
-DROP TABLE IF EXISTS meta_naver_news CASCADE;
+DROP TABLE IF EXISTS meta_news CASCADE;
 
-CREATE TABLE meta_naver_news (
+CREATE TABLE meta_news (
 
     -- ── 식별 ──────────────────────────────────────────────────
     id                  BIGSERIAL PRIMARY KEY,
@@ -71,7 +71,7 @@ CREATE TABLE meta_naver_news (
     collected_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
 
     updated_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
-    -- 본문 재스크래핑 등으로 필드 갱신 시 시각 (meta_youtube_video/meta_naver_blog와 동일 패턴)
+    -- 본문 재스크래핑 등으로 필드 갱신 시 시각 (meta_video/meta_blog와 동일 패턴)
 
     is_removed           BOOLEAN NOT NULL DEFAULT FALSE,
     -- 정기 수집 시 검색 결과에서 더 이상 발견되지 않는 기사(비공개·삭제 등)에 TRUE.
@@ -82,8 +82,8 @@ CREATE TABLE meta_naver_news (
 );
 
 -- 조회용 인덱스
-CREATE INDEX idx_meta_news_dataset    ON meta_naver_news(dataset_id);
-CREATE INDEX idx_meta_news_published  ON meta_naver_news(published_at DESC);
-CREATE INDEX idx_meta_news_publisher  ON meta_naver_news(publisher);
-CREATE INDEX idx_meta_news_hosted     ON meta_naver_news(is_naver_hosted);
-CREATE INDEX idx_meta_news_removed    ON meta_naver_news(is_removed);
+CREATE INDEX idx_meta_news_dataset    ON meta_news(dataset_id);
+CREATE INDEX idx_meta_news_published  ON meta_news(published_at DESC);
+CREATE INDEX idx_meta_news_publisher  ON meta_news(publisher);
+CREATE INDEX idx_meta_news_hosted     ON meta_news(is_naver_hosted);
+CREATE INDEX idx_meta_news_removed    ON meta_news(is_removed);

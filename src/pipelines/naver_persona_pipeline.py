@@ -18,7 +18,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.collectors import naver_datalab_scale, naver_persona_collector
-from src.database import dcat, meta_naver_persona
+from src.database import dcat, meta_persona_insight
 from src.database.db import get_conn
 from src.storage import jsonld_export
 
@@ -46,8 +46,8 @@ def _current_row_count(dataset_id: str) -> int:
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT count(*) FROM active_meta_naver_persona a
-            JOIN meta_naver_persona m ON m.id = a.meta_id
+            SELECT count(*) FROM active_meta_persona_insight a
+            JOIN meta_persona_insight m ON m.id = a.meta_id
             WHERE m.dataset_id = %s
             """,
             (dataset_id,),
@@ -64,7 +64,7 @@ def _flatten(parsed: Dict[str, Dict[str, float]]) -> Dict[str, float]:
 
 def _compute_fetch_range(dataset_id: str, dataset: Dict[str, Any]) -> Tuple[str, str]:
     end_date = date.today() - timedelta(days=1)
-    last_period = meta_naver_persona.get_last_period(dataset_id)
+    last_period = meta_persona_insight.get_last_period(dataset_id)
     if last_period is None:
         desired_start = dataset.get("temporal_start")
         start_date = desired_start if desired_start is not None else end_date - timedelta(days=OVERLAP_DAYS)
@@ -79,8 +79,8 @@ def _current_temporal_start(dataset_id: str) -> Optional[str]:
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT MIN(a.period) FROM active_meta_naver_persona a
-            JOIN meta_naver_persona m ON m.id = a.meta_id
+            SELECT MIN(a.period) FROM active_meta_persona_insight a
+            JOIN meta_persona_insight m ON m.id = a.meta_id
             WHERE m.dataset_id = %s
             """,
             (dataset_id,),
@@ -97,7 +97,7 @@ def run(dataset_id: str, triggered_by: str) -> None:
     client_id = dcat.get_api_key(dataset_id, "naver_client_id")
     client_secret = dcat.get_api_key(dataset_id, "naver_client_secret")
 
-    categories = meta_naver_persona.get_meta_naver_persona_rows(dataset_id)
+    categories = meta_persona_insight.get_meta_persona_insight_rows(dataset_id)
     start_date, end_date = _compute_fetch_range(dataset_id, dataset)
     started_at = datetime.now(timezone.utc)
     rows_written = 0
@@ -168,8 +168,8 @@ def _collect_one_category(
     age_parsed = naver_persona_collector.parse_persona_response(age_data) if age_data else {}
 
     periods = list(set(gender_parsed.keys()) | set(age_parsed.keys()))
-    existing_gender = meta_naver_persona.get_existing_gender_ratios(cat["id"], periods)
-    existing_age = meta_naver_persona.get_existing_age_ratios(cat["id"], periods)
+    existing_gender = meta_persona_insight.get_existing_gender_ratios(cat["id"], periods)
+    existing_age = meta_persona_insight.get_existing_age_ratios(cat["id"], periods)
     existing_gender_flat = {f"{p}|{g}": r for (p, g), r in existing_gender.items()}
     existing_age_flat = {f"{p}|{a}": r for (p, a), r in existing_age.items()}
 
@@ -187,7 +187,7 @@ def _collect_one_category(
                 a_ratio = a_groups.get(age)
                 a_pv = a_ratio * age_scale if a_ratio is not None else None
                 score = g_pv * a_pv if (g_pv is not None and a_pv is not None) else None
-                meta_naver_persona.upsert_active_meta_naver_persona(
+                meta_persona_insight.upsert_active_meta_persona_insight(
                     cat["id"], period, gender, age,
                     g_ratio, a_ratio, gender_scale, age_scale, g_pv, a_pv, score,
                 )

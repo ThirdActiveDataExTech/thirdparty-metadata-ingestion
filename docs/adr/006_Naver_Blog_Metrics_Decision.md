@@ -2,14 +2,14 @@
 
 > **Date:** 2026-07-24
 > **Status:** Accepted
-> **결론:** `active_meta_naver_blog`에 **반응(공감 등) 수만** 수집. 댓글 수·조회수는 미수집.
+> **결론:** `active_meta_blog`에 **반응(공감 등) 수만** 수집. 댓글 수·조회수는 미수집.
 
 ---
 
 ## 배경
 
-`active_meta_naver_blog`는 ADR-005(뉴스 수집 가능 지표 결정)와 동일한 수준의 실제 API
-검증을 거치지 않은 잠정 설계였다(`sql/active_meta_naver_blog.sql` 헤더 주석 참조). 아래
+`active_meta_blog`는 ADR-005(뉴스 수집 가능 지표 결정)와 동일한 수준의 실제 API
+검증을 거치지 않은 잠정 설계였다(`sql/active_meta_blog.sql` 헤더 주석 참조). 아래
 3개 후보 지표를 실제 API 호출로 검증했다.
 
 테스트 대상: 실제 Naver 블로그 검색 API(`openapi.naver.com/v1/search/blog.json`)로 가져온
@@ -79,9 +79,9 @@ resp = requests.get(
 | 댓글 수 | ❌ 미수집 (보류) | 브라우저 자동화 또는 세션 인증 필요, 현 단계 오버스펙 |
 | 반응 수 (공감 등) | ✅ 수집 | `blog.like.naver.com`으로 순수 HTTP 수집 가능, 타입별 세부 포함 |
 
-`active_meta_naver_blog`는 `meta_naver_blog.platform='naver'`인 게시물만 대상으로 하며
+`active_meta_blog`는 `meta_blog.platform='naver'`인 게시물만 대상으로 하며
 (뉴스의 `is_naver_hosted`와 동일 제약), 반응 수만 수집하도록 스키마를 확정한다
-(`sql/active_meta_naver_blog.sql` 갱신).
+(`sql/active_meta_blog.sql` 갱신).
 
 ---
 
@@ -89,6 +89,6 @@ resp = requests.get(
 
 댓글 수 수집이 필요하다고 판단될 경우, 실제 브라우저 요청을 캡처해 정확한 cbox9
 엔드포인트 경로와 인증 방식(세션 쿠키 등)을 확인하거나 Playwright 기반 수집 코드를
-별도로 개발한다. 이 경우 `active_meta_naver_blog`에 `comment_count`/`expose_count`/
+별도로 개발한다. 이 경우 `active_meta_blog`에 `comment_count`/`expose_count`/
 `reply_count` 컬럼을 추가하는 방향으로 확장한다 (ADR-005가 뉴스 추천 반응에 대해 취한
 것과 동일한 접근).

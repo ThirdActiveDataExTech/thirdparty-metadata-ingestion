@@ -43,8 +43,8 @@
 | `dcat_dataset_vec` | NO ACTION | **FK 재생성 필요** |
 | `dcat_provenance` | **FK 없음** | ⚠️ **명시적 UPDATE 필요** — 아래 참조 |
 | `dataset_credentials` | NO ACTION | **FK 재생성 필요** |
-| `meta_youtube_video` | NO ACTION | **FK 재생성 필요** |
-| `meta_naver_news` / `blog` / `shopping` / `persona` | NO ACTION | **FK 재생성 필요** |
+| `meta_video` | NO ACTION | **FK 재생성 필요** |
+| `meta_news` / `blog` / `shopping` / `persona` | NO ACTION | **FK 재생성 필요** |
 
 > ⚠️ **`dcat_provenance`는 FK를 제거했다**(2026-10-27, 별첨 공통 규약 "dcat_provenance 제외").
 > 데이터셋 폐기 후에도 이력을 보존하기 위한 결정인데, 그 대가로 **dataset_id 변경이
@@ -110,7 +110,7 @@ jsonld/{source_type}/{dataset_id}/{dataset_id}.jsonld
 3. **기존 slug를 `external_ids`에 보존** — 마이그레이션 §2에 포함돼 있다
    와이즈넛 형식('네임스페이스:값' 문자열 배열)을 그대로 지키고 자체 네임스페이스를 쓴다.
    ```json
-   ["mobigen-legacy:youtube_samsung_official"]
+   ["legacy:youtube_samsung_official"]
    ```
    객체(`{"legacy_slug": ...}`)가 아니라 **문자열 배열**이어야 한다. 포털 번호와 섞이지 않고,
    값이 데이터셋마다 유일해 와이즈넛의 중복 병합 판정에 오탐을 만들지 않는다.
@@ -130,7 +130,7 @@ jsonld/{source_type}/{dataset_id}/{dataset_id}.jsonld
 
 [sql/migration_2026_10_27_wisenut_alignment.sql](../../sql/migration_2026_10_27_wisenut_alignment.sql)
 헤더에 적은 대로, 현재 DB에는 재생성 비용이 큰 데이터가 있다
-(`active_meta_naver_shopping` 601일치 등 — 과거 관측값은 재수집으로 복원되지 않는다).
+(`active_meta_shopping_insight` 601일치 등 — 과거 관측값은 재수집으로 복원되지 않는다).
 
 - **권장**: URN 전환도 `UPDATE` 기반으로 수행하고 데이터를 보존한다
 - 전면 DROP → CREATE는 **수집 데이터를 버려도 되는 시점**에만 한다.
@@ -144,7 +144,7 @@ jsonld/{source_type}/{dataset_id}/{dataset_id}.jsonld
 - [ ] 케이웨어 전달 여부 확인 (이미 받아갔으면 통보 일정 협의)
 - [ ] 우리 FK 7개 `ON UPDATE CASCADE` 부여 (dcat_provenance 제외 — FK 없음)
 - [ ] `dcat_provenance.dataset_id` 명시적 UPDATE + 끊어진 참조 확인
-- [ ] `external_ids`에 `mobigen-legacy:<slug>` 보존 확인
+- [ ] `external_ids`에 `legacy:<slug>` 보존 확인
 - [ ] S3 경로 정책 결정 (유지 / 이전)
 - [ ] `UPDATE` 실행 (트랜잭션, 롤백 가능 상태에서)
 - [ ] JSON-LD 재생성

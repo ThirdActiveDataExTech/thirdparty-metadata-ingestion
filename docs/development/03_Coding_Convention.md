@@ -25,7 +25,7 @@
 collectors/naver_shopping_collector.py   # {소스명}_collector.py
 collectors/youtube_collector.py
 pipelines/naver_shopping_pipeline.py     # {소스명}_pipeline.py — run(dataset_id, triggered_by) 노출
-database/meta_naver_shopping.py          # meta_{소스명}.py
+database/meta_shopping_insight.py          # meta_{소스명}.py
 ```
 
 ## 함수 단위

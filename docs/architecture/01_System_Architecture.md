@@ -59,7 +59,7 @@ Server (RnD-analyzer01 등)
 | Preprocess/Extractor | 원본 정제·메타데이터 추출 | Python | 별도 레이어 없음(설계 변경) — `collectors`/`pipelines` 내부 헬퍼로 처리, `03_Component_Architecture.md` 참조 |
 | Storage (PostgreSQL) | 메타데이터 DB 저장 | Python | ✅ 운영 중 |
 | Storage (SeaweedFS) | Raw Data + JSON-LD 저장 | Python | ✅ 완료 — `src/storage/`(s3_client/raw_export/jsonld_export), 실 서버 검증 완료. YouTube 트랜스크립트는 `src/collectors/youtube_transcript_collector.py`(자체 STT) |
-| Embedding | pgvector 임베딩 생성·검색 | Python | ✅ 운영 중(수동) — `scripts/embed_datasets.py`, `embed_youtube_videos.py`, `embed_naver_news.py`, `embed_naver_blog.py` + 대응 `search_*.py`. 파이프라인 자동 연결·증분화는 미완(NEXT_STEPS.md §4) |
+| Embedding | pgvector 임베딩 생성·검색 | Python | ✅ 운영 중(수동) — `scripts/embed_datasets.py`, `embed_video.py`, `embed_news.py`, `embed_blog.py` + 대응 `search_*.py`. 파이프라인 자동 연결·증분화는 미완(NEXT_STEPS.md §4) |
 | AI 생성 메타 | 트랜스크립트/본문 → 요약·키워드·개체명 등 | Python | ⏳ 설계 단계 — 필드 후보만 정리됨(`datagokr_schema.md`), 착수 예정 |
 | Scheduler | 수집 주기 관리 | K8s CronJob → 추후 Airflow | ⏳ 미착수 — `metadata-ingestion` K8s 네임스페이스는 생성 완료, DAG·Executor 방식은 아직(§6.2) |
 

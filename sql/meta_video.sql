@@ -1,12 +1,12 @@
 -- ═══════════════════════════════════════════════════════════════
--- meta_youtube_video : YouTube 영상 단위 메타데이터 (Schema.org VideoObject 기반)
+-- meta_video : YouTube 영상 단위 메타데이터 (Schema.org VideoObject 기반)
 -- dcat_dataset 1개에 N개의 영상 행이 연결됨
 -- 같은 video_id라도 dataset_id가 다르면 별도 행으로 관리
 -- (동일 영상을 여러 데이터셋에서 독립적으로 추적하기 위함)
 -- ═══════════════════════════════════════════════════════════════
-DROP TABLE IF EXISTS meta_youtube_video CASCADE;
+DROP TABLE IF EXISTS meta_video CASCADE;
 
-CREATE TABLE meta_youtube_video (
+CREATE TABLE meta_video (
 
     -- ── 식별 ──────────────────────────────────────────────────
     id                      BIGSERIAL PRIMARY KEY,
@@ -73,7 +73,7 @@ CREATE TABLE meta_youtube_video (
     -- schema:thumbnailUrl | 기본 썸네일 URL (maxres > high > medium > default 순)
 
     -- ── 초기 수집 시점 통계 스냅샷 ───────────────────────────
-    -- active_meta_youtube 에서 시계열 추적하지만,
+    -- active_meta_video 에서 시계열 추적하지만,
     -- 최초 수집값을 여기에 보관하여 delta 기준점으로 활용
     initial_view_count      BIGINT,
     initial_like_count      BIGINT,
@@ -96,7 +96,7 @@ CREATE TABLE meta_youtube_video (
     -- ── 트랜스크립트 (architecture/05_Object_Storage_Export.md §4 자체 STT) ──
     has_transcript            BOOLEAN NOT NULL DEFAULT FALSE,
     -- SeaweedFS에 트랜스크립트(raw/video/{dataset_id}/{video_id}.json) 저장 성공 여부.
-    -- meta_naver_news/meta_naver_blog의 has_content와 동일한 목적 — 신규 발견 시 STT
+    -- meta_news/meta_blog의 has_content와 동일한 목적 — 신규 발견 시 STT
     -- 실패한 것 포함, 백필 스크립트가 처리 대상을 고르는 데 씀 (2026-07-27 추가)
 
     transcribed_at             TIMESTAMPTZ
@@ -104,9 +104,9 @@ CREATE TABLE meta_youtube_video (
 );
 
 -- 조회용 인덱스
-CREATE INDEX idx_meta_yt_dataset    ON meta_youtube_video(dataset_id);
-CREATE INDEX idx_meta_yt_video      ON meta_youtube_video(video_id);
-CREATE INDEX idx_meta_yt_published  ON meta_youtube_video(published_at DESC);
-CREATE INDEX idx_meta_yt_channel    ON meta_youtube_video(channel_id);
-CREATE INDEX idx_meta_yt_removed    ON meta_youtube_video(is_removed);
-CREATE INDEX idx_meta_yt_transcript ON meta_youtube_video(has_transcript);
+CREATE INDEX idx_meta_yt_dataset    ON meta_video(dataset_id);
+CREATE INDEX idx_meta_yt_video      ON meta_video(video_id);
+CREATE INDEX idx_meta_yt_published  ON meta_video(published_at DESC);
+CREATE INDEX idx_meta_yt_channel    ON meta_video(channel_id);
+CREATE INDEX idx_meta_yt_removed    ON meta_video(is_removed);
+CREATE INDEX idx_meta_yt_transcript ON meta_video(has_transcript);

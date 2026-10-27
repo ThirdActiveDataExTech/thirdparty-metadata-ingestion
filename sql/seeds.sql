@@ -3,11 +3,11 @@
 -- 실행 전 DDL이 모두 적용돼 있어야 함
 -- 실행 순서:
 --   dcat_dataset → dcat_provenance → data_registry → dcat_dataset_vec
---   → meta_youtube_video → active_meta_youtube → meta_youtube_video_vec
---   → meta_naver_news → active_meta_naver_news
---   → meta_naver_shopping → active_meta_naver_shopping
---   → meta_naver_persona → active_meta_naver_persona
---   → meta_naver_blog → active_meta_naver_blog (ADR-006 확정 — 반응 수만 수집)
+--   → meta_video → active_meta_video → meta_video_vec
+--   → meta_news → active_meta_news
+--   → meta_shopping_insight → active_meta_shopping_insight
+--   → meta_persona_insight → active_meta_persona_insight
+--   → meta_blog → active_meta_blog (ADR-006 확정 — 반응 수만 수집)
 --
 -- dataset_credentials는 의도적으로 여기서 시드하지 않는다: 암호화 키(ENCRYPTION_KEY)를
 -- K8s Secret(dataset-credentials-encryption-key)에서만 가져오게 설계했고, 그 키를 이런
@@ -108,7 +108,7 @@ INSERT INTO dcat_dataset (
     'ko', 'KR', '2026-06-20', NULL, NULL, 'P1D', 3,
     '["블로그","AI","반도체","네이버"]',
     'https://developers.naver.com/notice/terms',
-    '네이버 API 이용약관 준수. 블로그 본문 스크래핑은 저작권 정책 별도 확인 필요. active_meta_naver_blog는 ADR-006으로 반응 수 수집 확정(댓글 수·조회수는 미수집).',
+    '네이버 API 이용약관 준수. 블로그 본문 스크래핑은 저작권 정책 별도 확인 필요. active_meta_blog는 ADR-006으로 반응 수 수집 확정(댓글 수·조회수는 미수집).',
     'admin', NULL, 'ORG'
 );
 
@@ -195,41 +195,41 @@ INSERT INTO data_registry (
 (
     'naver_shopping_insight',
     'raw/shopping/naver_shopping_insight/', 'jsonld/shopping/naver_shopping_insight/',
-    'meta_naver_shopping', 'active_meta_naver_shopping', 'dcat_dataset_vec',
+    'meta_shopping_insight', 'active_meta_shopping_insight', 'dcat_dataset_vec',
     'active', '2026-06-30 02:01:09+09', '2026-07-01 02:00:00+09', NULL,
     5, 5278, '2025-06-17', '2026-06-16'
-    -- item_count=5: 이 데이터셋이 추적하는 카테고리 수 (anchor 포함, meta_naver_shopping 행 수)
+    -- item_count=5: 이 데이터셋이 추적하는 카테고리 수 (anchor 포함, meta_shopping_insight 행 수)
 ),
 (
     'naver_persona_insight',
     'raw/shopping/naver_persona_insight/', 'jsonld/shopping/naver_persona_insight/',
-    'meta_naver_persona', 'active_meta_naver_persona', 'dcat_dataset_vec',
+    'meta_persona_insight', 'active_meta_persona_insight', 'dcat_dataset_vec',
     'active', '2026-06-30 03:02:31+09', '2026-07-01 03:00:00+09', NULL,
     4, 57876, '2025-06-18', '2026-06-17'
 ),
 (
     'youtube_samsung_official',
     'raw/video/youtube_samsung_official/', 'jsonld/video/youtube_samsung_official/',
-    'meta_youtube_video', 'active_meta_youtube', 'dcat_dataset_vec',
+    'meta_video', 'active_meta_video', 'dcat_dataset_vec',
     'active', '2026-06-30 04:03:21+09', '2026-07-07 04:00:00+09', NULL,
     3, 3, '2024-01-01', NULL
     -- item_count=3: 채널 영상 3편. row_count는 최초 수집 시점(3건) 기준 —
-    -- 07-07 2차 수집 이후 active_meta_youtube는 6행이지만 대응하는
+    -- 07-07 2차 수집 이후 active_meta_video는 6행이지만 대응하는
     -- dcat_provenance 'update' 기록이 없어 아직 갱신 전 (기존 시드 데이터의 기존 격차, 오늘 범위 아님)
 ),
 (
     'naver_news_ai',
     'raw/news/naver_news_ai/', 'jsonld/news/naver_news_ai/',
-    'meta_naver_news', 'active_meta_naver_news', 'dcat_dataset_vec',
+    'meta_news', 'active_meta_news', 'dcat_dataset_vec',
     'error', '2026-01-01 06:00:47+09', '2026-07-01 06:00:00+09',
     'HTTP 429 Too Many Requests: API 일일 호출 한도 초과',
     3, 1200, '2026-01-01', NULL
-    -- item_count=3: 수집된 기사 3건 (meta_naver_news 행 수)
+    -- item_count=3: 수집된 기사 3건 (meta_news 행 수)
 ),
 (
     'user_hbm_video_collection',
     NULL, NULL,
-    'meta_youtube_video', 'active_meta_youtube', 'dcat_dataset_vec',
+    'meta_video', 'active_meta_video', 'dcat_dataset_vec',
     'pending', NULL, NULL, NULL,
     1, 0, NULL, NULL
     -- item_count=1: yt_vid_002 1편만 직접 선택
@@ -237,10 +237,10 @@ INSERT INTO data_registry (
 (
     'naver_blog_ai',
     'raw/blog/naver_blog_ai/', 'jsonld/blog/naver_blog_ai/',
-    'meta_naver_blog', 'active_meta_naver_blog', 'dcat_dataset_vec',
+    'meta_blog', 'active_meta_blog', 'dcat_dataset_vec',
     'active', '2026-06-28 07:00:33+09', '2026-07-01 07:00:00+09', NULL,
     3, 3, '2026-06-20', NULL
-    -- item_count=3: 게시물 3건. active_meta_naver_blog는 ADR-006으로 반응 수 수집 확정,
+    -- item_count=3: 게시물 3건. active_meta_blog는 ADR-006으로 반응 수 수집 확정,
     -- row_count도 현재 active_meta 시드 행 수(3)와 동일
 );
 
@@ -249,9 +249,9 @@ INSERT INTO data_registry (
 -- seeds.sql 실행 후 아래 명령어로 임베딩 삽입:
 --   python scripts/embed_datasets.py
 
--- ── meta_youtube_video ────────────────────────────────────────
+-- ── meta_video ────────────────────────────────────────
 
-INSERT INTO meta_youtube_video (
+INSERT INTO meta_video (
     dataset_id, video_id,
     title, description, published_at,
     channel_id, channel_title,
@@ -320,14 +320,14 @@ INSERT INTO meta_youtube_video (
     3820000, 41000, 890
 );
 
--- ── active_meta_youtube ───────────────────────────────────────
--- meta_youtube_video.id 는 BIGSERIAL이라 삽입 순서대로 1,2,3,4 가 됨
+-- ── active_meta_video ───────────────────────────────────────
+-- meta_video.id 는 BIGSERIAL이라 삽입 순서대로 1,2,3,4 가 됨
 -- 1 = youtube_samsung_official / yt_vid_001
 -- 2 = youtube_samsung_official / yt_vid_002
 -- 3 = youtube_samsung_official / yt_vid_003
 -- 4 = user_hbm_video_collection / yt_vid_002
 
-INSERT INTO active_meta_youtube (
+INSERT INTO active_meta_video (
     meta_id, collected_at,
     view_count, like_count, comment_count,
     delta_views, delta_likes, delta_comments
@@ -344,9 +344,9 @@ INSERT INTO active_meta_youtube (
 -- meta_id=4 (user_hbm / yt_vid_002): 이 데이터셋은 07-06에 추가됨 → 수집 타임라인 독립
 (4, '2026-07-06 10:00:00+09',   3848000, 41280,  908,   NULL,  NULL,  NULL);
 
--- ── meta_naver_news ───────────────────────────────────────────
+-- ── meta_news ───────────────────────────────────────────
 
-INSERT INTO meta_naver_news (
+INSERT INTO meta_news (
     dataset_id, article_url,
     title, description, content, has_content,
     publisher, naver_url, published_at,
@@ -396,13 +396,13 @@ INSERT INTO meta_naver_news (
     '머신러닝'
 );
 
--- ── active_meta_naver_news ────────────────────────────────────
--- meta_naver_news.id 는 BIGSERIAL이라 삽입 순서대로 1,2,3 이 됨
+-- ── active_meta_news ────────────────────────────────────
+-- meta_news.id 는 BIGSERIAL이라 삽입 순서대로 1,2,3 이 됨
 -- 1 = naver_news_ai / 연합뉴스 HBM4 기사 (Naver 호스팅)
 -- 2 = naver_news_ai / 조선비즈 데이터센터 기사 (Naver 호스팅)
 -- 3 = naver_news_ai / 서울경제 경량화 기사 (외부 기사 — 행 없음)
 
-INSERT INTO active_meta_naver_news (
+INSERT INTO active_meta_news (
     meta_id, collected_at,
     comment_count, expose_count, reply_count,
     delta_comments
@@ -415,11 +415,11 @@ INSERT INTO active_meta_naver_news (
 (2, '2026-07-06 11:00:00+09',  15,  14,  2,     7);
 -- meta_id=3 (서울경제 외부 기사): is_naver_hosted=FALSE → 행 없음
 
--- ── meta_naver_shopping ───────────────────────────────────────
+-- ── meta_shopping_insight ───────────────────────────────────────
 -- naver_shopping_insight 데이터셋의 카테고리 정보
 -- anchor: 패션의류 (50000148) — 모든 배치에 포함되는 기준 카테고리
 
-INSERT INTO meta_naver_shopping (
+INSERT INTO meta_shopping_insight (
     dataset_id, category_id, category_name,
     cat_level1, cat_level2, cat_level3, cat_level4,
     is_anchor
@@ -430,11 +430,11 @@ INSERT INTO meta_naver_shopping (
 ('naver_shopping_insight', '50000204', '패션잡화',           '패션잡화', NULL,     NULL,    NULL,  FALSE),
 ('naver_shopping_insight', '50000167', '스포츠/레저',        '스포츠/레저', NULL,   NULL,    NULL,  FALSE);
 
--- ── active_meta_naver_shopping ────────────────────────────────
--- meta_naver_shopping.id 삽입 순서: 1=패션의류(anchor), 2=남성의류, 3=여성의류, 4=패션잡화, 5=스포츠/레저
+-- ── active_meta_shopping_insight ────────────────────────────────
+-- meta_shopping_insight.id 삽입 순서: 1=패션의류(anchor), 2=남성의류, 3=여성의류, 4=패션잡화, 5=스포츠/레저
 -- 성별·연령 조합 샘플: 전체('') × 전체('') 1조합만 예시로 삽입
 
-INSERT INTO active_meta_naver_shopping (
+INSERT INTO active_meta_shopping_insight (
     meta_id, period, gender, age,
     raw_ratio, anchor_raw_ratio, normalized_ratio,
     scale_factor, pseudo_volume,
@@ -454,10 +454,10 @@ INSERT INTO active_meta_naver_shopping (
 (4, '2026-07-07', '', '',  22.0, 100.0,  22.0, 1.0123,  22.27, 1, '2026-07-07 02:00:51+09'),
 (5, '2026-07-07', '', '',  16.3, 100.0,  16.3, 1.0123,  16.50, 1, '2026-07-07 02:00:51+09');
 
--- ── meta_naver_persona ────────────────────────────────────────
+-- ── meta_persona_insight ────────────────────────────────────────
 -- naver_persona_insight 데이터셋의 카테고리 정보 (anchor 개념 없음)
 
-INSERT INTO meta_naver_persona (
+INSERT INTO meta_persona_insight (
     dataset_id, category_id, category_name,
     cat_level1, cat_level2, cat_level3, cat_level4
 ) VALUES
@@ -466,11 +466,11 @@ INSERT INTO meta_naver_persona (
 ('naver_persona_insight', '50001421', '패션의류>여성의류', '패션의류', '여성의류', NULL, NULL),
 ('naver_persona_insight', '50000204', '패션잡화',         '패션잡화', NULL,     NULL, NULL);
 
--- ── active_meta_naver_persona ─────────────────────────────────
--- meta_naver_persona.id 삽입 순서: 1=패션의류, 2=남성의류, 3=여성의류, 4=패션잡화
+-- ── active_meta_persona_insight ─────────────────────────────────
+-- meta_persona_insight.id 삽입 순서: 1=패션의류, 2=남성의류, 3=여성의류, 4=패션잡화
 -- 샘플: meta_id=1(패션의류) × 2일 × 2성별 × 2연령(20대·30대) = 8행
 
-INSERT INTO active_meta_naver_persona (
+INSERT INTO active_meta_persona_insight (
     meta_id, period, gender, age,
     gender_ratio, age_ratio,
     gender_scale, age_scale,
@@ -488,10 +488,10 @@ INSERT INTO active_meta_naver_persona (
 (1, '2026-07-07', 'f', '20', 57.8, 29.1, 1.0089, 1.0042, 58.31, 29.22, 1703.81, '2026-07-07 03:01:14+09'),
 (1, '2026-07-07', 'f', '30', 57.8, 36.2, 1.0089, 1.0042, 58.31, 36.35, 2119.57, '2026-07-07 03:01:14+09');
 
--- ── meta_naver_blog ───────────────────────────────────────────
+-- ── meta_blog ───────────────────────────────────────────
 -- naver_blog_ai 데이터셋의 게시물 3건 (본문 스크래핑 실패 1건 포함)
 
-INSERT INTO meta_naver_blog (
+INSERT INTO meta_blog (
     dataset_id, post_url,
     title, description, content, has_content,
     blogger_name, blogger_link,
@@ -535,11 +535,11 @@ INSERT INTO meta_naver_blog (
     '2026-06-28 18:00:00+09', '반도체 전망'
 );
 
--- ── active_meta_naver_blog ────────────────────────────────────
+-- ── active_meta_blog ────────────────────────────────────
 -- ADR-006으로 확정된 스키마 — 반응(공감 등) 수만 수집 (댓글 수·조회수는 미수집).
--- meta_naver_blog.id 삽입 순서: 1=HBM4, 2=Galaxy AI, 3=반도체 전망(본문 없음, 행 없음)
+-- meta_blog.id 삽입 순서: 1=HBM4, 2=Galaxy AI, 3=반도체 전망(본문 없음, 행 없음)
 
-INSERT INTO active_meta_naver_blog (
+INSERT INTO active_meta_blog (
     meta_id, collected_at,
     reaction_count, reaction_breakdown,
     delta_reactions

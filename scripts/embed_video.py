@@ -1,9 +1,9 @@
 """
-meta_naver_news_vec 테이블에 임베딩을 생성하여 삽입하는 스크립트.
+meta_video_vec 테이블에 임베딩을 생성하여 삽입하는 스크립트.
 
 실행 방법:
     pip install sentence-transformers psycopg2-binary pgvector
-    python scripts/embed_naver_news.py
+    python scripts/embed_video.py
 
 환경변수:
     DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
@@ -11,6 +11,7 @@ meta_naver_news_vec 테이블에 임베딩을 생성하여 삽입하는 스크�
 """
 
 import os
+import json
 import psycopg2
 from dotenv import load_dotenv
 
@@ -28,18 +29,18 @@ def get_conn():
 
 
 def build_embed_text(row: dict) -> str:
-    """임베딩 입력 텍스트 구성: title + description (+ content 앞 500자).
+    """임베딩 입력 텍스트 구성: title + description + 태그.
 
-    형식은 meta_naver_news_vec.sql의 embed_text 컬럼 설명과 일치시킨다.
-    has_content=FALSE(본문 스크래핑 실패)인 기사는 title + description만 사용.
+    형식은 meta_video_vec.sql의 embed_text 컬럼 설명과 일치시킨다.
     """
     title = row.get("title") or ""
     description = row.get("description") or ""
-    parts = [title, description]
-    if row.get("has_content"):
-        content = row.get("content") or ""
-        parts.append(content[:500])
-    return ". ".join(p for p in parts if p)
+    tags = row.get("tags") or []
+    if isinstance(tags, str):
+        tags = json.loads(tags)
+    tag_str = ", ".join(tags) if tags else ""
+    parts = [p for p in [title, description, f"태그: {tag_str}" if tag_str else ""] if p]
+    return ". ".join(parts)
 
 
 def main():
@@ -53,29 +54,29 @@ def main():
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT id, title, description, content, has_content
-        FROM meta_naver_news
+        SELECT id, title, description, tags
+        FROM meta_video
     """)
     rows = cur.fetchall()
     columns = [desc[0] for desc in cur.description]
-    articles = [dict(zip(columns, row)) for row in rows]
-    print(f"대상 기사: {len(articles)}건")
+    videos = [dict(zip(columns, row)) for row in rows]
+    print(f"대상 영상: {len(videos)}건")
 
     # DELETE → INSERT (개발 단계: 항상 재생성)
-    cur.execute("DELETE FROM meta_naver_news_vec")
+    cur.execute("DELETE FROM meta_video_vec")
     print("기존 임베딩 삭제 완료")
 
-    for a in articles:
-        embed_text = build_embed_text(a)
+    for v in videos:
+        embed_text = build_embed_text(v)
         vec = model.encode(embed_text)       # shape (768,)
         vec_list = vec.tolist()
 
         cur.execute("""
-            INSERT INTO meta_naver_news_vec (meta_id, embedding, embed_text, model_name)
+            INSERT INTO meta_video_vec (meta_id, embedding, embed_text, model_name)
             VALUES (%s, %s::vector, %s, %s)
-        """, (a["id"], str(vec_list), embed_text, model_name))
+        """, (v["id"], str(vec_list), embed_text, model_name))
 
-        print(f"  [meta_id={a['id']}] {a['title'][:40]!r} 임베딩 완료 — dim={len(vec_list)}")
+        print(f"  [meta_id={v['id']}] {v['title'][:40]!r} 임베딩 완료 — dim={len(vec_list)}")
 
     conn.commit()
     cur.close()

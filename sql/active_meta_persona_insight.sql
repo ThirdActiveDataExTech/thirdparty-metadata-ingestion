@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════
--- active_meta_naver_persona : 네이버 쇼핑 인사이트 Persona 일별 지수
+-- active_meta_persona_insight : 네이버 쇼핑 인사이트 Persona 일별 지수
 -- source_type = 'persona_insight'
 --
 -- 수집 주기마다 INSERT (누적 이력, UPSERT). 1행 = 카테고리 × 날짜 × 성별 × 연령.
@@ -21,15 +21,15 @@
 --   age_scale    : 6개 연령 시리즈 stacking(6N 포인트)으로 계산
 --   → shopping_insight의 단일 scale_factor와 달리 성별/연령 축을 분리해서 보정
 -- ═══════════════════════════════════════════════════════════════
-DROP TABLE IF EXISTS active_meta_naver_persona;
+DROP TABLE IF EXISTS active_meta_persona_insight;
 
-CREATE TABLE active_meta_naver_persona (
+CREATE TABLE active_meta_persona_insight (
 
     -- ── 식별 ──────────────────────────────────────────────────
     id              BIGSERIAL PRIMARY KEY,
 
     meta_id         BIGINT NOT NULL
-                    REFERENCES meta_naver_persona(id) ON DELETE CASCADE,
+                    REFERENCES meta_persona_insight(id) ON DELETE CASCADE,
 
     period          DATE NOT NULL,
     -- 측정 날짜
@@ -84,8 +84,8 @@ CREATE TABLE active_meta_naver_persona (
     collected_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_active_persona_meta      ON active_meta_naver_persona(meta_id);
-CREATE INDEX idx_active_persona_period    ON active_meta_naver_persona(period DESC);
-CREATE INDEX idx_active_persona_gender    ON active_meta_naver_persona(gender);
-CREATE INDEX idx_active_persona_age       ON active_meta_naver_persona(age);
-CREATE INDEX idx_active_persona_collected ON active_meta_naver_persona(collected_at DESC);
+CREATE INDEX idx_active_persona_meta      ON active_meta_persona_insight(meta_id);
+CREATE INDEX idx_active_persona_period    ON active_meta_persona_insight(period DESC);
+CREATE INDEX idx_active_persona_gender    ON active_meta_persona_insight(gender);
+CREATE INDEX idx_active_persona_age       ON active_meta_persona_insight(age);
+CREATE INDEX idx_active_persona_collected ON active_meta_persona_insight(collected_at DESC);

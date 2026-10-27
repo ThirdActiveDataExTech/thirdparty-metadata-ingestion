@@ -81,7 +81,7 @@ def _build_video(dataset_id: str, ctx: Dict[str, Any]) -> Dict[str, Any]:
             """
             SELECT id, video_id, title, description, published_at, channel_id,
                    channel_title, tags, is_removed, has_transcript
-            FROM meta_youtube_video WHERE dataset_id = %s ORDER BY id
+            FROM meta_video WHERE dataset_id = %s ORDER BY id
             """,
             (dataset_id,),
         )
@@ -92,8 +92,8 @@ def _build_video(dataset_id: str, ctx: Dict[str, Any]) -> Dict[str, Any]:
             """
             SELECT a.meta_id, a.collected_at, a.view_count, a.like_count, a.comment_count,
                    a.delta_views, a.delta_likes, a.delta_comments
-            FROM active_meta_youtube a
-            JOIN meta_youtube_video m ON m.id = a.meta_id
+            FROM active_meta_video a
+            JOIN meta_video m ON m.id = a.meta_id
             WHERE m.dataset_id = %s
             ORDER BY a.meta_id, a.collected_at
             """,
@@ -150,7 +150,7 @@ def _build_news(dataset_id: str, ctx: Dict[str, Any]) -> Dict[str, Any]:
             """
             SELECT id, article_url, title, description, publisher, published_at,
                    search_keyword, is_removed, has_content
-            FROM meta_naver_news WHERE dataset_id = %s ORDER BY id
+            FROM meta_news WHERE dataset_id = %s ORDER BY id
             """,
             (dataset_id,),
         )
@@ -161,8 +161,8 @@ def _build_news(dataset_id: str, ctx: Dict[str, Any]) -> Dict[str, Any]:
             """
             SELECT a.meta_id, a.collected_at, a.comment_count, a.expose_count,
                    a.reply_count, a.delta_comments
-            FROM active_meta_naver_news a
-            JOIN meta_naver_news m ON m.id = a.meta_id
+            FROM active_meta_news a
+            JOIN meta_news m ON m.id = a.meta_id
             WHERE m.dataset_id = %s
             ORDER BY a.meta_id, a.collected_at
             """,
@@ -212,7 +212,7 @@ def _build_blog(dataset_id: str, ctx: Dict[str, Any]) -> Dict[str, Any]:
             """
             SELECT id, post_url, title, description, blogger_name, published_at,
                    search_keyword, is_removed, has_content, platform
-            FROM meta_naver_blog WHERE dataset_id = %s ORDER BY id
+            FROM meta_blog WHERE dataset_id = %s ORDER BY id
             """,
             (dataset_id,),
         )
@@ -222,8 +222,8 @@ def _build_blog(dataset_id: str, ctx: Dict[str, Any]) -> Dict[str, Any]:
         cur.execute(
             """
             SELECT a.meta_id, a.collected_at, a.reaction_count, a.reaction_breakdown, a.delta_reactions
-            FROM active_meta_naver_blog a
-            JOIN meta_naver_blog m ON m.id = a.meta_id
+            FROM active_meta_blog a
+            JOIN meta_blog m ON m.id = a.meta_id
             WHERE m.dataset_id = %s
             ORDER BY a.meta_id, a.collected_at
             """,
@@ -273,8 +273,8 @@ def _build_shopping(dataset_id: str, ctx: Dict[str, Any]) -> Dict[str, Any]:
             """
             SELECT m.id, m.category_id, m.category_name, m.is_anchor,
                    a.period, a.gender, a.age, a.raw_ratio, a.scale_factor, a.pseudo_volume
-            FROM meta_naver_shopping m
-            LEFT JOIN active_meta_naver_shopping a ON a.meta_id = m.id
+            FROM meta_shopping_insight m
+            LEFT JOIN active_meta_shopping_insight a ON a.meta_id = m.id
             WHERE m.dataset_id = %s
             ORDER BY m.id, a.period, a.gender, a.age
             """,
@@ -358,8 +358,8 @@ def _build_persona(dataset_id: str, ctx: Dict[str, Any]) -> Dict[str, Any]:
             SELECT m.id, m.category_id, m.category_name,
                    a.period, a.gender, a.age, a.gender_ratio, a.age_ratio,
                    a.gender_scale, a.age_scale, a.gender_pv, a.age_pv, a.persona_index
-            FROM meta_naver_persona m
-            LEFT JOIN active_meta_naver_persona a ON a.meta_id = m.id
+            FROM meta_persona_insight m
+            LEFT JOIN active_meta_persona_insight a ON a.meta_id = m.id
             WHERE m.dataset_id = %s
             ORDER BY m.id, a.period, a.gender, a.age
             """,

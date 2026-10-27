@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════
--- active_meta_naver_news : Naver 뉴스 기사 시계열 통계 스냅샷
+-- active_meta_news : Naver 뉴스 기사 시계열 통계 스냅샷
 -- is_naver_hosted=TRUE 인 기사만 수집 가능
 -- 외부 기사(is_naver_hosted=FALSE)는 row 없음
 -- 수집 주기마다 INSERT (누적 이력, UPDATE 없음)
@@ -12,16 +12,16 @@
 -- 댓글 수 : 비공식 API(apis.naver.com/commentBox/cbox5) 로 수집 가능
 --           → 댓글 수(comment_count)·노출 댓글 수(expose_count)·답글 수(reply_count) 만 수집
 -- ═══════════════════════════════════════════════════════════════
-DROP TABLE IF EXISTS active_meta_naver_news;
+DROP TABLE IF EXISTS active_meta_news;
 
-CREATE TABLE active_meta_naver_news (
+CREATE TABLE active_meta_news (
 
     -- ── 식별 ──────────────────────────────────────────────────
     id              BIGSERIAL PRIMARY KEY,
 
     meta_id         BIGINT NOT NULL
-                    REFERENCES meta_naver_news(id) ON DELETE CASCADE,
-    -- meta_naver_news.id FK (dataset+기사 조합)
+                    REFERENCES meta_news(id) ON DELETE CASCADE,
+    -- meta_news.id FK (dataset+기사 조합)
     -- is_naver_hosted=TRUE 인 기사만 행 존재
 
     collected_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -47,5 +47,5 @@ CREATE TABLE active_meta_naver_news (
 );
 
 -- 조회용 인덱스
-CREATE INDEX idx_active_news_meta      ON active_meta_naver_news(meta_id);
-CREATE INDEX idx_active_news_collected ON active_meta_naver_news(collected_at DESC);
+CREATE INDEX idx_active_news_meta      ON active_meta_news(meta_id);
+CREATE INDEX idx_active_news_collected ON active_meta_news(collected_at DESC);

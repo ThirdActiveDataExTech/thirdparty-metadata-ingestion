@@ -6,9 +6,9 @@
 -- 왜 DROP → CREATE가 아니라 ALTER인가
 --   sql/*.sql은 개발 단계 규칙상 DROP → CREATE 형식을 유지한다(파일이 정본).
 --   그러나 2026-10-27 현재 DB에는 재생성 비용이 큰 데이터가 쌓여 있다.
---     meta_youtube_video 29,026행      → 재수집 시 YouTube API 쿼터 대량 소모
---     active_meta_youtube 32,540행     → 과거 시점 관측값은 재수집으로 복원 불가
---     active_meta_naver_shopping 72,914행 (601일치) → 현재 유일한 실제 시계열
+--     meta_video 29,026행      → 재수집 시 YouTube API 쿼터 대량 소모
+--     active_meta_video 32,540행     → 과거 시점 관측값은 재수집으로 복원 불가
+--     active_meta_shopping_insight 72,914행 (601일치) → 현재 유일한 실제 시계열
 --   dcat_dataset을 DROP하면 CASCADE로 위가 전부 삭제된다.
 --   또한 dataset_id URN 전환이 예정돼 있어, 지금 재구축하면 두 번 버리게 된다.
 --   → 전면 재구축은 URN 규칙 확정 시 seeds.sql 갱신과 함께 한 번에 수행한다.
@@ -39,10 +39,10 @@ UPDATE dcat_dataset SET source = publisher WHERE source IS NULL;
 
 -- 기존 slug를 external_ids에 보존한다 — URN 전환 후 추적 경로가 된다.
 -- 와이즈넛 형식('네임스페이스:값' 문자열 배열)을 그대로 지키고 자체 네임스페이스를 쓴다.
---   예) ["mobigen-legacy:youtube_samsung_official"]
+--   예) ["legacy:youtube_samsung_official"]
 -- 포털 번호와 섞이지 않고, 값이 데이터셋마다 유일해 중복 병합 판정에 오탐을 만들지 않는다.
 UPDATE dcat_dataset
-   SET external_ids = jsonb_build_array('mobigen-legacy:' || dataset_id)
+   SET external_ids = jsonb_build_array('legacy:' || dataset_id)
  WHERE external_ids IS NULL;
 
 ALTER TABLE dcat_dataset ALTER COLUMN source SET NOT NULL;
@@ -90,11 +90,11 @@ COMMIT;
 --   REFERENCES dcat_dataset(dataset_id) ON UPDATE CASCADE ON DELETE CASCADE;
 -- ALTER TABLE dcat_dataset_vec    DROP CONSTRAINT dcat_dataset_vec_dataset_id_fkey, ...
 -- ALTER TABLE dataset_credentials DROP CONSTRAINT dataset_credentials_dataset_id_fkey, ...
--- ALTER TABLE meta_youtube_video  DROP CONSTRAINT meta_youtube_video_dataset_id_fkey, ...
--- ALTER TABLE meta_naver_news     ...
--- ALTER TABLE meta_naver_blog     ...
--- ALTER TABLE meta_naver_shopping ...
--- ALTER TABLE meta_naver_persona  ...
+-- ALTER TABLE meta_video  DROP CONSTRAINT meta_video_dataset_id_fkey, ...
+-- ALTER TABLE meta_news     ...
+-- ALTER TABLE meta_blog     ...
+-- ALTER TABLE meta_shopping_insight ...
+-- ALTER TABLE meta_persona_insight  ...
 --
 -- 주의: FK가 전파해도 아래는 따로 처리해야 한다.
 --   - SeaweedFS 오브젝트 키 (raw/{source_type}/{dataset_id}/, jsonld/.../{dataset_id}.jsonld)

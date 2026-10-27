@@ -14,18 +14,18 @@ from src.database.db import get_conn
 
 # active_meta_* → (상위 meta 테이블, 날짜 컬럼)
 ACTIVE_SOURCES = {
-    "active_meta_naver_shopping": ("meta_naver_shopping", "period"),
-    "active_meta_naver_persona": ("meta_naver_persona", "period"),
-    "active_meta_youtube": ("meta_youtube_video", "collected_at"),
-    "active_meta_naver_news": ("meta_naver_news", "collected_at"),
-    "active_meta_naver_blog": ("meta_naver_blog", "collected_at"),
+    "active_meta_shopping_insight": ("meta_shopping_insight", "period"),
+    "active_meta_persona_insight": ("meta_persona_insight", "period"),
+    "active_meta_video": ("meta_video", "collected_at"),
+    "active_meta_news": ("meta_news", "collected_at"),
+    "active_meta_blog": ("meta_blog", "collected_at"),
 }
 
 # 본문/자막 확보율 점검 대상 — (테이블, 플래그 컬럼, 본문 컬럼)
 CONTENT_SOURCES = [
-    ("meta_naver_news", "has_content", "content"),
-    ("meta_naver_blog", "has_content", "content"),
-    ("meta_youtube_video", "has_transcript", "description"),
+    ("meta_news", "has_content", "content"),
+    ("meta_blog", "has_content", "content"),
+    ("meta_video", "has_transcript", "description"),
 ]
 
 MIN_OVERLAP_DAYS = 30  # 시계열 상관 산출 최소 겹침 (04_Implementation_Methods.md §3 B2)

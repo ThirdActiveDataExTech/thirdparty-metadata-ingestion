@@ -2,7 +2,7 @@
 
 architecture/05_Object_Storage_Export.md §4.4 — 이 기능(자체 STT) 배포 이전에 이미
 수집된 영상은 트랜스크립트가 없다. 정기 수집(`run()`)은 신규 발견 영상만 처리하므로
-이 기존 백로그는 별도로 훑어야 한다. `meta_youtube_video.has_transcript=FALSE`인
+이 기존 백로그는 별도로 훑어야 한다. `meta_video.has_transcript=FALSE`인
 영상을 대상으로 하며, 재실행해도 이미 처리된 영상은 건너뛴다(멱등).
 
 사용 예:
@@ -18,7 +18,7 @@ import time
 from datetime import datetime, timezone
 
 from src.collectors import youtube_transcript_collector
-from src.database import meta_youtube
+from src.database import meta_video
 from src.storage import raw_export
 
 
@@ -28,7 +28,7 @@ def main():
     parser.add_argument("--dataset-id", default=None, help="지정 시 그 데이터셋만, 생략 시 전체")
     args = parser.parse_args()
 
-    targets = meta_youtube.get_untranscribed(dataset_id=args.dataset_id, limit=args.limit)
+    targets = meta_video.get_untranscribed(dataset_id=args.dataset_id, limit=args.limit)
     if not targets:
         print("처리할 대상 없음 (모든 영상에 이미 트랜스크립트가 있거나 대상 데이터셋에 영상 없음)")
         return
@@ -47,7 +47,7 @@ def main():
 
         segments, full_text, language = result
         raw_export.write_video_transcript(video["dataset_id"], video["video_id"], segments, full_text, language)
-        meta_youtube.mark_transcribed(video["id"], transcribed_at=datetime.now(timezone.utc))
+        meta_video.mark_transcribed(video["id"], transcribed_at=datetime.now(timezone.utc))
         print(
             f"[{i}/{len(targets)}] {video['video_id']} — 성공 ({elapsed:.1f}s, "
             f"language={language}, segments={len(segments)})"

@@ -29,12 +29,12 @@ CREATE TABLE data_registry (
     -- ── 저장 위치 : PostgreSQL ────────────────────────────────
     pg_meta_table       TEXT,
     -- 소스별 상세 메타 테이블명 (Schema.org 기반)
-    -- 예) 'meta_naver_shopping', 'meta_youtube_video', 'meta_naver_news'
+    -- 예) 'meta_shopping_insight', 'meta_video', 'meta_news'
     -- NULL = 아직 테이블 미생성
 
     pg_active_table     TEXT,
     -- 소스별 시계열 Active Meta 테이블명
-    -- 예) 'active_meta_naver_shopping', 'active_meta_youtube'
+    -- 예) 'active_meta_shopping_insight', 'active_meta_video'
     -- NULL = 아직 테이블 미생성
 
     -- ── 저장 위치 : Vector ────────────────────────────────────

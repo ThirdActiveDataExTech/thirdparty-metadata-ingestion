@@ -1,15 +1,15 @@
 -- ═══════════════════════════════════════════════════════════════
--- meta_naver_blog : Naver 블로그 게시물 단위 메타데이터 (Schema.org BlogPosting 기반)
+-- meta_blog : Naver 블로그 게시물 단위 메타데이터 (Schema.org BlogPosting 기반)
 -- dcat_dataset 1개에 N개의 게시물 행이 연결됨
 -- 같은 post_url이라도 dataset_id가 다르면 별도 행으로 관리
 -- (동일 게시물을 여러 데이터셋에서 독립적으로 추적하기 위함)
 --
 -- Naver 블로그 검색 API(openapi.naver.com/v1/search/blog.json) 기준 필드.
--- meta_naver_news와 동일한 패턴(article_url→post_url, has_content 등)을 따른다.
+-- meta_news와 동일한 패턴(article_url→post_url, has_content 등)을 따른다.
 -- ═══════════════════════════════════════════════════════════════
-DROP TABLE IF EXISTS meta_naver_blog CASCADE;
+DROP TABLE IF EXISTS meta_blog CASCADE;
 
-CREATE TABLE meta_naver_blog (
+CREATE TABLE meta_blog (
 
     -- ── 식별 ──────────────────────────────────────────────────
     id                  BIGSERIAL PRIMARY KEY,
@@ -58,7 +58,7 @@ CREATE TABLE meta_naver_blog (
     -- 미수집)은 platform='naver'일 때만 해당
 
     -- ── Naver 블로그 ID 파싱값 (platform='naver'일 때만 채움) ────
-    -- 반응(공감 등) 수 수집의 키 — ADR-006으로 확정, active_meta_naver_blog 연동 완료
+    -- 반응(공감 등) 수 수집의 키 — ADR-006으로 확정, active_meta_blog 연동 완료
     blog_id              TEXT,
     -- 네이버 블로그 ID (예: 'techblog_samsung')
 
@@ -88,8 +88,8 @@ CREATE TABLE meta_naver_blog (
 );
 
 -- 조회용 인덱스
-CREATE INDEX idx_meta_blog_dataset    ON meta_naver_blog(dataset_id);
-CREATE INDEX idx_meta_blog_published  ON meta_naver_blog(published_at DESC);
-CREATE INDEX idx_meta_blog_blogger    ON meta_naver_blog(blog_id);
-CREATE INDEX idx_meta_blog_removed    ON meta_naver_blog(is_removed);
-CREATE INDEX idx_meta_blog_platform   ON meta_naver_blog(platform);
+CREATE INDEX idx_meta_blog_dataset    ON meta_blog(dataset_id);
+CREATE INDEX idx_meta_blog_published  ON meta_blog(published_at DESC);
+CREATE INDEX idx_meta_blog_blogger    ON meta_blog(blog_id);
+CREATE INDEX idx_meta_blog_removed    ON meta_blog(is_removed);
+CREATE INDEX idx_meta_blog_platform   ON meta_blog(platform);

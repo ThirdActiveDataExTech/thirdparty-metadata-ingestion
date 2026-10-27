@@ -1,4 +1,4 @@
-"""meta_youtube_video / active_meta_youtube 읽기·쓰기 헬퍼."""
+"""meta_video / active_meta_video 읽기·쓰기 헬퍼."""
 
 import json
 from datetime import datetime
@@ -13,7 +13,7 @@ def get_existing_video_ids(dataset_id: str) -> Dict[str, int]:
     try:
         cur = conn.cursor()
         cur.execute(
-            "SELECT video_id, id FROM meta_youtube_video WHERE dataset_id = %s",
+            "SELECT video_id, id FROM meta_video WHERE dataset_id = %s",
             (dataset_id,),
         )
         return {row[0]: row[1] for row in cur.fetchall()}
@@ -21,13 +21,13 @@ def get_existing_video_ids(dataset_id: str) -> Dict[str, int]:
         conn.close()
 
 
-def insert_meta_youtube_video(dataset_id: str, video: Dict[str, Any]) -> int:
+def insert_meta_video(dataset_id: str, video: Dict[str, Any]) -> int:
     conn = get_conn()
     try:
         cur = conn.cursor()
         cur.execute(
             """
-            INSERT INTO meta_youtube_video (
+            INSERT INTO meta_video (
                 dataset_id, video_id, title, description, published_at,
                 channel_id, channel_title, tags, category_id, topic_categories,
                 duration, duration_seconds, definition,
@@ -61,7 +61,7 @@ def get_latest_active_meta(meta_id: int) -> Optional[Dict[str, Any]]:
         cur.execute(
             """
             SELECT view_count, like_count, comment_count
-            FROM active_meta_youtube
+            FROM active_meta_video
             WHERE meta_id = %s
             ORDER BY collected_at DESC
             LIMIT 1
@@ -76,7 +76,7 @@ def get_latest_active_meta(meta_id: int) -> Optional[Dict[str, Any]]:
         conn.close()
 
 
-def insert_active_meta_youtube(
+def insert_active_meta_video(
     meta_id: int,
     stats: Dict[str, Any],
     delta_views: Optional[int] = None,
@@ -88,7 +88,7 @@ def insert_active_meta_youtube(
         cur = conn.cursor()
         cur.execute(
             """
-            INSERT INTO active_meta_youtube
+            INSERT INTO active_meta_video
                 (meta_id, view_count, like_count, comment_count,
                  delta_views, delta_likes, delta_comments)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -108,7 +108,7 @@ def mark_removed(meta_id: int, removed_at: datetime) -> None:
     try:
         cur = conn.cursor()
         cur.execute(
-            "UPDATE meta_youtube_video SET is_removed = TRUE, removed_at = %s WHERE id = %s",
+            "UPDATE meta_video SET is_removed = TRUE, removed_at = %s WHERE id = %s",
             (removed_at, meta_id),
         )
         conn.commit()
@@ -121,7 +121,7 @@ def mark_transcribed(meta_id: int, transcribed_at: datetime) -> None:
     try:
         cur = conn.cursor()
         cur.execute(
-            "UPDATE meta_youtube_video SET has_transcript = TRUE, transcribed_at = %s WHERE id = %s",
+            "UPDATE meta_video SET has_transcript = TRUE, transcribed_at = %s WHERE id = %s",
             (transcribed_at, meta_id),
         )
         conn.commit()
@@ -137,7 +137,7 @@ def get_untranscribed(dataset_id: Optional[str] = None, limit: int = 100) -> Lis
         if dataset_id is not None:
             cur.execute(
                 """
-                SELECT id, dataset_id, video_id FROM meta_youtube_video
+                SELECT id, dataset_id, video_id FROM meta_video
                 WHERE has_transcript = FALSE AND is_removed = FALSE AND dataset_id = %s
                 ORDER BY id LIMIT %s
                 """,
@@ -146,7 +146,7 @@ def get_untranscribed(dataset_id: Optional[str] = None, limit: int = 100) -> Lis
         else:
             cur.execute(
                 """
-                SELECT id, dataset_id, video_id FROM meta_youtube_video
+                SELECT id, dataset_id, video_id FROM meta_video
                 WHERE has_transcript = FALSE AND is_removed = FALSE
                 ORDER BY id LIMIT %s
                 """,

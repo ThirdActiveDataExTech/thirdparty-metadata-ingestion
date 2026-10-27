@@ -47,22 +47,22 @@
 
 ---
 
-## 0. (완료) `meta_naver_shopping` / `meta_naver_persona` / `meta_naver_blog` 스키마 리뷰
+## 0. (완료) `meta_shopping_insight` / `meta_persona_insight` / `meta_blog` 스키마 리뷰
 
 **사용자 최종 확인 완료 (2026-07-23).** 세 테이블의 컬럼 목록은 대화 중 정리해서 전달함 —
-필요하면 `sql/meta_naver_shopping.sql`, `sql/meta_naver_persona.sql`, `sql/meta_naver_blog.sql`
+필요하면 `sql/meta_shopping_insight.sql`, `sql/meta_persona_insight.sql`, `sql/meta_blog.sql`
 직접 참조.
 
 검토 중 발견된 비대칭:
-- [x] ~~`meta_naver_shopping`의 `cat_level1~4` 예시 주석이 `meta_naver_persona`엔 없던 문제~~
-      — `meta_naver_persona.sql`에 동일한 예시 주석 추가 완료, 롤백 트랜잭션 검증 완료.
-- [x] ~~`meta_naver_blog`에 플랫폼 구분 컬럼 없던 문제 (2-2)~~ — **결정: `platform TEXT NOT NULL`
+- [x] ~~`meta_shopping_insight`의 `cat_level1~4` 예시 주석이 `meta_persona_insight`엔 없던 문제~~
+      — `meta_persona_insight.sql`에 동일한 예시 주석 추가 완료, 롤백 트랜잭션 검증 완료.
+- [x] ~~`meta_blog`에 플랫폼 구분 컬럼 없던 문제 (2-2)~~ — **결정: `platform TEXT NOT NULL`
       컬럼 추가** (news의 `is_naver_hosted` boolean 패턴 대신 `platform` 문자열 채택 — Naver
       블로그 검색 API가 blog.naver.com 외 티스토리/브런치/워드프레스/Blogger 등도 반환하기
       때문에 단순 boolean보다 세분화가 필요하다고 판단). `blog_id`/`log_no`/ADR-006 댓글·공감
-      수집 가능 여부는 `platform='naver'`일 때만 해당하도록 주석 갱신. `sql/meta_naver_blog.sql`,
+      수집 가능 여부는 `platform='naver'`일 때만 해당하도록 주석 갱신. `sql/meta_blog.sql`,
       `sql/seeds.sql`(기존 3건 모두 `platform='naver'`) 반영·검증 완료.
-- [x] ~~`meta_naver_blog.updated_at`과 `meta_naver_shopping`/`meta_naver_persona`의
+- [x] ~~`meta_blog.updated_at`과 `meta_shopping_insight`/`meta_persona_insight`의
       `updated_at`이 갱신 계기가 다른 문제~~ — **결정: 스키마 변경 불필요, 문서화로 해결.**
       우연한 불일치가 아니라 §4의 발견형(아이템 자체가 재수집·변경 대상)/선언형(카테고리는
       거의 불변, 실측값은 `active_meta_*` 자식 테이블) 구분의 직접적 결과. 각 컬럼 주석이
@@ -87,11 +87,11 @@
 - [x] ~~DDL 18개 파일 순서대로 서버에 재실행~~ — 완료 (`dataset_credentials.sql` 포함)
 - [x] ~~`sql/seeds.sql` 재실행~~ — 완료
 - [x] ~~`sql/views.sql` 재실행~~ — 완료 (DDL 적용 순서 7단계, 기존 체크리스트에 누락돼 있었음)
-- [x] ~~임베딩 스크립트 재실행~~ — `embed_datasets.py`(6건), `embed_youtube_videos.py`(4건),
-      `embed_naver_news.py`(3건) 전부 완료. 이 시점엔 `embed_naver_blog.py`가 아직 없어서
+- [x] ~~임베딩 스크립트 재실행~~ — `embed_datasets.py`(6건), `embed_video.py`(4건),
+      `embed_news.py`(3건) 전부 완료. 이 시점엔 `embed_blog.py`가 아직 없어서
       제외했었는데, 바로 다음(§4)에서 작성·실행까지 완료함(3건)
-- [x] ~~검색 스크립트로 sanity check~~ — `search_datasets.py`/`search_youtube_videos.py`/
-      `search_naver_news.py` 전부 실행, 결과 의미상 정상 확인
+- [x] ~~검색 스크립트로 sanity check~~ — `search_datasets.py`/`search_video.py`/
+      `search_news.py` 전부 실행, 결과 의미상 정상 확인
 - [x] ~~`dataset-credentials-encryption-key` K8s Secret 실제 생성 (§9 참조)~~ —
       **완료 (2026-07-28)**. `RnD-analyzer01`에서 `sudo kubectl`로 `metadata-ingestion`
       네임스페이스 생성 + Secret 생성(`openssl rand -base64 32` 값), 같은 값을 `.env`의
@@ -106,13 +106,13 @@
 
 ## 2. 남은 스키마·API 결정
 
-- [x] ~~2-1. `active_meta_naver_blog` 실제 API 조사 → ADR-006~~ — **결정 완료 (2026-07-24).**
+- [x] ~~2-1. `active_meta_blog` 실제 API 조사 → ADR-006~~ — **결정 완료 (2026-07-24).**
       실제 API 호출로 검증: 반응(공감 등) 수는 `blog.like.naver.com`으로 브라우저 자동화
       없이 수집 가능(확인), 댓글 수는 cbox 계열 API가 정책적으로 차단됨(보류), 조회수는
       페이지에 아예 노출 안 됨(미수집). [ADR-006](adr/006_Naver_Blog_Metrics_Decision.md)
-      작성 완료. `sql/active_meta_naver_blog.sql` 재설계(`reaction_count`/
+      작성 완료. `sql/active_meta_blog.sql` 재설계(`reaction_count`/
       `reaction_breakdown`/`delta_reactions`), 실 서버 반영·검증 완료.
-- [x] ~~2-2. `meta_naver_blog` 플랫폼 구분 확인~~ — **결정: `platform TEXT` 컬럼 추가.**
+- [x] ~~2-2. `meta_blog` 플랫폼 구분 확인~~ — **결정: `platform TEXT` 컬럼 추가.**
       2-1 실측 때 같이 재검증 완료: 다양한 검색어 350건 샘플에서 blog.naver.com 96%,
       tistory.com 3.4%, 커스텀 도메인 소수 확인 — GPT 근거 추정이 아니라 실측으로 확정.
 - [x] ~~2-3. `dcat_dataset.publisher` NOT NULL 여부~~ — **결정: NOT NULL로 변경.** 모든
@@ -135,7 +135,7 @@
       user와 동일한 등록 핸들러를 그대로 사용 (`dataset_origin`만 다름, 서버가 caller 권한으로
       결정 — 클라이언트가 값을 보내면 안 됨). 04_Collection_Pipeline_Operations.md §5.7 반영 완료.
 - [x] ~~2-9. 발견형 소스의 영상/기사/게시물 삭제 감지~~ — **결정: `is_removed`/`removed_at`
-      컬럼으로 표시, 행은 보존.** `meta_youtube_video`/`meta_naver_news`/`meta_naver_blog`
+      컬럼으로 표시, 행은 보존.** `meta_video`/`meta_news`/`meta_blog`
       DDL에 반영 완료(오늘), 롤백 트랜잭션으로 검증 완료. 04_Collection_Pipeline_Operations.md
       §6.1 반영 완료.
 - [x] ~~2-10. `next_collect_at` 드리프트 허용 여부~~ — **결정: 드리프트 허용.** "수집 종료
@@ -155,21 +155,21 @@
 | # | 대상 | 종류 | 상태 | 설명 |
 |---|------|------|------|------|
 | 1 | `dcat_dataset.owner_id` | 컬럼 추가 | ✅ **컬럼 완료 · FK는 보류** | 데이터셋을 만든 사용자 식별. 컬럼(`TEXT`, FK 없음) 추가·검증 완료. 계정 테이블은 다른 담당자가 같은 `datagokr` DB 안에 별도 스키마로 만들 예정이나 스펙 미정 — 테이블 생성 후 FK 추가 필요 (8번 항목과 연결) |
-| 2 | `meta_youtube_video.is_removed` / `removed_at` | 컬럼 추가 | ✅ **완료** | 채널에서 사라진 영상 표시. 오늘 DDL 반영·검증 완료 |
-| 3 | `meta_naver_news.is_removed` / `removed_at` | 컬럼 추가 | ✅ **완료** | 위와 동일 (발견형 소스라 동일 패턴 적용) |
-| 4 | `meta_naver_blog.is_removed` / `removed_at` | 컬럼 추가 | ✅ **완료** | 위와 동일 |
+| 2 | `meta_video.is_removed` / `removed_at` | 컬럼 추가 | ✅ **완료** | 채널에서 사라진 영상 표시. 오늘 DDL 반영·검증 완료 |
+| 3 | `meta_news.is_removed` / `removed_at` | 컬럼 추가 | ✅ **완료** | 위와 동일 (발견형 소스라 동일 패턴 적용) |
+| 4 | `meta_blog.is_removed` / `removed_at` | 컬럼 추가 | ✅ **완료** | 위와 동일 |
 | 5 | `dataset_credentials` | 신규 테이블 | ✅ **완료** | 데이터셋별 API Key 암호화 저장 (pgcrypto). 유일하게 "새 테이블"이 필요했던 항목 |
 | 6 | `UNIQUE(owner_id, source_type, ...)` 형태의 중복 방지 제약 | 인덱스 추가 | ⏳ 보류 (owner_id 컬럼은 생겼으나 실사용 데이터 필요) | 04_Collection_Pipeline_Operations.md §7.2~7.3. JSONB `subjects` 배열 특성상 완벽한 DB 제약보다 애플리케이션 레벨 체크에 가까울 수 있음 |
-| 7 | `meta_naver_news.updated_at` | 컬럼 추가 | ✅ **완료** | 예전 세션에서 발견한 비대칭 — `meta_youtube_video`/`meta_naver_blog`와 동일 패턴으로 추가, 실 서버 반영 완료 (2026-07-23) |
+| 7 | `meta_news.updated_at` | 컬럼 추가 | ✅ **완료** | 예전 세션에서 발견한 비대칭 — `meta_video`/`meta_blog`와 동일 패턴으로 추가, 실 서버 반영 완료 (2026-07-23) |
 | 8 | 계정 테이블 FK 연결 (`dcat_dataset.owner_id → <계정테이블>.<PK>`) | FK 제약 추가 (조건부, 남의 팀 일정 종속) | ⏳ **계정 테이블 스펙 확정 대기** | 계정/인증 테이블은 metadata-ingestion 팀이 아니라 플랫폼 다른 담당자가 만듦. 같은 `datagokr` DB 안에 별도 스키마로 생성될 예정(2026-07-23 기준 계획 단계, 테이블명·PK 타입 미정). 생성되면: (1) 실제로 같은 database인지 재확인 (다른 database면 FK 불가), (2) PK 타입에 맞춰 `owner_id` 타입 조정, (3) FK 추가 |
 
 ---
 
 ## 4. (거의 완료) 임베딩 파이프라인 마무리
 
-- [x] ~~`scripts/embed_naver_blog.py` 작성~~ — `embed_naver_news.py` 패턴 그대로 이식 완료
-      (`meta_naver_blog` → `meta_naver_blog_vec`, has_content 분기 동일)
-- [x] ~~`scripts/search_naver_blog.py` 작성~~ — `search_naver_news.py` 패턴으로 완료
+- [x] ~~`scripts/embed_blog.py` 작성~~ — `embed_news.py` 패턴 그대로 이식 완료
+      (`meta_blog` → `meta_blog_vec`, has_content 분기 동일)
+- [x] ~~`scripts/search_blog.py` 작성~~ — `search_news.py` 패턴으로 완료
 - [x] ~~실행해 검증~~ — 실 서버에 3건 임베딩 완료, 검색 결과 의미상 정상 확인 (2026-07-23)
 - [ ] **증분 임베딩 방식으로 전환** — 지금 `embed_*.py`는 전체 DELETE→INSERT 재계산 방식이라
       새 데이터셋이 동적으로 등록돼도 자동으로 임베딩되지 않음 (수동 재실행 필요). §6.2
@@ -206,12 +206,12 @@
   YouTube 썸네일 4필드 재검토) (3) 실행 시점(수집 run() 인라인 vs 별도 배치).
 - 필드별 로컬 처리방식·확신도(🟢🟡🔴) 상세 표는 memory `project-metadata-ingestion-status` 참조.
 
-- [ ] `meta_youtube_video_ai` DDL 작성 — 필드 후보 정리 완료(트랜스크립트 5개 +
+- [ ] `meta_video_ai` DDL 작성 — 필드 후보 정리 완료(트랜스크립트 5개 +
       썸네일 VLM 4개, `datagokr_schema.md` 참조). P03/P06 연구 주제와 직결.
-- [ ] `meta_naver_news_ai` 필드 후보 정리 완료(신규, `datagokr_schema.md` 참조:
+- [ ] `meta_news_ai` 필드 후보 정리 완료(신규, `datagokr_schema.md` 참조:
       ai_summary/keywords/entities/related_companies/sentiment/topic_category/is_opinion) —
       DDL은 아직. 실측 검증 필요(어느 필드가 실제로 유용한 정확도가 나오는지)
-- [ ] `meta_naver_blog_ai` 필드 후보 정리 완료(신규, `datagokr_schema.md` 참조:
+- [ ] `meta_blog_ai` 필드 후보 정리 완료(신규, `datagokr_schema.md` 참조:
       ai_summary/keywords/content_type/sponsored_likelihood/product_mentions/sentiment/
       pros_cons) — DDL은 아직. 실측 검증 필요
 
@@ -282,7 +282,7 @@
       재조회하는 방식(`OVERLAP_DAYS=14`)으로 수정 — 겹치는 구간이 생겨 inter_scale이
       실제로 계산되고, 부수 효과로 Airflow 중단 후 재개 시 최대 14일 결측도 자동
       보충됨. `naver_shopping_pipeline.py`/`naver_persona_pipeline.py`/
-      `meta_naver_shopping.py`/`meta_naver_persona.py`(`get_last_period` 추가) 수정.
+      `meta_shopping_insight.py`/`meta_persona_insight.py`(`get_last_period` 추가) 수정.
       실 API로 검증 — scale_factor가 1.0이 아닌 실제 값(예: 1.130692)으로 계산됨 확인.
       04_Collection_Pipeline_Operations.md §6.2에 원칙 기록
 - [x] ~~레거시와 재검증 후 추가 발견: API 호출 rate limiting 누락 + 최초 수집 소급
@@ -334,7 +334,7 @@
       [architecture/05_Object_Storage_Export.md](architecture/05_Object_Storage_Export.md)):
       `src/storage/{s3_client,raw_export,jsonld_export}.py` 신설, `src/collectors/
       youtube_transcript_collector.py`(yt-dlp+faster-whisper 자체 STT) 신설, 5개
-      파이프라인 전부 통합, `meta_youtube_video.has_transcript`/`transcribed_at`
+      파이프라인 전부 통합, `meta_video.has_transcript`/`transcribed_at`
       컬럼 추가, `scripts/backfill_youtube_transcripts.py`(기존 영상 백로그 소급
       처리용) 작성. 실 서버로 `naver_news_ai`(뉴스, 1815개 raw txt + JSON-LD 1개)와
       `youtube_samsung_official`(트랜스크립트 JSON) 둘 다 검증 완료 — `data_registry.
@@ -447,7 +447,7 @@
 
 ### 7.4 규칙/방식 변경
 
-- [ ] **이력 지표 delta**: 신규 정형(active_meta_dataset/file)은 **관측값만 저장 + 뷰(LAG) 계산**. 기존 비정형(active_meta_youtube/news/blog)은 현재 delta 저장 유지 → 리스크 낮아 **후속 전환**(여유 시 delta 컬럼 제거 + 뷰 교체). `v_*_latest`(최신값+증감) 인터페이스는 양쪽 동일 유지. (근거: 누락·백필 시 저장 delta가 틀어짐)
+- [ ] **이력 지표 delta**: 신규 정형(active_meta_dataset/file)은 **관측값만 저장 + 뷰(LAG) 계산**. 기존 비정형(active_meta_video/news/blog)은 현재 delta 저장 유지 → 리스크 낮아 **후속 전환**(여유 시 delta 컬럼 제거 + 뷰 교체). `v_*_latest`(최신값+증감) 인터페이스는 양쪽 동일 유지. (근거: 누락·백필 시 저장 delta가 틀어짐)
 - [ ] **지표 표현 EAV**: `metric_code` EAV는 신규 정형에만. 기존 비정형은 타입 컬럼(wide) 유지. shopping/persona 다차원·blog `reaction_breakdown`은 전용 테이블 유지(평면 EAV 부적합)
 - [ ] **재수집 시점 분리**: `next_registration_date`(원천 공시, dcat_dataset_attr) vs `next_collect_at`(스케줄러, data_registry). 비정형은 `next_registration_date` NULL. `next_collect_at` 산정 로직을 "예정일 우선 → `accrual_periodicity` → 주간"으로 보강
 - [ ] **컬럼 관계 산출**: 데이터셋 관계로 후보 쌍을 좁힌 뒤 종속 산출(와이즈넛 알고리즘 — 조합 폭발·도메인 교차 오탐 방지). 우리 스키마 조치 없음
@@ -572,7 +572,7 @@
 - 🟩 **최소선**: **1개 소스(YouTube)**에 대해 **요약·키워드 2개 필드**만 생성·적재.
 - 🟦 **목표선**: §5 전체 필드(개체명·분류·감성 + 썸네일 VLM 4종), 전 소스 확대.
 - **구현**
-  - `sql/meta_youtube_video_ai.sql` — `meta_id FK, ai_summary TEXT, ai_keywords TEXT[], model TEXT, generated_at`
+  - `sql/meta_video_ai.sql` — `meta_id FK, ai_summary TEXT, ai_keywords TEXT[], model TEXT, generated_at`
   - `src/ai_meta/runner.py` — 입력(트랜스크립트/본문) → **C7 어댑터**로 모델 호출 → INSERT
   - 실패 시 레코드 스킵 + 재처리 대상 플래그(완전 실패로 파이프라인 중단 금지)
 - **완료 기준**: 1개 데이터셋 전량에 AI 메타 생성, 검색 결과에 노출

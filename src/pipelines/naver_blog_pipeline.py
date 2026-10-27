@@ -17,7 +17,7 @@ from typing import Any, Dict, Optional
 
 from src.collectors import naver_blog_collector
 from src.database import dcat
-from src.database import meta_naver_blog
+from src.database import meta_blog
 from src.database.db import get_conn
 from src.storage import jsonld_export, raw_export
 
@@ -40,7 +40,7 @@ def _current_item_count(dataset_id: str) -> int:
     conn = get_conn()
     try:
         cur = conn.cursor()
-        cur.execute("SELECT count(*) FROM meta_naver_blog WHERE dataset_id = %s", (dataset_id,))
+        cur.execute("SELECT count(*) FROM meta_blog WHERE dataset_id = %s", (dataset_id,))
         return cur.fetchone()[0]
     finally:
         conn.close()
@@ -52,8 +52,8 @@ def _current_row_count(dataset_id: str) -> int:
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT count(*) FROM active_meta_naver_blog a
-            JOIN meta_naver_blog m ON m.id = a.meta_id
+            SELECT count(*) FROM active_meta_blog a
+            JOIN meta_blog m ON m.id = a.meta_id
             WHERE m.dataset_id = %s
             """,
             (dataset_id,),
@@ -72,7 +72,7 @@ def _collect_reaction_stats(meta_id: int, post: Dict[str, Any], prev: Optional[D
     delta = None
     if prev is not None and prev.get("reaction_count") is not None:
         delta = stats["reaction_count"] - prev["reaction_count"]
-    meta_naver_blog.insert_active_meta_naver_blog(
+    meta_blog.insert_active_meta_blog(
         meta_id, stats["reaction_count"], stats["reaction_breakdown"], delta,
     )
 
@@ -86,7 +86,7 @@ def run(dataset_id: str, triggered_by: str) -> None:
     started_at = datetime.now(timezone.utc)
 
     try:
-        existing = meta_naver_blog.get_existing_posts(dataset_id)
+        existing = meta_blog.get_existing_posts(dataset_id)
         remote_urls = set()
         processed_this_run = set()
         new_count, updated_count, removed_count = 0, 0, 0
@@ -105,7 +105,7 @@ def run(dataset_id: str, triggered_by: str) -> None:
                     content = naver_blog_collector.fetch_post_content(
                         url, post["platform"], post["blog_id"], post["log_no"]
                     )
-                    meta_id = meta_naver_blog.insert_meta_naver_blog(dataset_id, post, content)
+                    meta_id = meta_blog.insert_meta_blog(dataset_id, post, content)
                     _collect_reaction_stats(meta_id, post, prev=None)
                     if content:
                         try:
@@ -120,8 +120,8 @@ def run(dataset_id: str, triggered_by: str) -> None:
                     new_count += 1
                 else:
                     meta_id = existing[url]["id"]
-                    meta_naver_blog.clear_removed_flag(meta_id)
-                    prev = meta_naver_blog.get_latest_active_meta(meta_id)
+                    meta_blog.clear_removed_flag(meta_id)
+                    prev = meta_blog.get_latest_active_meta(meta_id)
                     _collect_reaction_stats(meta_id, post, prev)
                     updated_count += 1
 
@@ -130,7 +130,7 @@ def run(dataset_id: str, triggered_by: str) -> None:
                 continue
             still_exists = naver_blog_collector.check_post_still_exists(url)
             if still_exists is False:
-                meta_naver_blog.mark_removed(info["id"], removed_at=datetime.now(timezone.utc))
+                meta_blog.mark_removed(info["id"], removed_at=datetime.now(timezone.utc))
                 removed_count += 1
 
         ended_at = datetime.now(timezone.utc)

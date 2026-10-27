@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════
--- active_meta_naver_blog : Naver 블로그 게시물 시계열 통계 스냅샷
+-- active_meta_blog : Naver 블로그 게시물 시계열 통계 스냅샷
 -- ADR-006(Naver 블로그 수집 가능 지표 결정)으로 확정 — 반응(공감 등) 수만 수집.
 -- 댓글 수·조회수는 실제 API 검증 결과 수집 불가/보류로 결론 (ADR-006 참조).
 --
@@ -7,17 +7,17 @@
 -- (Referer 헤더만 있으면 세션/쿠키 없이 수집 가능 — 뉴스의 "추천 반응"과 달리
 --  브라우저 자동화 불필요)
 -- ═══════════════════════════════════════════════════════════════
-DROP TABLE IF EXISTS active_meta_naver_blog;
+DROP TABLE IF EXISTS active_meta_blog;
 
-CREATE TABLE active_meta_naver_blog (
+CREATE TABLE active_meta_blog (
 
     -- ── 식별 ──────────────────────────────────────────────────
     id              BIGSERIAL PRIMARY KEY,
 
     meta_id         BIGINT NOT NULL
-                    REFERENCES meta_naver_blog(id) ON DELETE CASCADE,
-    -- meta_naver_blog.id FK (dataset+게시물 조합)
-    -- meta_naver_blog.platform='naver'인 게시물만 행 존재 (news의 is_naver_hosted와 유사한 제약)
+                    REFERENCES meta_blog(id) ON DELETE CASCADE,
+    -- meta_blog.id FK (dataset+게시물 조합)
+    -- meta_blog.platform='naver'인 게시물만 행 존재 (news의 is_naver_hosted와 유사한 제약)
 
     collected_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
 
@@ -37,5 +37,5 @@ CREATE TABLE active_meta_naver_blog (
 );
 
 -- 조회용 인덱스
-CREATE INDEX idx_active_blog_meta      ON active_meta_naver_blog(meta_id);
-CREATE INDEX idx_active_blog_collected ON active_meta_naver_blog(collected_at DESC);
+CREATE INDEX idx_active_blog_meta      ON active_meta_blog(meta_id);
+CREATE INDEX idx_active_blog_collected ON active_meta_blog(collected_at DESC);

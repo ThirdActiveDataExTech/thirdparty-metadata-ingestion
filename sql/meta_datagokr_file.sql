@@ -5,7 +5,7 @@
 -- 정형(엑셀/CSV 등 파일) 데이터의 파일 단위 정보 + 항목별 기술통계량.
 -- v0.1 OpenSearch datasets 인덱스를 흡수한 테이블이다.
 --
--- 비정형과의 대응: 비정형의 아이템 계층(meta_youtube_video, meta_naver_news 등)에
+-- 비정형과의 대응: 비정형의 아이템 계층(meta_video, meta_news 등)에
 -- 해당하는 자리이나, 테이블은 공유하지 않고 정형 전용으로 둔다.
 -- ═══════════════════════════════════════════════════════════════
 DROP TABLE IF EXISTS meta_datagokr_file CASCADE;

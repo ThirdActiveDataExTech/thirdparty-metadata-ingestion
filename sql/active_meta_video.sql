@@ -1,19 +1,19 @@
 -- ═══════════════════════════════════════════════════════════════
--- active_meta_youtube : YouTube 영상 시계열 통계 스냅샷
--- meta_youtube_video.id (= dataset+video 조합) 단위로 추적
+-- active_meta_video : YouTube 영상 시계열 통계 스냅샷
+-- meta_video.id (= dataset+video 조합) 단위로 추적
 -- 같은 video가 여러 dataset에 속하면 각각 독립적인 수집 타임라인 유지
 -- 수집 주기마다 INSERT (누적 이력, UPDATE 없음)
 -- ═══════════════════════════════════════════════════════════════
-DROP TABLE IF EXISTS active_meta_youtube;
+DROP TABLE IF EXISTS active_meta_video;
 
-CREATE TABLE active_meta_youtube (
+CREATE TABLE active_meta_video (
 
     -- ── 식별 ──────────────────────────────────────────────────
     id              BIGSERIAL PRIMARY KEY,
 
     meta_id         BIGINT NOT NULL
-                    REFERENCES meta_youtube_video(id) ON DELETE CASCADE,
-    -- meta_youtube_video.id FK (dataset+video 조합을 가리킴)
+                    REFERENCES meta_video(id) ON DELETE CASCADE,
+    -- meta_video.id FK (dataset+video 조합을 가리킴)
     -- ON DELETE CASCADE: 영상 메타 삭제 시 통계 이력도 함께 삭제
 
     collected_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -41,5 +41,5 @@ CREATE TABLE active_meta_youtube (
 );
 
 -- 조회용 인덱스
-CREATE INDEX idx_active_yt_meta       ON active_meta_youtube(meta_id);
-CREATE INDEX idx_active_yt_collected  ON active_meta_youtube(collected_at DESC);
+CREATE INDEX idx_active_yt_meta       ON active_meta_video(meta_id);
+CREATE INDEX idx_active_yt_collected  ON active_meta_video(collected_at DESC);

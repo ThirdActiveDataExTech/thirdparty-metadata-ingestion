@@ -19,7 +19,7 @@ from typing import Any, Dict, Optional
 
 from src.collectors import naver_news_collector
 from src.database import dcat
-from src.database import meta_naver_news
+from src.database import meta_news
 from src.database.db import get_conn
 from src.storage import jsonld_export, raw_export
 
@@ -42,7 +42,7 @@ def _current_item_count(dataset_id: str) -> int:
     conn = get_conn()
     try:
         cur = conn.cursor()
-        cur.execute("SELECT count(*) FROM meta_naver_news WHERE dataset_id = %s", (dataset_id,))
+        cur.execute("SELECT count(*) FROM meta_news WHERE dataset_id = %s", (dataset_id,))
         return cur.fetchone()[0]
     finally:
         conn.close()
@@ -54,8 +54,8 @@ def _current_row_count(dataset_id: str) -> int:
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT count(*) FROM active_meta_naver_news a
-            JOIN meta_naver_news m ON m.id = a.meta_id
+            SELECT count(*) FROM active_meta_news a
+            JOIN meta_news m ON m.id = a.meta_id
             WHERE m.dataset_id = %s
             """,
             (dataset_id,),
@@ -74,7 +74,7 @@ def _collect_comment_stats(meta_id: int, article: Dict[str, Any], prev: Optional
     delta = None
     if prev is not None and prev.get("comment_count") is not None and stats.get("comment_count") is not None:
         delta = stats["comment_count"] - prev["comment_count"]
-    meta_naver_news.insert_active_meta_naver_news(
+    meta_news.insert_active_meta_news(
         meta_id, stats.get("comment_count"), stats.get("expose_count"), stats.get("reply_count"), delta,
     )
 
@@ -88,7 +88,7 @@ def run(dataset_id: str, triggered_by: str) -> None:
     started_at = datetime.now(timezone.utc)
 
     try:
-        existing = meta_naver_news.get_existing_articles(dataset_id)
+        existing = meta_news.get_existing_articles(dataset_id)
         remote_urls = set()
         processed_this_run = set()  # 여러 검색어에 같은 기사가 매칭돼도 1회만 처리
         new_count, updated_count, removed_count = 0, 0, 0
@@ -105,7 +105,7 @@ def run(dataset_id: str, triggered_by: str) -> None:
 
                 if url not in existing:
                     content = naver_news_collector.fetch_article_content(url)
-                    meta_id = meta_naver_news.insert_meta_naver_news(dataset_id, article, content)
+                    meta_id = meta_news.insert_meta_news(dataset_id, article, content)
                     _collect_comment_stats(meta_id, article, prev=None)
                     if content:
                         try:
@@ -123,8 +123,8 @@ def run(dataset_id: str, triggered_by: str) -> None:
                     new_count += 1
                 else:
                     meta_id = existing[url]["id"]
-                    meta_naver_news.clear_removed_flag(meta_id)
-                    prev = meta_naver_news.get_latest_active_meta(meta_id)
+                    meta_news.clear_removed_flag(meta_id)
+                    prev = meta_news.get_latest_active_meta(meta_id)
                     _collect_comment_stats(meta_id, article, prev)
                     updated_count += 1
 
@@ -135,7 +135,7 @@ def run(dataset_id: str, triggered_by: str) -> None:
                 continue
             still_exists = naver_news_collector.check_article_still_exists(url)
             if still_exists is False:
-                meta_naver_news.mark_removed(info["id"], removed_at=datetime.now(timezone.utc))
+                meta_news.mark_removed(info["id"], removed_at=datetime.now(timezone.utc))
                 removed_count += 1
 
         ended_at = datetime.now(timezone.utc)

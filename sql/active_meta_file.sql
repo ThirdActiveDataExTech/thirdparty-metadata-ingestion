@@ -6,8 +6,8 @@
 -- 포털 다운로드 수 환류 대상.
 --
 -- 적용 범위: 정형 전용이다. meta_datagokr_file을 참조하므로 비정형 아이템
--- (영상·기사·게시물)은 적재할 수 없으며, 비정형은 기존 active_meta_youtube /
--- active_meta_naver_news / active_meta_naver_blog 등을 그대로 사용한다.
+-- (영상·기사·게시물)은 적재할 수 없으며, 비정형은 기존 active_meta_video /
+-- active_meta_news / active_meta_blog 등을 그대로 사용한다.
 -- ═══════════════════════════════════════════════════════════════
 DROP TABLE IF EXISTS active_meta_file CASCADE;
 

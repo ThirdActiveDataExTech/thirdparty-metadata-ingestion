@@ -182,7 +182,7 @@ CREATE TABLE dcat_dataset (
     -- 비정형은 원천 포털 번호가 없어 "미사용"으로 회신했으나, dataset_id를 URN으로
     -- 전환할 때 **기존 slug 보존처로 사용한다** (2026-10-27 결정).
     -- 형식은 동일하게 유지한다 — 객체가 아니라 '네임스페이스:값' 문자열 배열:
-    --   예) ["mobigen-legacy:youtube_samsung_official"]
+    --   예) ["legacy:youtube_samsung_official"]
     -- 자체 네임스페이스를 쓰므로 포털 번호와 섞이지 않고, 값이 데이터셋마다 유일해
     -- 와이즈넛의 중복 병합 판정에 오탐을 만들지 않는다.
 

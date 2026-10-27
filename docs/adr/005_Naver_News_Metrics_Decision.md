@@ -2,13 +2,13 @@
 
 > **Date:** 2026-07-06
 > **Status:** Accepted
-> **결론:** `active_meta_naver_news` 에 **댓글 수(comment_count, expose_count, reply_count)만** 수집
+> **결론:** `active_meta_news` 에 **댓글 수(comment_count, expose_count, reply_count)만** 수집
 
 ---
 
 ## 배경
 
-`active_meta_naver_news` 설계 시 YouTube의 조회수·좋아요처럼 시계열로 추적할 수 있는
+`active_meta_news` 설계 시 YouTube의 조회수·좋아요처럼 시계열로 추적할 수 있는
 뉴스 기사 지표가 무엇인지 조사했다.
 
 ---
@@ -65,13 +65,13 @@ api = (f"https://apis.naver.com/commentBox/cbox5/web_naver_list_jsonp.json"
 | 추천 반응 | ❌ 미수집 (보류) | 브라우저 자동화 필요, 현 단계 오버스펙 |
 | 댓글 수 | ✅ 수집 | 비공식 API로 안정적 수집 가능 |
 
-외부 기사(`is_naver_hosted=FALSE`)는 `active_meta_naver_news` 행을 생성하지 않으며,
-뷰(`v_meta_naver_news_latest`)에서 댓글 컬럼이 NULL로 표시된다.
+외부 기사(`is_naver_hosted=FALSE`)는 `active_meta_news` 행을 생성하지 않으며,
+뷰(`v_meta_news_latest`)에서 댓글 컬럼이 NULL로 표시된다.
 
 ---
 
 ## 향후 검토
 
 추천 반응 수집이 필요하다고 판단될 경우 Playwright 기반 수집 코드를 별도로 개발한다.
-이 경우 `active_meta_naver_news`에 `reaction_useful`, `reaction_wow`, `reaction_touched`,
+이 경우 `active_meta_news`에 `reaction_useful`, `reaction_wow`, `reaction_touched`,
 `reaction_analytical`, `reaction_recommend` 컬럼을 추가하는 방향으로 확장한다.

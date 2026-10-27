@@ -68,6 +68,6 @@ python scripts/register_dataset.py shopping_insight \
 - 콜렉터: `src/collectors/naver_shopping_collector.py`(API 호출+배칭),
   `src/collectors/naver_datalab_scale.py`(intra/inter_scale 계산, persona와 공유)
 - 파이프라인: `src/pipelines/naver_shopping_pipeline.py`
-- DB: `src/database/meta_naver_shopping.py`
-- DDL: `sql/meta_naver_shopping.sql`, `sql/active_meta_naver_shopping.sql`
+- DB: `src/database/meta_shopping_insight.py`
+- DDL: `sql/meta_shopping_insight.sql`, `sql/active_meta_shopping_insight.sql`
 - 레거시 원본(포팅 참고용): `3amd/naver_shopping_insight.py`

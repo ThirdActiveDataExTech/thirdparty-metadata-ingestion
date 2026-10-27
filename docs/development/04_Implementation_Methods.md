@@ -49,7 +49,7 @@
 
 | 단계 | 실제 동작 |
 |---|---|
-| `scripts/embed_naver_news.py` 등 | 본문을 `content[:500]`으로 절단 |
+| `scripts/embed_news.py` 등 | 본문을 `content[:500]`으로 절단 |
 | mpnet 모델 | 다시 **128토큰**(한국어 약 200~300자)에서 절단 |
 | 결과 | 500자를 넘겨도 **앞 200~300자만 벡터에 반영**, 나머지는 조용히 버려짐 |
 
@@ -63,7 +63,7 @@
 
 - 저장 위치: S3 `raw/video/{dataset_id}/{video_id}.json` (내부에 `segments[]` + `full_text`)
 - DB에는 `has_transcript` / `transcribed_at` **플래그만**. 행 자체가 없음
-- `scripts/embed_youtube_videos.py`는 `title + description + tags`만 임베딩 — **자막 미사용**
+- `scripts/embed_video.py`는 `title + description + tags`만 임베딩 — **자막 미사용**
 
 가장 긴 비정형 자산인데 활용 경로가 없다. 이걸 연결하면 **B1(특징 추출)·C1(검색)·A2(AI 메타)가 동시에 설득력을 얻는다.**
 STT는 이미 `faster-whisper`(CPU, int8, small)로 동작 중이므로 추가 비용이 없다.
@@ -162,7 +162,7 @@ STT는 이미 `faster-whisper`(CPU, int8, small)로 동작 중이므로 추가 �
 
 **설계 변경 제안 — 소스별 분리 → 공통 단일 테이블**
 
-기존 문서(`infrastructure/03_PostgreSQL.md`)는 `meta_youtube_video_ai` / `meta_naver_news_ai` / `meta_naver_blog_ai`로 **소스별 분리**를 예정해 뒀다. **공통 단일 테이블 + JSONB를 권고한다.**
+기존 문서(`infrastructure/03_PostgreSQL.md`)는 `meta_video_ai` / `meta_news_ai` / `meta_blog_ai`로 **소스별 분리**를 예정해 뒀다. **공통 단일 테이블 + JSONB를 권고한다.**
 
 | 방식 | 장점 | 단점 |
 |---|---|---|

@@ -2,7 +2,7 @@
 
 runbooks/04_Add_New_Dataset_Existing_Source.md의 "A. 신규 데이터셋 생성" 절차를
 그대로 구현한다. §6.3(프론트엔드 등록 API)와 Airflow가 아직 없어서, 지금은 이
-스크립트로 dcat_dataset/data_registry(+선언형이면 meta_naver_shopping/persona)를
+스크립트로 dcat_dataset/data_registry(+선언형이면 meta_shopping_insight/persona)를
 채우고 `python -m src.main run <dataset_id>`로 수동 트리거하는 게 실질적인
 등록~수집 경로다.
 
@@ -41,32 +41,32 @@ DECLARATIVE_TYPES = {"shopping_insight", "persona_insight"}
 _SOURCE_META = {
     "video": {
         "publisher": "YouTube",
-        "pg_meta_table": "meta_youtube_video",
-        "pg_active_table": "active_meta_youtube",
+        "pg_meta_table": "meta_video",
+        "pg_active_table": "active_meta_video",
         "license": "https://developers.google.com/youtube/terms/api-services-tos",
     },
     "news": {
         "publisher": "Naver",
-        "pg_meta_table": "meta_naver_news",
-        "pg_active_table": "active_meta_naver_news",
+        "pg_meta_table": "meta_news",
+        "pg_active_table": "active_meta_news",
         "license": "https://developers.naver.com/notice/terms",
     },
     "blog": {
         "publisher": "Naver",
-        "pg_meta_table": "meta_naver_blog",
-        "pg_active_table": "active_meta_naver_blog",
+        "pg_meta_table": "meta_blog",
+        "pg_active_table": "active_meta_blog",
         "license": "https://developers.naver.com/notice/terms",
     },
     "shopping_insight": {
         "publisher": "Naver",
-        "pg_meta_table": "meta_naver_shopping",
-        "pg_active_table": "active_meta_naver_shopping",
+        "pg_meta_table": "meta_shopping_insight",
+        "pg_active_table": "active_meta_shopping_insight",
         "license": "https://developers.naver.com/notice/terms",
     },
     "persona_insight": {
         "publisher": "Naver",
-        "pg_meta_table": "meta_naver_persona",
-        "pg_active_table": "active_meta_naver_persona",
+        "pg_meta_table": "meta_persona_insight",
+        "pg_active_table": "active_meta_persona_insight",
         "license": "https://developers.naver.com/notice/terms",
     },
 }
@@ -177,19 +177,19 @@ def register_declarative(args) -> str:
         # 첫 번째로 고른 카테고리를 자동으로 anchor 지정 (§4.3, shopping만 해당 컬럼 있음)
         table = meta["pg_meta_table"]
         for i, (cat_id, cat_name) in enumerate(categories):
-            if table == "meta_naver_shopping":
+            if table == "meta_shopping_insight":
                 cur.execute(
                     """
-                    INSERT INTO meta_naver_shopping
+                    INSERT INTO meta_shopping_insight
                         (dataset_id, category_id, category_name, is_anchor)
                     VALUES (%s, %s, %s, %s)
                     """,
                     (dataset_id, cat_id, cat_name, i == 0),
                 )
-            else:  # meta_naver_persona — anchor 개념 없음
+            else:  # meta_persona_insight — anchor 개념 없음
                 cur.execute(
                     """
-                    INSERT INTO meta_naver_persona (dataset_id, category_id, category_name)
+                    INSERT INTO meta_persona_insight (dataset_id, category_id, category_name)
                     VALUES (%s, %s, %s)
                     """,
                     (dataset_id, cat_id, cat_name),

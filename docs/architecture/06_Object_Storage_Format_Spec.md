@@ -50,8 +50,8 @@ metadata-ingestion/                         ← SeaweedFS 버킷
 | source_type | 경로 | 형식 | 내용 | 비고 |
 |---|---|---|---|---|
 | **video** | `raw/video/{dataset_id}/{video_id}.json` | JSON | STT(자막) 세그먼트 | `video_id`=유튜브 영상 ID. 자막 보유(`has_transcript`) 시에만 |
-| **news** | `raw/news/{dataset_id}/{item_id}.txt` | 텍스트 | 기사 본문 | `item_id`=`meta_naver_news` PK. 본문 보유 시에만 |
-| **blog** | `raw/blog/{dataset_id}/{item_id}.txt` | 텍스트 | 블로그 본문 | `item_id`=`meta_naver_blog` PK |
+| **news** | `raw/news/{dataset_id}/{item_id}.txt` | 텍스트 | 기사 본문 | `item_id`=`meta_news` PK. 본문 보유 시에만 |
+| **blog** | `raw/blog/{dataset_id}/{item_id}.txt` | 텍스트 | 블로그 본문 | `item_id`=`meta_blog` PK |
 | **shopping_insight** | `raw/shopping_insight/{dataset_id}/{dataset_id}.csv` | CSV | 전체 시계열 지표 | 매 수집마다 전체 덮어쓰기. 시계열의 **정본** |
 | **persona_insight** | `raw/persona_insight/{dataset_id}/{dataset_id}.csv` | CSV | 전체 시계열 지표 | 상동 |
 

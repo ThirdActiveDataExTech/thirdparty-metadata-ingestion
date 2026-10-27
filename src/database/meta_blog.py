@@ -1,4 +1,4 @@
-"""meta_naver_blog / active_meta_naver_blog 읽기·쓰기 헬퍼."""
+"""meta_blog / active_meta_blog 읽기·쓰기 헬퍼."""
 
 import json
 from datetime import datetime
@@ -15,7 +15,7 @@ def get_existing_posts(dataset_id: str) -> Dict[str, Dict[str, Any]]:
         cur.execute(
             """
             SELECT post_url, id, platform, blog_id, log_no, is_removed
-            FROM meta_naver_blog WHERE dataset_id = %s
+            FROM meta_blog WHERE dataset_id = %s
             """,
             (dataset_id,),
         )
@@ -30,13 +30,13 @@ def get_existing_posts(dataset_id: str) -> Dict[str, Dict[str, Any]]:
         conn.close()
 
 
-def insert_meta_naver_blog(dataset_id: str, post: Dict[str, Any], content: Optional[str]) -> int:
+def insert_meta_blog(dataset_id: str, post: Dict[str, Any], content: Optional[str]) -> int:
     conn = get_conn()
     try:
         cur = conn.cursor()
         cur.execute(
             """
-            INSERT INTO meta_naver_blog (
+            INSERT INTO meta_blog (
                 dataset_id, post_url, title, description, content, has_content,
                 blogger_name, blogger_link, platform, blog_id, log_no,
                 published_at, search_keyword
@@ -62,7 +62,7 @@ def mark_removed(meta_id: int, removed_at: datetime) -> None:
     try:
         cur = conn.cursor()
         cur.execute(
-            "UPDATE meta_naver_blog SET is_removed = TRUE, removed_at = %s WHERE id = %s",
+            "UPDATE meta_blog SET is_removed = TRUE, removed_at = %s WHERE id = %s",
             (removed_at, meta_id),
         )
         conn.commit()
@@ -75,7 +75,7 @@ def clear_removed_flag(meta_id: int) -> None:
     try:
         cur = conn.cursor()
         cur.execute(
-            "UPDATE meta_naver_blog SET is_removed = FALSE, removed_at = NULL WHERE id = %s",
+            "UPDATE meta_blog SET is_removed = FALSE, removed_at = NULL WHERE id = %s",
             (meta_id,),
         )
         conn.commit()
@@ -89,7 +89,7 @@ def get_latest_active_meta(meta_id: int) -> Optional[Dict[str, Any]]:
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT reaction_count FROM active_meta_naver_blog
+            SELECT reaction_count FROM active_meta_blog
             WHERE meta_id = %s ORDER BY collected_at DESC LIMIT 1
             """,
             (meta_id,),
@@ -100,7 +100,7 @@ def get_latest_active_meta(meta_id: int) -> Optional[Dict[str, Any]]:
         conn.close()
 
 
-def insert_active_meta_naver_blog(
+def insert_active_meta_blog(
     meta_id: int, reaction_count: int, reaction_breakdown: dict, delta_reactions: Optional[int] = None
 ) -> None:
     conn = get_conn()
@@ -108,7 +108,7 @@ def insert_active_meta_naver_blog(
         cur = conn.cursor()
         cur.execute(
             """
-            INSERT INTO active_meta_naver_blog (meta_id, reaction_count, reaction_breakdown, delta_reactions)
+            INSERT INTO active_meta_blog (meta_id, reaction_count, reaction_breakdown, delta_reactions)
             VALUES (%s, %s, %s, %s)
             """,
             (meta_id, reaction_count, json.dumps(reaction_breakdown), delta_reactions),

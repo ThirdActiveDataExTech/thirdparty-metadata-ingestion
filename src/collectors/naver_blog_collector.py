@@ -3,7 +3,7 @@
 naver_news_collector.py와 구조는 같지만(검색 API 페이지네이션, 본문 스크래핑),
 블로그 고유의 두 가지가 추가된다:
   1) platform 판정 — 검색 API가 blog.naver.com 외 티스토리 등도 반환하므로
-     (2-2/2-1 실측, meta_naver_blog.platform 참조) URL host로 플랫폼을 구분
+     (2-2/2-1 실측, meta_blog.platform 참조) URL host로 플랫폼을 구분
   2) 반응 수 API — ADR-006에서 검증된 blog.like.naver.com (platform='naver'만 가능,
      브라우저 자동화 불필요. 댓글 수는 ADR-006에서 수집 불가로 결론났으므로 다루지 않음)
 """

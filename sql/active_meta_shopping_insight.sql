@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════
--- active_meta_naver_shopping : 네이버 쇼핑 인사이트 일별 검색량 지수
+-- active_meta_shopping_insight : 네이버 쇼핑 인사이트 일별 검색량 지수
 -- source_type = 'shopping_insight'
 --
 -- 수집 주기마다 INSERT (누적 이력, UPSERT). 1행 = 카테고리 × 날짜 × 성별 × 연령.
@@ -20,16 +20,16 @@
 --   └ inter_scale : 수집 구간 간 M 차이 보정
 --       = median(db_anchor_raw[t] / new_anchor_raw[t])  (겹치는 기간 이용)
 -- ═══════════════════════════════════════════════════════════════
-DROP TABLE IF EXISTS active_meta_naver_shopping;
+DROP TABLE IF EXISTS active_meta_shopping_insight;
 
-CREATE TABLE active_meta_naver_shopping (
+CREATE TABLE active_meta_shopping_insight (
 
     -- ── 식별 ──────────────────────────────────────────────────
     id              BIGSERIAL PRIMARY KEY,
 
     meta_id         BIGINT NOT NULL
-                    REFERENCES meta_naver_shopping(id) ON DELETE CASCADE,
-    -- meta_naver_shopping.id FK (dataset+카테고리 조합)
+                    REFERENCES meta_shopping_insight(id) ON DELETE CASCADE,
+    -- meta_shopping_insight.id FK (dataset+카테고리 조합)
 
     period          DATE NOT NULL,
     -- 측정 날짜 (API timeUnit=date 기준)
@@ -81,8 +81,8 @@ CREATE TABLE active_meta_naver_shopping (
     -- 수집 스크립트 실행 시각 (ISO8601)
 );
 
-CREATE INDEX idx_active_shopping_meta      ON active_meta_naver_shopping(meta_id);
-CREATE INDEX idx_active_shopping_period    ON active_meta_naver_shopping(period DESC);
-CREATE INDEX idx_active_shopping_gender    ON active_meta_naver_shopping(gender);
-CREATE INDEX idx_active_shopping_age       ON active_meta_naver_shopping(age);
-CREATE INDEX idx_active_shopping_collected ON active_meta_naver_shopping(collected_at DESC);
+CREATE INDEX idx_active_shopping_meta      ON active_meta_shopping_insight(meta_id);
+CREATE INDEX idx_active_shopping_period    ON active_meta_shopping_insight(period DESC);
+CREATE INDEX idx_active_shopping_gender    ON active_meta_shopping_insight(gender);
+CREATE INDEX idx_active_shopping_age       ON active_meta_shopping_insight(age);
+CREATE INDEX idx_active_shopping_collected ON active_meta_shopping_insight(collected_at DESC);

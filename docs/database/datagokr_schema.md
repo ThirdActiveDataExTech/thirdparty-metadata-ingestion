@@ -14,22 +14,22 @@
 | `dcat_provenance` | ✅ 운영 중 | [sql/dcat_provenance.sql](../../sql/dcat_provenance.sql) | 수집 실행 이력 |
 | `data_registry` | ✅ 운영 중 | [sql/data_registry.sql](../../sql/data_registry.sql) | 통합 운영정보 (저장소 위치, 운영 상태) |
 | `dcat_dataset_vec` | ✅ 운영 중 | [sql/dcat_dataset_vec.sql](../../sql/dcat_dataset_vec.sql) | 데이터셋 description 임베딩 (pgvector 768차원) |
-| `meta_youtube_video` | ✅ 생성 완료 | [sql/meta_youtube_video.sql](../../sql/meta_youtube_video.sql) | YouTube 영상 단위 메타 (Schema.org VideoObject). `has_transcript`/`transcribed_at` 컬럼 추가(2026-07-28) — 자체 STT 트랜스크립트 저장 여부, [architecture/05_Object_Storage_Export.md](../architecture/05_Object_Storage_Export.md) 참조 |
-| `meta_youtube_video_vec` | ✅ 생성 완료 | [sql/meta_youtube_video_vec.sql](../../sql/meta_youtube_video_vec.sql) | YouTube 영상 임베딩 (pgvector 768차원) |
-| `active_meta_youtube` | ✅ 생성 완료 | [sql/active_meta_youtube.sql](../../sql/active_meta_youtube.sql) | YouTube 영상 시계열 통계 (dataset+video 단위) |
-| `meta_youtube_video_ai` | ⏳ 예정 | — | YouTube 영상 AI 생성 메타 (요약·키워드·개체명 등) |
-| `meta_naver_news` | ✅ 생성 완료 | [sql/meta_naver_news.sql](../../sql/meta_naver_news.sql) | Naver 뉴스 기사 단위 메타 (Schema.org NewsArticle) |
-| `meta_naver_news_vec` | ✅ 생성 완료 | [sql/meta_naver_news_vec.sql](../../sql/meta_naver_news_vec.sql) | Naver 뉴스 기사 임베딩 (pgvector 768차원) |
-| `active_meta_naver_news` | ✅ 생성 완료 | [sql/active_meta_naver_news.sql](../../sql/active_meta_naver_news.sql) | Naver 뉴스 기사 시계열 통계 (댓글 수만 수집, [결정 배경](../adr/005_Naver_News_Metrics_Decision.md)) |
-| `meta_naver_news_ai` | ⏳ 예정 (필드 후보만) | — | Naver 뉴스 기사 AI 생성 메타 |
-| `meta_naver_shopping` | ✅ 생성 완료 | [sql/meta_naver_shopping.sql](../../sql/meta_naver_shopping.sql) | 쇼핑인사이트 카테고리 정적 정보 (source_type=shopping_insight). **`_vec` 임베딩 테이블 없음(의도적)** — 아래 각주 참조 |
-| `active_meta_naver_shopping` | ✅ 생성 완료 | [sql/active_meta_naver_shopping.sql](../../sql/active_meta_naver_shopping.sql) | 일별 검색량 지수 (raw/normalized/pseudo_volume, 성별×연령) |
-| `meta_naver_persona` | ✅ 생성 완료 | [sql/meta_naver_persona.sql](../../sql/meta_naver_persona.sql) | Persona 카테고리 정적 정보 (source_type=persona_insight). **`_vec` 임베딩 테이블 없음(의도적)** — 아래 각주 참조 |
-| `active_meta_naver_persona` | ✅ 생성 완료 | [sql/active_meta_naver_persona.sql](../../sql/active_meta_naver_persona.sql) | 일별 Persona Index (gender_pv × age_pv, 독립 가정 추정치) |
-| `meta_naver_blog` | ✅ 생성 완료 | [sql/meta_naver_blog.sql](../../sql/meta_naver_blog.sql) | Naver 블로그 게시물 단위 메타 (Schema.org BlogPosting) |
-| `meta_naver_blog_vec` | ✅ 생성 완료 | [sql/meta_naver_blog_vec.sql](../../sql/meta_naver_blog_vec.sql) | Naver 블로그 게시물 임베딩 (pgvector 768차원) |
-| `active_meta_naver_blog` | ✅ 생성 완료 | [sql/active_meta_naver_blog.sql](../../sql/active_meta_naver_blog.sql) | 반응(공감 등) 수 시계열 — [ADR-006](../adr/006_Naver_Blog_Metrics_Decision.md)으로 확정, 댓글 수·조회수는 미수집 |
-| `meta_naver_blog_ai` | ⏳ 예정 (필드 후보만) | — | Naver 블로그 게시물 AI 생성 메타 |
+| `meta_video` | ✅ 생성 완료 | [sql/meta_video.sql](../../sql/meta_video.sql) | YouTube 영상 단위 메타 (Schema.org VideoObject). `has_transcript`/`transcribed_at` 컬럼 추가(2026-07-28) — 자체 STT 트랜스크립트 저장 여부, [architecture/05_Object_Storage_Export.md](../architecture/05_Object_Storage_Export.md) 참조 |
+| `meta_video_vec` | ✅ 생성 완료 | [sql/meta_video_vec.sql](../../sql/meta_video_vec.sql) | YouTube 영상 임베딩 (pgvector 768차원) |
+| `active_meta_video` | ✅ 생성 완료 | [sql/active_meta_video.sql](../../sql/active_meta_video.sql) | YouTube 영상 시계열 통계 (dataset+video 단위) |
+| `meta_video_ai` | ⏳ 예정 | — | YouTube 영상 AI 생성 메타 (요약·키워드·개체명 등) |
+| `meta_news` | ✅ 생성 완료 | [sql/meta_news.sql](../../sql/meta_news.sql) | Naver 뉴스 기사 단위 메타 (Schema.org NewsArticle) |
+| `meta_news_vec` | ✅ 생성 완료 | [sql/meta_news_vec.sql](../../sql/meta_news_vec.sql) | Naver 뉴스 기사 임베딩 (pgvector 768차원) |
+| `active_meta_news` | ✅ 생성 완료 | [sql/active_meta_news.sql](../../sql/active_meta_news.sql) | Naver 뉴스 기사 시계열 통계 (댓글 수만 수집, [결정 배경](../adr/005_Naver_News_Metrics_Decision.md)) |
+| `meta_news_ai` | ⏳ 예정 (필드 후보만) | — | Naver 뉴스 기사 AI 생성 메타 |
+| `meta_shopping_insight` | ✅ 생성 완료 | [sql/meta_shopping_insight.sql](../../sql/meta_shopping_insight.sql) | 쇼핑인사이트 카테고리 정적 정보 (source_type=shopping_insight). **`_vec` 임베딩 테이블 없음(의도적)** — 아래 각주 참조 |
+| `active_meta_shopping_insight` | ✅ 생성 완료 | [sql/active_meta_shopping_insight.sql](../../sql/active_meta_shopping_insight.sql) | 일별 검색량 지수 (raw/normalized/pseudo_volume, 성별×연령) |
+| `meta_persona_insight` | ✅ 생성 완료 | [sql/meta_persona_insight.sql](../../sql/meta_persona_insight.sql) | Persona 카테고리 정적 정보 (source_type=persona_insight). **`_vec` 임베딩 테이블 없음(의도적)** — 아래 각주 참조 |
+| `active_meta_persona_insight` | ✅ 생성 완료 | [sql/active_meta_persona_insight.sql](../../sql/active_meta_persona_insight.sql) | 일별 Persona Index (gender_pv × age_pv, 독립 가정 추정치) |
+| `meta_blog` | ✅ 생성 완료 | [sql/meta_blog.sql](../../sql/meta_blog.sql) | Naver 블로그 게시물 단위 메타 (Schema.org BlogPosting) |
+| `meta_blog_vec` | ✅ 생성 완료 | [sql/meta_blog_vec.sql](../../sql/meta_blog_vec.sql) | Naver 블로그 게시물 임베딩 (pgvector 768차원) |
+| `active_meta_blog` | ✅ 생성 완료 | [sql/active_meta_blog.sql](../../sql/active_meta_blog.sql) | 반응(공감 등) 수 시계열 — [ADR-006](../adr/006_Naver_Blog_Metrics_Decision.md)으로 확정, 댓글 수·조회수는 미수집 |
+| `meta_blog_ai` | ⏳ 예정 (필드 후보만) | — | Naver 블로그 게시물 AI 생성 메타 |
 | `dataset_credentials` | ✅ 운영 가능 (2026-07-28, 암호화 키 K8s Secret 생성+검증 완료) | [sql/dataset_credentials.sql](../../sql/dataset_credentials.sql) | 데이터셋별 API Key 암호화 저장 (pgcrypto). [설계 배경](../architecture/04_Collection_Pipeline_Operations.md#9-api-key-저장-모델--결정-데이터셋별-저장). **단, `register_dataset.py`에 API Key 입력 옵션이 아직 없어 실제로 쓰는 데이터셋은 아직 0건** |
 
 > **shopping/persona에 `_vec` 임베딩 테이블이 없는 이유:** 카테고리 데이터(`category_name`)는
@@ -55,11 +55,11 @@
 
 | `source_type` | 설명 | 관련 meta 테이블 |
 |--------------|------|----------------|
-| `video` | YouTube 영상 | meta_youtube_video |
-| `news` | Naver 뉴스 기사 | meta_naver_news |
-| `blog` | Naver 블로그 게시물 | meta_naver_blog |
-| `shopping_insight` | Naver 쇼핑인사이트 (카테고리별 검색량, anchor+batch 호출) | meta_naver_shopping |
-| `persona_insight` | Naver 쇼핑 Persona (성별/연령 독립 API 2종 호출 → persona_index) | meta_naver_persona |
+| `video` | YouTube 영상 | meta_video |
+| `news` | Naver 뉴스 기사 | meta_news |
+| `blog` | Naver 블로그 게시물 | meta_blog |
+| `shopping_insight` | Naver 쇼핑인사이트 (카테고리별 검색량, anchor+batch 호출) | meta_shopping_insight |
+| `persona_insight` | Naver 쇼핑 Persona (성별/연령 독립 API 2종 호출 → persona_index) | meta_persona_insight |
 
 ---
 
@@ -81,49 +81,49 @@ dcat_dataset (1)  ─── "무엇인가" (명세)
     ├──  dataset_credentials (N)     ─── "데이터셋별 API Key 암호화 저장" (pgcrypto)
     │                                     UNIQUE(dataset_id, credential_type)   ON DELETE CASCADE
     │
-    ├──< meta_youtube_video (N)      ─── "YouTube 영상 단위 메타" (Schema.org VideoObject)
+    ├──< meta_video (N)      ─── "YouTube 영상 단위 메타" (Schema.org VideoObject)
     │        UNIQUE(dataset_id, video_id)   ON DELETE CASCADE
     │        │
-    │        ├──< active_meta_youtube (N)    ─── "시계열 통계 스냅샷" (dataset+영상 단위)
+    │        ├──< active_meta_video (N)    ─── "시계열 통계 스냅샷" (dataset+영상 단위)
     │        │                                    ON DELETE CASCADE
-    │        ├──  meta_youtube_video_vec (1) ─── "영상 임베딩" (영상 레벨 검색)
+    │        ├──  meta_video_vec (1) ─── "영상 임베딩" (영상 레벨 검색)
     │        │                                    ON DELETE CASCADE
-    │        └──  meta_youtube_video_ai (1)  ─── "AI 생성 메타" (요약·키워드·개체명)
+    │        └──  meta_video_ai (1)  ─── "AI 생성 메타" (요약·키워드·개체명)
     │                                             ON DELETE CASCADE  [예정]
     │
-    ├──< meta_naver_shopping (N)      ─── "쇼핑인사이트 카테고리" (source_type=shopping_insight)
+    ├──< meta_shopping_insight (N)      ─── "쇼핑인사이트 카테고리" (source_type=shopping_insight)
     │        UNIQUE(dataset_id, category_id)   ON DELETE CASCADE
     │        │
-    │        └──< active_meta_naver_shopping (N) ─── "일별 검색량 지수"
+    │        └──< active_meta_shopping_insight (N) ─── "일별 검색량 지수"
     │                                               raw/normalized/pseudo_volume × 성별×연령
     │                                               ON DELETE CASCADE
     │
-    ├──< meta_naver_persona (N)       ─── "Persona 카테고리" (source_type=persona_insight)
+    ├──< meta_persona_insight (N)       ─── "Persona 카테고리" (source_type=persona_insight)
     │        UNIQUE(dataset_id, category_id)   ON DELETE CASCADE
     │        │
-    │        └──< active_meta_naver_persona (N) ─── "일별 Persona Index"
+    │        └──< active_meta_persona_insight (N) ─── "일별 Persona Index"
     │                                              gender_pv × age_pv (독립 가정 추정치)
     │                                              ON DELETE CASCADE
     │
-    ├──< meta_naver_news (N)         ─── "Naver 뉴스 기사 단위 메타" (Schema.org NewsArticle)
+    ├──< meta_news (N)         ─── "Naver 뉴스 기사 단위 메타" (Schema.org NewsArticle)
     │        UNIQUE(dataset_id, article_url)   ON DELETE CASCADE
     │        │
-    │        ├──< active_meta_naver_news (N)  ─── "댓글 시계열 스냅샷"
+    │        ├──< active_meta_news (N)  ─── "댓글 시계열 스냅샷"
     │        │                                     is_naver_hosted=TRUE 기사만 행 존재
     │        │                                     ON DELETE CASCADE
-    │        ├──  meta_naver_news_vec (1)      ─── "기사 임베딩" (기사 레벨 검색)
+    │        ├──  meta_news_vec (1)      ─── "기사 임베딩" (기사 레벨 검색)
     │        │                                     ON DELETE CASCADE
-    │        └──  meta_naver_news_ai (1)       ─── "AI 생성 메타" (요약·키워드·개체명 등)
+    │        └──  meta_news_ai (1)       ─── "AI 생성 메타" (요약·키워드·개체명 등)
     │                                             ON DELETE CASCADE  [예정]
     │
-    └──< meta_naver_blog (N)         ─── "Naver 블로그 게시물 단위 메타" (Schema.org BlogPosting)
+    └──< meta_blog (N)         ─── "Naver 블로그 게시물 단위 메타" (Schema.org BlogPosting)
              UNIQUE(dataset_id, post_url)   ON DELETE CASCADE
              │
-             ├──< active_meta_naver_blog (N)  ─── "반응(공감 등) 시계열 스냅샷" [ADR-006 확정]
+             ├──< active_meta_blog (N)  ─── "반응(공감 등) 시계열 스냅샷" [ADR-006 확정]
              │                                     ON DELETE CASCADE
-             ├──  meta_naver_blog_vec (1)      ─── "게시물 임베딩" (게시물 레벨 검색)
+             ├──  meta_blog_vec (1)      ─── "게시물 임베딩" (게시물 레벨 검색)
              │                                     ON DELETE CASCADE
-             └──  meta_naver_blog_ai (1)       ─── "AI 생성 메타" (요약·키워드·개체명 등)
+             └──  meta_blog_ai (1)       ─── "AI 생성 메타" (요약·키워드·개체명 등)
                                                    ON DELETE CASCADE  [예정]
 ```
 
@@ -138,26 +138,26 @@ erDiagram
     dcat_dataset ||--|| data_registry : "운영 현황"
     dcat_dataset ||--|| dcat_dataset_vec : "임베딩"
     dcat_dataset ||--o{ dataset_credentials : "API Key"
-    dcat_dataset ||--o{ meta_youtube_video : "영상"
-    dcat_dataset ||--o{ meta_naver_shopping : "쇼핑 카테고리"
-    dcat_dataset ||--o{ meta_naver_persona : "Persona 카테고리"
-    dcat_dataset ||--o{ meta_naver_news : "뉴스 기사"
-    dcat_dataset ||--o{ meta_naver_blog : "블로그 게시물"
+    dcat_dataset ||--o{ meta_video : "영상"
+    dcat_dataset ||--o{ meta_shopping_insight : "쇼핑 카테고리"
+    dcat_dataset ||--o{ meta_persona_insight : "Persona 카테고리"
+    dcat_dataset ||--o{ meta_news : "뉴스 기사"
+    dcat_dataset ||--o{ meta_blog : "블로그 게시물"
 
-    meta_youtube_video ||--o{ active_meta_youtube : "시계열"
-    meta_youtube_video ||--|| meta_youtube_video_vec : "임베딩"
-    meta_youtube_video ||..o| meta_youtube_video_ai : "AI 메타 (예정)"
+    meta_video ||--o{ active_meta_video : "시계열"
+    meta_video ||--|| meta_video_vec : "임베딩"
+    meta_video ||..o| meta_video_ai : "AI 메타 (예정)"
 
-    meta_naver_shopping ||--o{ active_meta_naver_shopping : "일별 지수"
-    meta_naver_persona ||--o{ active_meta_naver_persona : "일별 Persona Index"
+    meta_shopping_insight ||--o{ active_meta_shopping_insight : "일별 지수"
+    meta_persona_insight ||--o{ active_meta_persona_insight : "일별 Persona Index"
 
-    meta_naver_news ||--o{ active_meta_naver_news : "댓글 시계열"
-    meta_naver_news ||--|| meta_naver_news_vec : "임베딩"
-    meta_naver_news ||..o| meta_naver_news_ai : "AI 메타 (예정)"
+    meta_news ||--o{ active_meta_news : "댓글 시계열"
+    meta_news ||--|| meta_news_vec : "임베딩"
+    meta_news ||..o| meta_news_ai : "AI 메타 (예정)"
 
-    meta_naver_blog ||--o{ active_meta_naver_blog : "반응 시계열 (ADR-006)"
-    meta_naver_blog ||--|| meta_naver_blog_vec : "임베딩"
-    meta_naver_blog ||..o| meta_naver_blog_ai : "AI 메타 (예정)"
+    meta_blog ||--o{ active_meta_blog : "반응 시계열 (ADR-006)"
+    meta_blog ||--|| meta_blog_vec : "임베딩"
+    meta_blog ||..o| meta_blog_ai : "AI 메타 (예정)"
 
     dcat_dataset {
         text dataset_id PK
@@ -172,31 +172,31 @@ erDiagram
         text credential_type
         bytea encrypted_value
     }
-    meta_youtube_video {
+    meta_video {
         bigint id PK
         text dataset_id FK
         text video_id
         boolean is_removed
     }
-    meta_naver_shopping {
+    meta_shopping_insight {
         bigint id PK
         text dataset_id FK
         text category_id
         boolean is_anchor
     }
-    meta_naver_persona {
+    meta_persona_insight {
         bigint id PK
         text dataset_id FK
         text category_id
     }
-    meta_naver_news {
+    meta_news {
         bigint id PK
         text dataset_id FK
         text article_url
         boolean is_naver_hosted
         boolean is_removed
     }
-    meta_naver_blog {
+    meta_blog {
         bigint id PK
         text dataset_id FK
         text post_url
@@ -210,24 +210,24 @@ erDiagram
 | 레벨 | 테이블 | 질의 예시 |
 |------|--------|---------|
 | 데이터셋 레벨 | `dcat_dataset_vec` | "반도체 관련 데이터셋 찾기" (소스 타입 무관) |
-| 영상 레벨 | `meta_youtube_video_vec` | "HBM 공정 설명하는 영상 찾기" |
-| 기사 레벨 | `meta_naver_news_vec` | "HBM4 관련 최신 기사 찾기" |
-| 게시물 레벨 | `meta_naver_blog_vec` | "HBM 반도체 후기 블로그 찾기" |
+| 영상 레벨 | `meta_video_vec` | "HBM 공정 설명하는 영상 찾기" |
+| 기사 레벨 | `meta_news_vec` | "HBM4 관련 최신 기사 찾기" |
+| 게시물 레벨 | `meta_blog_vec` | "HBM 반도체 후기 블로그 찾기" |
 
 ### active_meta 설계 포인트
 
 같은 영상(video_id)이 Dataset A, Dataset B에 동시에 포함될 수 있다.
-`active_meta_youtube`는 `meta_youtube_video.id` (= dataset+video 조합)를 기준으로 추적하므로
+`active_meta_video`는 `meta_video.id` (= dataset+video 조합)를 기준으로 추적하므로
 각 데이터셋이 독립적인 수집 타임라인과 delta를 갖는다.
 
 ```
 예시: video_id=abc123 이 두 데이터셋에 포함
 
-meta_youtube_video
+meta_video
   id=1  dataset_id=samsung_ch      video_id=abc123
   id=2  dataset_id=hbm_collection  video_id=abc123
 
-active_meta_youtube
+active_meta_video
   meta_id=1  collected_at=07-07 월  view_count=10,000  delta=NULL   ← Dataset A 첫 수집
   meta_id=2  collected_at=07-09 수  view_count=10,500  delta=NULL   ← Dataset B 첫 수집 (독립 시작)
   meta_id=1  collected_at=07-14 월  view_count=12,000  delta=+2,000 ← Dataset A 기준 정확한 delta
@@ -238,7 +238,7 @@ active_meta_youtube
 
 ## AI 메타데이터 파이프라인 (예정)
 
-`meta_youtube_video_ai`/`meta_naver_news_ai`/`meta_naver_blog_ai` 공통 설계. 수집 코드
+`meta_video_ai`/`meta_news_ai`/`meta_blog_ai` 공통 설계. 수집 코드
 완성 후 성능 테스트를 거쳐 도입 — 아직 DDL 없음(필드 후보만 정리된 상태).
 
 > **⚠️ 설계 제약 (2026-07-23 확정): 이 프로젝트를 위한 별도 학습·파인튜닝은 하지 않는다.**
@@ -256,14 +256,14 @@ active_meta_youtube
     ↓
 사전학습 모델 호출 (Groq LLM 프롬프트 또는 HuggingFace 사전학습 모델 — 필드별로 선택)
     ↓
-meta_youtube_video_ai INSERT
+meta_video_ai INSERT
 ```
 
 뉴스/블로그는 `active_meta`처럼 소스별 시계열 통계 컬럼은 다르지만, AI 파이프라인
 자체는 "본문 텍스트 → 사전학습 모델 → INSERT" 구조가 동일하다. YouTube만 트랜스크립트
 대신 썸네일 이미지를 쓰는 비전 모델 경로가 추가로 있다.
 
-### YouTube — `meta_youtube_video_ai` (트랜스크립트 + 썸네일)
+### YouTube — `meta_video_ai` (트랜스크립트 + 썸네일)
 
 기존에 트랜스크립트 기반 5개 필드만 정리돼 있었는데, `research/paper_topics_2027.md`(로컬 전용)
 연구주제(VLM 썸네일 메타데이터)에서 이미 제안된 썸네일 기반 4개 필드가 이 문서엔
@@ -285,7 +285,7 @@ meta_youtube_video_ai INSERT
 4개 필드는 트랜스크립트 유무와 무관하게 항상 추출 가능. 상세 연구 설계는
 `research/paper_topics_2027.md`(로컬 전용) 참조.
 
-### 뉴스 — `meta_naver_news_ai` (신규 제안, 필드 확정 전)
+### 뉴스 — `meta_news_ai` (신규 제안, 필드 확정 전)
 
 이 프로젝트가 반도체·AI 등 산업 뉴스를 주로 다루는 걸 감안한 후보 필드.
 
@@ -301,7 +301,7 @@ meta_youtube_video_ai INSERT
 
 `has_content=FALSE`(스크래핑 실패) 기사는 title+description으로 fallback.
 
-### 블로그 — `meta_naver_blog_ai` (신규 제안, 필드 확정 전)
+### 블로그 — `meta_blog_ai` (신규 제안, 필드 확정 전)
 
 시드 데이터도 리뷰/후기 위주("3주 사용 후기" 등)라 리뷰 콘텐츠 특성에 맞춘 후보 필드.
 
@@ -333,11 +333,11 @@ meta_youtube_video_ai INSERT
 
 | 뷰 이름 | DDL | 설명 |
 |---------|-----|------|
-| `v_meta_youtube_latest` | [sql/views.sql](../../sql/views.sql) | meta_youtube_video + active_meta_youtube 최신 row 결합. 영상별 현재 통계(최신 수집값 + 전회차 증감)를 한 번에 조회 |
-| `v_meta_naver_news_latest` | [sql/views.sql](../../sql/views.sql) | meta_naver_news + active_meta_naver_news 최신 row 결합. 기사별 댓글 통계(최신 수집값 + 전회차 증감)를 한 번에 조회. 외부 기사 댓글 컬럼 NULL |
-| `v_meta_naver_blog_latest` | [sql/views.sql](../../sql/views.sql) | meta_naver_blog + active_meta_naver_blog 최신 row 결합. 게시물별 반응(공감 등) 통계(최신 수집값 + 전회차 증감)를 한 번에 조회. platform≠'naver' 게시물은 반응 컬럼 NULL(ADR-006). 2026-07-31 추가 |
-| `v_meta_naver_shopping_latest` | [sql/views.sql](../../sql/views.sql) | "최신 날짜 스냅샷" — 카테고리별 max(period)의 12조합(성별 m/f × 연령 10~60) pseudo_volume/normalized_ratio. 카테고리당 12행(다차원 시계열이라 "최신 1행"이 성립 안 함). 전체('') 집계는 제외. 2026-07-31 추가 |
-| `v_meta_naver_persona_latest` | [sql/views.sql](../../sql/views.sql) | "최신 날짜 스냅샷" — 카테고리별 max(period)의 12조합 persona_index/gender_pv/age_pv. 카테고리당 12행. 2026-07-31 추가 |
+| `v_meta_video_latest` | [sql/views.sql](../../sql/views.sql) | meta_video + active_meta_video 최신 row 결합. 영상별 현재 통계(최신 수집값 + 전회차 증감)를 한 번에 조회 |
+| `v_meta_news_latest` | [sql/views.sql](../../sql/views.sql) | meta_news + active_meta_news 최신 row 결합. 기사별 댓글 통계(최신 수집값 + 전회차 증감)를 한 번에 조회. 외부 기사 댓글 컬럼 NULL |
+| `v_meta_blog_latest` | [sql/views.sql](../../sql/views.sql) | meta_blog + active_meta_blog 최신 row 결합. 게시물별 반응(공감 등) 통계(최신 수집값 + 전회차 증감)를 한 번에 조회. platform≠'naver' 게시물은 반응 컬럼 NULL(ADR-006). 2026-07-31 추가 |
+| `v_meta_shopping_insight_latest` | [sql/views.sql](../../sql/views.sql) | "최신 날짜 스냅샷" — 카테고리별 max(period)의 12조합(성별 m/f × 연령 10~60) pseudo_volume/normalized_ratio. 카테고리당 12행(다차원 시계열이라 "최신 1행"이 성립 안 함). 전체('') 집계는 제외. 2026-07-31 추가 |
+| `v_meta_persona_insight_latest` | [sql/views.sql](../../sql/views.sql) | "최신 날짜 스냅샷" — 카테고리별 max(period)의 12조합 persona_index/gender_pv/age_pv. 카테고리당 12행. 2026-07-31 추가 |
 
 ---
 
@@ -356,28 +356,28 @@ psql -h localhost -p 30433 -U admin -d datagokr \
 
 # 2. YouTube 메타 테이블 생성
 psql -h localhost -p 30433 -U admin -d datagokr \
-  -f sql/meta_youtube_video.sql \
-  -f sql/active_meta_youtube.sql \
-  -f sql/meta_youtube_video_vec.sql
+  -f sql/meta_video.sql \
+  -f sql/active_meta_video.sql \
+  -f sql/meta_video_vec.sql
 
 # 3. Naver 뉴스 메타 테이블 생성
 psql -h localhost -p 30433 -U admin -d datagokr \
-  -f sql/meta_naver_news.sql \
-  -f sql/meta_naver_news_vec.sql \
-  -f sql/active_meta_naver_news.sql
+  -f sql/meta_news.sql \
+  -f sql/meta_news_vec.sql \
+  -f sql/active_meta_news.sql
 
 # 4. Naver 쇼핑·Persona 메타 테이블 생성
 psql -h localhost -p 30433 -U admin -d datagokr \
-  -f sql/meta_naver_shopping.sql \
-  -f sql/active_meta_naver_shopping.sql \
-  -f sql/meta_naver_persona.sql \
-  -f sql/active_meta_naver_persona.sql
+  -f sql/meta_shopping_insight.sql \
+  -f sql/active_meta_shopping_insight.sql \
+  -f sql/meta_persona_insight.sql \
+  -f sql/active_meta_persona_insight.sql
 
-# 5. Naver 블로그 메타 테이블 생성 (active_meta_naver_blog는 ADR-006으로 반응 수 수집 확정)
+# 5. Naver 블로그 메타 테이블 생성 (active_meta_blog는 ADR-006으로 반응 수 수집 확정)
 psql -h localhost -p 30433 -U admin -d datagokr \
-  -f sql/meta_naver_blog.sql \
-  -f sql/meta_naver_blog_vec.sql \
-  -f sql/active_meta_naver_blog.sql
+  -f sql/meta_blog.sql \
+  -f sql/meta_blog_vec.sql \
+  -f sql/active_meta_blog.sql
 
 # 6. 샘플 데이터 삽입 (개발용)
 psql -h localhost -p 30433 -U admin -d datagokr \
@@ -389,9 +389,9 @@ psql -h localhost -p 30433 -U admin -d datagokr \
 
 # 8. 임베딩 생성
 python scripts/embed_datasets.py         # dcat_dataset_vec
-python scripts/embed_youtube_videos.py   # meta_youtube_video_vec
-python scripts/embed_naver_news.py       # meta_naver_news_vec
-python scripts/embed_naver_blog.py       # meta_naver_blog_vec
+python scripts/embed_video.py   # meta_video_vec
+python scripts/embed_news.py       # meta_news_vec
+python scripts/embed_blog.py       # meta_blog_vec
 ```
 
 ---

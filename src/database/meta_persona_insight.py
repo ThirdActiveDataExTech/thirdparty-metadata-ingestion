@@ -1,16 +1,16 @@
-"""meta_naver_persona / active_meta_naver_persona 읽기·쓰기 헬퍼."""
+"""meta_persona_insight / active_meta_persona_insight 읽기·쓰기 헬퍼."""
 
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.database.db import get_conn
 
 
-def get_meta_naver_persona_rows(dataset_id: str) -> List[Dict[str, Any]]:
+def get_meta_persona_insight_rows(dataset_id: str) -> List[Dict[str, Any]]:
     conn = get_conn()
     try:
         cur = conn.cursor()
         cur.execute(
-            "SELECT id, category_id, category_name FROM meta_naver_persona WHERE dataset_id = %s",
+            "SELECT id, category_id, category_name FROM meta_persona_insight WHERE dataset_id = %s",
             (dataset_id,),
         )
         columns = [d[0] for d in cur.description]
@@ -26,8 +26,8 @@ def get_last_period(dataset_id: str) -> Optional[str]:
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT MAX(a.period) FROM active_meta_naver_persona a
-            JOIN meta_naver_persona m ON m.id = a.meta_id
+            SELECT MAX(a.period) FROM active_meta_persona_insight a
+            JOIN meta_persona_insight m ON m.id = a.meta_id
             WHERE m.dataset_id = %s
             """,
             (dataset_id,),
@@ -47,7 +47,7 @@ def get_existing_gender_ratios(meta_id: int, periods: List[str]) -> Dict[Tuple[s
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT DISTINCT period, gender, gender_ratio FROM active_meta_naver_persona
+            SELECT DISTINCT period, gender, gender_ratio FROM active_meta_persona_insight
             WHERE meta_id = %s AND period = ANY(%s::date[])
             """,
             (meta_id, periods),
@@ -66,7 +66,7 @@ def get_existing_age_ratios(meta_id: int, periods: List[str]) -> Dict[Tuple[str,
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT DISTINCT period, age, age_ratio FROM active_meta_naver_persona
+            SELECT DISTINCT period, age, age_ratio FROM active_meta_persona_insight
             WHERE meta_id = %s AND period = ANY(%s::date[])
             """,
             (meta_id, periods),
@@ -76,7 +76,7 @@ def get_existing_age_ratios(meta_id: int, periods: List[str]) -> Dict[Tuple[str,
         conn.close()
 
 
-def upsert_active_meta_naver_persona(
+def upsert_active_meta_persona_insight(
     meta_id: int,
     period: str,
     gender: str,
@@ -94,7 +94,7 @@ def upsert_active_meta_naver_persona(
         cur = conn.cursor()
         cur.execute(
             """
-            INSERT INTO active_meta_naver_persona
+            INSERT INTO active_meta_persona_insight
                 (meta_id, period, gender, age, gender_ratio, age_ratio,
                  gender_scale, age_scale, gender_pv, age_pv, persona_index)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)

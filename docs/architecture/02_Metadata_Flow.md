@@ -27,8 +27,8 @@ SeaweedFS       jsonld/{source_type}/{dataset_id}/{dataset_id}.jsonld [✅ 운�
 Embedding       scripts/embed_*.py                                   [✅ 운영 중, 수동 실행 —
                 아직 파이프라인에 자동 연결 안 됨, 증분화도 미완(NEXT_STEPS.md §4)]
     ↓
-pgvector        dcat_dataset_vec, meta_youtube_video_vec,
-                meta_naver_news_vec, meta_naver_blog_vec              [✅ 운영 중, 검색 테스트 완료]
+pgvector        dcat_dataset_vec, meta_video_vec,
+                meta_news_vec, meta_blog_vec              [✅ 운영 중, 검색 테스트 완료]
 ```
 
 > **YouTube만 추가 경로가 하나 더 있다**: 신규 영상 발견 시 `yt-dlp`로 오디오
@@ -50,10 +50,10 @@ API 미착수). AI 생성 메타데이터(`meta_*_ai`, 아래 표)는 아직 설
 | DCAT | `dcat_dataset` | 데이터셋 전반 기술 | ✅ 운영 중 |
 | PROV | `dcat_provenance` | 수집 실행 이력 | ✅ 운영 중 |
 | 운영 | `data_registry` | 저장소 경로(`s3_raw_prefix`/`s3_jsonld_prefix` 포함), 운영 현황 | ✅ 운영 중 |
-| 소스별 메타 | `meta_youtube_video`, `meta_naver_news`, `meta_naver_blog`, `meta_naver_shopping`, `meta_naver_persona` | Schema.org 기반 | ✅ 운영 중, 실 수집 데이터 |
+| 소스별 메타 | `meta_video`, `meta_news`, `meta_blog`, `meta_shopping_insight`, `meta_persona_insight` | Schema.org 기반 | ✅ 운영 중, 실 수집 데이터 |
 | Active Meta | `active_*` | 시계열 증감 지표 | ✅ 운영 중 |
-| 벡터 임베딩 | `dcat_dataset_vec`, `meta_youtube_video_vec`, `meta_naver_news_vec`, `meta_naver_blog_vec` | pgvector 768차원 | ✅ 운영 중(수동 실행) |
-| AI 생성 메타 | `meta_youtube_video_ai`, `meta_naver_news_ai`, `meta_naver_blog_ai` | LLM 요약·키워드·개체명 등 | ⏳ 설계 단계(필드 후보만, `datagokr_schema.md` 참조) |
+| 벡터 임베딩 | `dcat_dataset_vec`, `meta_video_vec`, `meta_news_vec`, `meta_blog_vec` | pgvector 768차원 | ✅ 운영 중(수동 실행) |
+| AI 생성 메타 | `meta_video_ai`, `meta_news_ai`, `meta_blog_ai` | LLM 요약·키워드·개체명 등 | ⏳ 설계 단계(필드 후보만, `datagokr_schema.md` 참조) |
 
 ---
 

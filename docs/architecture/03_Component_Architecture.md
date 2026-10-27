@@ -18,7 +18,7 @@ src/
 │   │                     성능 개선, 멀티스레드 비세이프 — 파일 상단 docstring 참조)
 │   ├── dcat.py           dcat_dataset/dcat_provenance/data_registry/dataset_credentials
 │   │                     공통 헬퍼 (모든 source_type이 공유)
-│   └── meta_{source}.py  소스별 meta_*/active_meta_* 읽기·쓰기 (예: meta_youtube.py)
+│   └── meta_{source}.py  소스별 meta_*/active_meta_* 읽기·쓰기 (예: meta_video.py)
 ├── collectors/          외부 API 호출, Raw Data 반환 — DB 직접 접근 금지
 │   ├── {source}_collector.py, naver_datalab_scale.py(순수 보정 수학) 등
 │   └── youtube_transcript_collector.py  yt-dlp 오디오 다운로드 + faster-whisper

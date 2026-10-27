@@ -9,7 +9,7 @@
 
 AI 생성 메타데이터(요약·키워드·분류·개체명)를 저장할 구조가 필요하다.
 [infrastructure/03_PostgreSQL.md](../infrastructure/03_PostgreSQL.md)에는
-`meta_youtube_video_ai` / `meta_naver_news_ai` / `meta_naver_blog_ai` 3종을
+`meta_video_ai` / `meta_news_ai` / `meta_blog_ai` 3종을
 **소스별로 분리**해 두는 안이 "예정 / 설계 단계"로 기재되어 있었다.
 
 2026-10-27 기준 **DDL은 아직 생성되지 않았다.** 지금이 구조 전환 비용이 가장 낮은 시점이다.

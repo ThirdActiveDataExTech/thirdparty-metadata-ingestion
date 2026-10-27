@@ -18,10 +18,21 @@ from src.database.db import get_conn
 
 # FK 의존 순서 (부모 → 자식)
 ORDER = [
-    "dcat_dataset", "metric_registry", "relation_type_registry",
+    # 카탈로그·운영
+    "dcat_dataset", "dcat_provenance", "data_registry", "dataset_credentials",
+    "dcat_dataset_vec",
+    # 표준값 레지스트리 (관계·지표가 FK로 참조하므로 선행)
+    "metric_registry", "relation_type_registry",
+    # 정형 계층 (와이즈넛 합의 스키마)
     "dcat_dataset_attr", "active_meta_dataset", "dcat_dataset_relation",
     "meta_datagokr_file", "active_meta_file", "meta_file_relation",
     "meta_datagokr_file_vec", "dcat_dataset_draft", "metadata_entry",
+    # 비정형 계층 (source_type 기준 명명)
+    "meta_video", "meta_video_vec", "active_meta_video",
+    "meta_news", "meta_news_vec", "active_meta_news",
+    "meta_blog", "meta_blog_vec", "active_meta_blog",
+    "meta_shopping_insight", "active_meta_shopping_insight",
+    "meta_persona_insight", "active_meta_persona_insight",
 ]
 
 DROP_RE = re.compile(r"^\s*DROP\s+TABLE[^;]*;", re.IGNORECASE | re.MULTILINE)

@@ -60,7 +60,7 @@ metadata-ingestion/                              ← SeaweedFS bucket
   식별자라 그대로 사용 (예: `dQw4w9WgXcQ.json` — §4.5 확정에 따라 세그먼트 JSON이라 `.json`)
 - `news`/`blog`: 플랫폼마다 안정적인 사람이 읽는 ID가 항상 있는 게 아님 (`is_naver_hosted`/
   `platform='naver'`가 아니면 `naver_oid`/`blog_id`+`log_no`가 없음) → 각
-  `meta_naver_news.id`/`meta_naver_blog.id`(내부 PK, BIGSERIAL)를 파일명으로 사용.
+  `meta_news.id`/`meta_blog.id`(내부 PK, BIGSERIAL)를 파일명으로 사용.
   데이터셋 폴더 안에서 유일함이 보장되고 절대 안 바뀜. 사람이 보기엔 의미 없는 숫자지만,
   폴더가 이미 `{source_type}/{dataset_id}/`로 스코프돼 있어 문제 없다고 판단
 - `has_content=FALSE`(본문 스크래핑 실패) 아이템, 트랜스크립트 없는 영상은 raw 파일
@@ -127,7 +127,7 @@ JSON-LD를 열어보는 것만으로 확인 가능하게 하는 목적(사용자
   "mi:transcriptRef": "raw/video/{dataset_id}/{video_id}.json",   // §4.5 참조, 없으면 필드 생략
   "mi:activeMetadata": [
     {"collectedAt": "...", "viewCount": 12345, "likeCount": 200, "commentCount": 30, "deltaViews": 50}
-    // active_meta_youtube 전체 이력 — 개당 스냅샷 수가 보통 적어(수집 주기만큼) inline 유지
+    // active_meta_video 전체 이력 — 개당 스냅샷 수가 보통 적어(수집 주기만큼) inline 유지
   ]
 }
 
@@ -344,7 +344,7 @@ DB 트랜잭션(=`dcat_provenance`/`data_registry` 갱신)이 성공적으로 �
 지금 임베딩(`scripts/embed_*.py`)은 **완전히 수동, 수집 파이프라인과 무관**하다.
 5개 `run()` 어디서도 자동 호출되지 않고, 수집이 끝난 뒤 사람이 별도로 스크립트를
 실행해야 한다. 게다가 지금 방식은 **테이블 전체 DELETE 후 재계산**
-(`scripts/embed_youtube_videos.py`의 `DELETE FROM meta_youtube_video_vec` 등) —
+(`scripts/embed_video.py`의 `DELETE FROM meta_video_vec` 등) —
 영상 1개가 늘어도 전체를 다시 임베딩한다.
 
 Airflow 도입(§6.2, `04_Collection_Pipeline_Operations.md`) 시 임베딩도 파이프라인에
@@ -434,7 +434,7 @@ except Exception as e:
 ```
 
 **구현 완료 (2026-07-27)**: `src/storage/{s3_client,raw_export,jsonld_export}.py`,
-`src/collectors/youtube_transcript_collector.py`, 5개 파이프라인 통합, `meta_youtube_video.
+`src/collectors/youtube_transcript_collector.py`, 5개 파이프라인 통합, `meta_video.
 has_transcript`/`transcribed_at` 마이그레이션 적용, `scripts/backfill_youtube_transcripts.py`
 전부 실 서버(`naver_news_ai`, `youtube_samsung_official`)로 검증 완료 — SeaweedFS에
 실제 오브젝트 생성, `data_registry.s3_raw_prefix`/`s3_jsonld_prefix` 채워짐, 트랜스크립트

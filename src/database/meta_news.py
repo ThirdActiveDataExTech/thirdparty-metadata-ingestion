@@ -1,4 +1,4 @@
-"""meta_naver_news / active_meta_naver_news 읽기·쓰기 헬퍼."""
+"""meta_news / active_meta_news 읽기·쓰기 헬퍼."""
 
 from datetime import datetime
 from typing import Any, Dict, Optional
@@ -14,7 +14,7 @@ def get_existing_articles(dataset_id: str) -> Dict[str, Dict[str, Any]]:
         cur.execute(
             """
             SELECT article_url, id, published_at, is_naver_hosted, naver_oid, naver_aid, is_removed
-            FROM meta_naver_news WHERE dataset_id = %s
+            FROM meta_news WHERE dataset_id = %s
             """,
             (dataset_id,),
         )
@@ -30,13 +30,13 @@ def get_existing_articles(dataset_id: str) -> Dict[str, Dict[str, Any]]:
         conn.close()
 
 
-def insert_meta_naver_news(dataset_id: str, article: Dict[str, Any], content: Optional[str]) -> int:
+def insert_meta_news(dataset_id: str, article: Dict[str, Any], content: Optional[str]) -> int:
     conn = get_conn()
     try:
         cur = conn.cursor()
         cur.execute(
             """
-            INSERT INTO meta_naver_news (
+            INSERT INTO meta_news (
                 dataset_id, article_url, title, description, content, has_content,
                 publisher, naver_url, published_at,
                 is_naver_hosted, naver_oid, naver_aid, search_keyword
@@ -63,7 +63,7 @@ def mark_removed(meta_id: int, removed_at: datetime) -> None:
     try:
         cur = conn.cursor()
         cur.execute(
-            "UPDATE meta_naver_news SET is_removed = TRUE, removed_at = %s WHERE id = %s",
+            "UPDATE meta_news SET is_removed = TRUE, removed_at = %s WHERE id = %s",
             (removed_at, meta_id),
         )
         conn.commit()
@@ -76,7 +76,7 @@ def clear_removed_flag(meta_id: int) -> None:
     try:
         cur = conn.cursor()
         cur.execute(
-            "UPDATE meta_naver_news SET is_removed = FALSE, removed_at = NULL WHERE id = %s",
+            "UPDATE meta_news SET is_removed = FALSE, removed_at = NULL WHERE id = %s",
             (meta_id,),
         )
         conn.commit()
@@ -90,7 +90,7 @@ def get_latest_active_meta(meta_id: int) -> Optional[Dict[str, Any]]:
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT comment_count FROM active_meta_naver_news
+            SELECT comment_count FROM active_meta_news
             WHERE meta_id = %s ORDER BY collected_at DESC LIMIT 1
             """,
             (meta_id,),
@@ -101,7 +101,7 @@ def get_latest_active_meta(meta_id: int) -> Optional[Dict[str, Any]]:
         conn.close()
 
 
-def insert_active_meta_naver_news(
+def insert_active_meta_news(
     meta_id: int, comment_count, expose_count, reply_count, delta_comments=None
 ) -> None:
     conn = get_conn()
@@ -109,7 +109,7 @@ def insert_active_meta_naver_news(
         cur = conn.cursor()
         cur.execute(
             """
-            INSERT INTO active_meta_naver_news
+            INSERT INTO active_meta_news
                 (meta_id, comment_count, expose_count, reply_count, delta_comments)
             VALUES (%s, %s, %s, %s, %s)
             """,

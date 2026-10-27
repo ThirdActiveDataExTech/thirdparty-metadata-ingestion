@@ -31,7 +31,7 @@
 ## 플랫폼 다양성
 
 네이버 블로그 검색 API는 이름과 달리 `blog.naver.com` 외에도 티스토리·브런치·
-워드프레스·Blogger 등을 검색 결과에 함께 반환한다. 그래서 `meta_naver_blog.platform`
+워드프레스·Blogger 등을 검색 결과에 함께 반환한다. 그래서 `meta_blog.platform`
 컬럼으로 호스팅 플랫폼을 구분한다(`naver`/`tistory`/`brunch`/`wordpress`/`blogger`/
 `other`). 반응 수 수집·`blog_id`/`log_no` 파싱은 `platform='naver'`일 때만 해당.
 실측(350건 샘플, ADR-006 조사 중): `blog.naver.com` 96%, `tistory.com` 3.4%,
@@ -63,6 +63,6 @@ python scripts/register_dataset.py blog \
 
 - 콜렉터: `src/collectors/naver_blog_collector.py`(플랫폼 판정, 본문 스크래핑, 반응수 API)
 - 파이프라인: `src/pipelines/naver_blog_pipeline.py`
-- DB: `src/database/meta_naver_blog.py`
-- DDL: `sql/meta_naver_blog.sql`, `sql/active_meta_naver_blog.sql`
+- DB: `src/database/meta_blog.py`
+- DDL: `sql/meta_blog.sql`, `sql/active_meta_blog.sql`
 - 관련 ADR: [ADR-006](../adr/006_Naver_Blog_Metrics_Decision.md)(수집 가능 지표 결정)

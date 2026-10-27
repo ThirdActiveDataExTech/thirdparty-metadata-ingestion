@@ -180,7 +180,7 @@ subjects  JSONB,
 
 사용자가 주는 건 "어디서 찾을지"(채널 ID, 검색어)뿐이다. 실제 아이템(영상/기사/게시물)
 목록은 **등록 시점엔 DB에 없고**, Collector가 처음 실행될 때 API를 호출해 "발견"하며
-`meta_youtube_video`/`meta_naver_news`/`meta_naver_blog`에 쓴다. 아이템 수는 계속
+`meta_video`/`meta_news`/`meta_blog`에 쓴다. 아이템 수는 계속
 늘어날 수 있고(새 영상 업로드), 시간이 지나며 일부가 사라질 수도 있다(§6.2 `is_removed`).
 
 **YouTube는 "채널 전체 발견"과 "관리자가 직접 고른 개별 영상"을 한 데이터셋 안에
@@ -201,7 +201,7 @@ Shorts라도 제외하지 않음). 삭제 감지(`is_removed`)는 두 경로 모
 
 `3amd/config.yaml`의 카테고리 목록(`{id, name}` 여러 개)처럼, **목록 자체가 사용자
 입력**이다. "발견"할 게 없다 — 사용자가 카테고리를 몇 개 고르면 그게 그대로 **등록
-시점에 바로** `meta_naver_shopping`/`meta_naver_persona`에 행으로 들어간다. Collector는
+시점에 바로** `meta_shopping_insight`/`meta_persona_insight`에 행으로 들어간다. Collector는
 매일 그 고정된 카테고리 목록의 지수만 갱신할 뿐, 새 카테고리를 스스로 찾아내지 않는다.
 
 | | 발견형 (video/news/blog) | 선언형 (shopping/persona) |
@@ -214,7 +214,7 @@ Shorts라도 제외하지 않음). 삭제 감지(`is_removed`)는 두 경로 모
 
 ### 4.3 anchor 카테고리 자동 선택 (shopping_insight 한정)
 
-`meta_naver_shopping.is_anchor`는 데이터셋당 정확히 1개만 있어야 한다(partial unique
+`meta_shopping_insight.is_anchor`는 데이터셋당 정확히 1개만 있어야 한다(partial unique
 index로 DB가 "최대 1개"를 강제). 프론트엔드에서 "이 중 기준 카테고리를 골라주세요"처럼
 기술적인 개념을 사용자에게 직접 물어보지 않고, **사용자가 선택한 카테고리 목록 중
 첫 번째를 자동으로 anchor로 지정**하는 것으로 결정했다. UX 복잡도를 줄이면서도 제약
@@ -326,10 +326,10 @@ VALUES ('user_travel_golf_x1', '...', '...', 'shopping_insight', 'user',
 
 INSERT INTO data_registry (dataset_id, status, next_collect_at, pg_meta_table, pg_active_table, vec_collection)
 VALUES ('user_travel_golf_x1', 'pending', now(),
-        'meta_naver_shopping', 'active_meta_naver_shopping', 'dcat_dataset_vec');
+        'meta_shopping_insight', 'active_meta_shopping_insight', 'dcat_dataset_vec');
 
--- 카테고리 3개 → meta_naver_shopping에 즉시 3행 (발견형이었다면 이 단계 자체가 없음)
-INSERT INTO meta_naver_shopping (dataset_id, category_id, category_name, is_anchor)
+-- 카테고리 3개 → meta_shopping_insight에 즉시 3행 (발견형이었다면 이 단계 자체가 없음)
+INSERT INTO meta_shopping_insight (dataset_id, category_id, category_name, is_anchor)
 VALUES
   ('user_travel_golf_x1', '50000148', '식품>음료', TRUE),   -- categories[0] → anchor
   ('user_travel_golf_x1', '50007256', '여가/생활편의>해외여행', FALSE),
@@ -339,7 +339,7 @@ COMMIT;
 ```
 
 video/news/blog(발견형)였다면 `dcat_dataset`+`data_registry`만 쓰고 끝난다 —
-`meta_youtube_video` 등은 최초 Collector 실행 때 채워진다 (§5.1의 5번 단계).
+`meta_video` 등은 최초 Collector 실행 때 채워진다 (§5.1의 5번 단계).
 
 ### 5.4 "즉시 수집"이 필요하면
 
@@ -360,7 +360,7 @@ POST {AIRFLOW_URL}/api/v1/dags/collect_video/dagRuns
 사용자가 입력한 "채널명"과 YouTube API가 실제로 반환하는 채널명이 다를 수 있다
 (오타, 채널명 변경 등). `dcat_dataset.title`은 **사용자가 입력한 데이터셋 제목**(사람이
 관리 목적으로 붙이는 이름)으로 쓰고, API가 반환하는 실제 채널명은
-`meta_youtube_video.channel_title`에 수집 시점마다 채워지는 것으로 이미 스키마가
+`meta_video.channel_title`에 수집 시점마다 채워지는 것으로 이미 스키마가
 분리되어 있다 — 프론트엔드 UI 문구에서만 이 둘을 구분해주면 된다.
 
 ### 5.6 "동일 source_type, 기존 데이터셋에 채널만 추가"하는 경우
@@ -426,14 +426,14 @@ def run(dataset_id: str, triggered_by: str):
         for video in remote_videos:
             if video["video_id"] not in existing:
                 # ── 신규 발견: meta 새로 등록 + 첫 스냅샷 (Day 0엔 전부 이 분기)
-                meta_id = insert_meta_youtube_video(dataset_id, video)
-                insert_active_meta_youtube(meta_id, video["stats"], delta=None)
+                meta_id = insert_meta_video(dataset_id, video)
+                insert_active_meta_video(meta_id, video["stats"], delta=None)
                 new_count += 1
             else:
                 # ── 기존 영상: meta는 그대로, 통계만 새 행으로 추가 (시계열 누적)
                 meta_id = existing[video["video_id"]]
                 prev = get_latest_active_meta(meta_id)
-                insert_active_meta_youtube(
+                insert_active_meta_video(
                     meta_id, video["stats"],
                     delta_views=video["stats"]["view_count"] - prev["view_count"],
                     delta_likes=video["stats"]["like_count"] - prev["like_count"],
@@ -462,7 +462,7 @@ def run(dataset_id: str, triggered_by: str):
         raise
 ```
 
-`meta_youtube_video`/`meta_naver_news`/`meta_naver_blog`에 `is_removed`/`removed_at`
+`meta_video`/`meta_news`/`meta_blog`에 `is_removed`/`removed_at`
 컬럼을 추가했다 (§10). 행 자체는 지우지 않고 마지막 known 상태를 보존한다.
 
 > ⚠️ **삭제 판정 방식은 소스마다 다르다 (2026-07-28, 뉴스 콜렉터 실측으로 발견).**
@@ -484,9 +484,9 @@ def run(dataset_id: str, triggered_by: str):
 ### 6.2 선언형 소스의 run() — 훨씬 단순함
 
 `shopping_insight`/`persona_insight`는 신규/기존 분기도, 삭제 감지도 필요 없다 —
-`meta_naver_shopping`의 카테고리 목록은 사용자가 등록 API로 직접 넣은 것이라 Collector가
+`meta_shopping_insight`의 카테고리 목록은 사용자가 등록 API로 직접 넣은 것이라 Collector가
 목록 자체를 바꾸지 않는다. 매 실행마다 그 고정된 카테고리들의 지수를 API로 가져와서
-`active_meta_naver_shopping`에 UPSERT한다.
+`active_meta_shopping_insight`에 UPSERT한다.
 
 > ⚠️ **"오늘자 하루만" 가져오면 안 된다 (2026-07-28, 실제 구현·검증 중 발견).**
 > 처음엔 문자 그대로 "오늘(정확히는 어제)자 지수만" 가져오는 걸로 구현했는데, 이러면
@@ -516,7 +516,7 @@ OVERLAP_DAYS = 14
 
 def run(dataset_id: str, triggered_by: str):
     dataset = fetch_dcat_dataset(dataset_id)
-    categories = get_meta_naver_shopping_rows(dataset_id)  # 이미 등록된 카테고리 목록
+    categories = get_meta_shopping_insight_rows(dataset_id)  # 이미 등록된 카테고리 목록
     anchor = next(c for c in categories if c["is_anchor"])
 
     end_date = today() - 1  # 당일 데이터는 API에 아직 안 실릴 수 있음
@@ -533,7 +533,7 @@ def run(dataset_id: str, triggered_by: str):
     for category in categories:
         ratios_by_period = shopping_api.get_ratios(category["category_id"], start_date, end_date, api_key)
         for period, raw_ratio in ratios_by_period.items():
-            upsert_active_meta_naver_shopping(category["id"], period, raw_ratio, ...)
+            upsert_active_meta_shopping_insight(category["id"], period, raw_ratio, ...)
     # 카테고리 목록 자체는 절대 바꾸지 않음 — 사용자가 subjects UPDATE(§5.6)로만 바꿀 수 있음
 
     if last_period is None:

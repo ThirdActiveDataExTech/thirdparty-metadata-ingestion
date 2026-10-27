@@ -23,7 +23,7 @@ from typing import Any, Dict
 
 from src.collectors import youtube_collector, youtube_transcript_collector
 from src.database import dcat
-from src.database import meta_youtube
+from src.database import meta_video
 from src.database.db import get_conn
 from src.storage import jsonld_export, raw_export
 
@@ -46,7 +46,7 @@ def _current_item_count(dataset_id: str) -> int:
     conn = get_conn()
     try:
         cur = conn.cursor()
-        cur.execute("SELECT count(*) FROM meta_youtube_video WHERE dataset_id = %s", (dataset_id,))
+        cur.execute("SELECT count(*) FROM meta_video WHERE dataset_id = %s", (dataset_id,))
         return cur.fetchone()[0]
     finally:
         conn.close()
@@ -58,8 +58,8 @@ def _current_row_count(dataset_id: str) -> int:
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT count(*) FROM active_meta_youtube a
-            JOIN meta_youtube_video m ON m.id = a.meta_id
+            SELECT count(*) FROM active_meta_video a
+            JOIN meta_video m ON m.id = a.meta_id
             WHERE m.dataset_id = %s
             """,
             (dataset_id,),
@@ -74,7 +74,7 @@ def _clear_removed_flag(meta_id: int) -> None:
     try:
         cur = conn.cursor()
         cur.execute(
-            "UPDATE meta_youtube_video SET is_removed = FALSE, removed_at = NULL WHERE id = %s",
+            "UPDATE meta_video SET is_removed = FALSE, removed_at = NULL WHERE id = %s",
             (meta_id,),
         )
         conn.commit()
@@ -122,15 +122,15 @@ def run(dataset_id: str, triggered_by: str) -> None:
 
     try:
         service = youtube_collector.build_service(api_key)
-        existing = meta_youtube.get_existing_video_ids(dataset_id)  # {video_id: meta_id}, is_removed 무관 전부
+        existing = meta_video.get_existing_video_ids(dataset_id)  # {video_id: meta_id}, is_removed 무관 전부
         remote_ids = set()
         new_count, updated_count, removed_count = 0, 0, 0
 
         for video in _fetch_remote_videos(service, channel_ids, video_ids):
             remote_ids.add(video["video_id"])
             if video["video_id"] not in existing:
-                meta_id = meta_youtube.insert_meta_youtube_video(dataset_id, video)
-                meta_youtube.insert_active_meta_youtube(meta_id, video)
+                meta_id = meta_video.insert_meta_video(dataset_id, video)
+                meta_video.insert_active_meta_video(meta_id, video)
                 try:
                     transcript = youtube_transcript_collector.fetch_transcript(video["video_id"])
                     if transcript is not None:
@@ -138,28 +138,28 @@ def run(dataset_id: str, triggered_by: str) -> None:
                         raw_export.write_video_transcript(
                             dataset_id, video["video_id"], segments, full_text, language
                         )
-                        meta_youtube.mark_transcribed(meta_id, transcribed_at=datetime.now(timezone.utc))
+                        meta_video.mark_transcribed(meta_id, transcribed_at=datetime.now(timezone.utc))
                 except Exception as e:
                     logger.warning(f"트랜스크립트 처리 실패 (video_id={video['video_id']}): {e}")
                 new_count += 1
             else:
                 meta_id = existing[video["video_id"]]
-                prev = meta_youtube.get_latest_active_meta(meta_id)
+                prev = meta_video.get_latest_active_meta(meta_id)
                 if prev is not None:
-                    meta_youtube.insert_active_meta_youtube(
+                    meta_video.insert_active_meta_video(
                         meta_id, video,
                         delta_views=_compute_delta(prev, video, "view_count"),
                         delta_likes=_compute_delta(prev, video, "like_count"),
                         delta_comments=_compute_delta(prev, video, "comment_count"),
                     )
                 else:
-                    meta_youtube.insert_active_meta_youtube(meta_id, video)
+                    meta_video.insert_active_meta_video(meta_id, video)
                 _clear_removed_flag(meta_id)  # 재등장 시 removed 해제
                 updated_count += 1
 
         for video_id, meta_id in existing.items():
             if video_id not in remote_ids:
-                meta_youtube.mark_removed(meta_id, removed_at=datetime.now(timezone.utc))
+                meta_video.mark_removed(meta_id, removed_at=datetime.now(timezone.utc))
                 removed_count += 1
 
         ended_at = datetime.now(timezone.utc)

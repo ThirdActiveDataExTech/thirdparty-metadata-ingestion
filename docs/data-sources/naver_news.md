@@ -55,6 +55,6 @@ python scripts/register_dataset.py news \
 
 - 콜렉터: `src/collectors/naver_news_collector.py`
 - 파이프라인: `src/pipelines/naver_news_pipeline.py`
-- DB: `src/database/meta_naver_news.py`
-- DDL: `sql/meta_naver_news.sql`, `sql/active_meta_naver_news.sql`
+- DB: `src/database/meta_news.py`
+- DDL: `sql/meta_news.sql`, `sql/active_meta_news.sql`
 - 관련 ADR: [ADR-005](../adr/005_Naver_News_Metrics_Decision.md)(수집 가능 지표 결정)

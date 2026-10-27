@@ -2,7 +2,7 @@
 §6.2 그대로 구현.
 
 shopping_insight/persona_insight는 신규/기존 분기도 삭제 감지도 필요 없다 —
-meta_naver_shopping의 카테고리 목록은 등록 시점에 사용자가 이미 확정한 것이라
+meta_shopping_insight의 카테고리 목록은 등록 시점에 사용자가 이미 확정한 것이라
 Collector가 목록 자체를 바꾸지 않는다.
 
 날짜 범위는 "어제 하루만"이 아니라 **DB에 저장된 마지막 날짜 - OVERLAP_DAYS부터
@@ -37,7 +37,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.collectors import naver_datalab_scale, naver_shopping_collector
-from src.database import dcat, meta_naver_shopping
+from src.database import dcat, meta_shopping_insight
 from src.database.db import get_conn
 from src.storage import jsonld_export
 
@@ -65,8 +65,8 @@ def _current_row_count(dataset_id: str) -> int:
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT count(*) FROM active_meta_naver_shopping a
-            JOIN meta_naver_shopping m ON m.id = a.meta_id
+            SELECT count(*) FROM active_meta_shopping_insight a
+            JOIN meta_shopping_insight m ON m.id = a.meta_id
             WHERE m.dataset_id = %s
             """,
             (dataset_id,),
@@ -88,7 +88,7 @@ def _compute_fetch_range(dataset_id: str, dataset: Dict[str, Any]) -> Tuple[str,
     이미 수집 이력이 있으면 마지막 저장 날짜 - OVERLAP_DAYS부터.
     """
     end_date = date.today() - timedelta(days=1)  # 당일 데이터는 API에 아직 안 실릴 수 있음
-    last_period = meta_naver_shopping.get_last_period(dataset_id)
+    last_period = meta_shopping_insight.get_last_period(dataset_id)
     if last_period is None:
         desired_start = dataset.get("temporal_start")  # date 객체 또는 None
         start_date = desired_start if desired_start is not None else end_date - timedelta(days=OVERLAP_DAYS)
@@ -104,8 +104,8 @@ def _current_temporal_start(dataset_id: str) -> Optional[str]:
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT MIN(a.period) FROM active_meta_naver_shopping a
-            JOIN meta_naver_shopping m ON m.id = a.meta_id
+            SELECT MIN(a.period) FROM active_meta_shopping_insight a
+            JOIN meta_shopping_insight m ON m.id = a.meta_id
             WHERE m.dataset_id = %s
             """,
             (dataset_id,),
@@ -122,7 +122,7 @@ def run(dataset_id: str, triggered_by: str) -> None:
     client_id = dcat.get_api_key(dataset_id, "naver_client_id")
     client_secret = dcat.get_api_key(dataset_id, "naver_client_secret")
 
-    categories = meta_naver_shopping.get_meta_naver_shopping_rows(dataset_id)
+    categories = meta_shopping_insight.get_meta_shopping_insight_rows(dataset_id)
     anchor = next(c for c in categories if c["is_anchor"])
     non_anchor = [c for c in categories if not c["is_anchor"]]
     batches = _chunk(non_anchor, 2)
@@ -220,7 +220,7 @@ def _collect_one_combo(
             ref_batch_idx = b_idx
             break
 
-    existing_anchor = meta_naver_shopping.get_existing_anchor_raw(
+    existing_anchor = meta_shopping_insight.get_existing_anchor_raw(
         anchor["id"], gender, age, list(ref_anchor.keys())
     )
     inter_scale = naver_datalab_scale.compute_inter_scale(existing_anchor, ref_anchor)
@@ -236,7 +236,7 @@ def _collect_one_combo(
 
         if b_idx == ref_batch_idx:
             for period, raw in batch_anchor.items():
-                meta_naver_shopping.upsert_active_meta_naver_shopping(
+                meta_shopping_insight.upsert_active_meta_shopping_insight(
                     anchor["id"], period, gender, age,
                     raw_ratio=raw, anchor_raw_ratio=raw, normalized_ratio=100.0,
                     scale_factor=scale_factor, pseudo_volume=raw * scale_factor,
@@ -249,7 +249,7 @@ def _collect_one_combo(
             for period, raw in cat_by_period.items():
                 anchor_raw = batch_anchor.get(period)
                 normalized = raw / anchor_raw * 100.0 if anchor_raw else None
-                meta_naver_shopping.upsert_active_meta_naver_shopping(
+                meta_shopping_insight.upsert_active_meta_shopping_insight(
                     cat["id"], period, gender, age,
                     raw_ratio=raw, anchor_raw_ratio=anchor_raw, normalized_ratio=normalized,
                     scale_factor=scale_factor, pseudo_volume=raw * scale_factor,

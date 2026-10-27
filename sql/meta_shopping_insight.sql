@@ -1,9 +1,9 @@
 -- ═══════════════════════════════════════════════════════════════
--- meta_naver_shopping : 네이버 쇼핑 인사이트 카테고리 정적 정보
+-- meta_shopping_insight : 네이버 쇼핑 인사이트 카테고리 정적 정보
 -- source_type = 'shopping_insight'
 --
 -- 수집 대상 카테고리 목록을 저장하는 메타 테이블.
--- 실제 측정값(날짜 × 성별 × 연령별 검색량 지수)은 active_meta_naver_shopping에 적재.
+-- 실제 측정값(날짜 × 성별 × 연령별 검색량 지수)은 active_meta_shopping_insight에 적재.
 --
 -- [anchor 개념]
 -- 네이버 쇼핑인사이트 API는 한 번에 최대 3개 카테고리를 비교하며,
@@ -11,9 +11,9 @@
 -- 배치마다 M이 달라지므로 배치 간 비교를 위해 anchor(기준 카테고리) 1개를
 -- 모든 배치에 포함시킨다. is_anchor=TRUE 인 카테고리가 기준점이다.
 -- ═══════════════════════════════════════════════════════════════
-DROP TABLE IF EXISTS meta_naver_shopping CASCADE;
+DROP TABLE IF EXISTS meta_shopping_insight CASCADE;
 
-CREATE TABLE meta_naver_shopping (
+CREATE TABLE meta_shopping_insight (
 
     -- ── 식별 ──────────────────────────────────────────────────
     id              BIGSERIAL PRIMARY KEY,
@@ -56,12 +56,12 @@ CREATE TABLE meta_naver_shopping (
     -- category_name/cat_level* 갱신 시각 (네이버 카테고리 개편 시 대비)
 );
 
-CREATE INDEX idx_shopping_dataset  ON meta_naver_shopping(dataset_id);
-CREATE INDEX idx_shopping_cat_id   ON meta_naver_shopping(category_id);
-CREATE INDEX idx_shopping_anchor   ON meta_naver_shopping(is_anchor);
-CREATE INDEX idx_shopping_level1   ON meta_naver_shopping(cat_level1);
+CREATE INDEX idx_shopping_dataset  ON meta_shopping_insight(dataset_id);
+CREATE INDEX idx_shopping_cat_id   ON meta_shopping_insight(category_id);
+CREATE INDEX idx_shopping_anchor   ON meta_shopping_insight(is_anchor);
+CREATE INDEX idx_shopping_level1   ON meta_shopping_insight(cat_level1);
 
 -- 데이터셋당 anchor 카테고리는 최대 1개만 허용 (partial unique index)
 CREATE UNIQUE INDEX idx_shopping_one_anchor
-    ON meta_naver_shopping(dataset_id)
+    ON meta_shopping_insight(dataset_id)
     WHERE is_anchor = TRUE;

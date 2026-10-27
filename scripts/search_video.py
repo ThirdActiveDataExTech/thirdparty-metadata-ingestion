@@ -2,7 +2,7 @@
 자연어 질의로 유사한 YouTube 영상을 검색하는 테스트 스크립트.
 
 실행 방법:
-    python scripts/search_youtube_videos.py "HBM 공정 설명하는 영상"
+    python scripts/search_video.py "HBM 공정 설명하는 영상"
 
 환경변수:
     DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
@@ -39,8 +39,8 @@ def search(query: str, top_k: int = 3):
                m.title,
                m.channel_title,
                ROUND((1 - (v.embedding <=> %s::vector))::numeric, 4) AS similarity
-        FROM meta_youtube_video_vec v
-        JOIN meta_youtube_video m ON m.id = v.meta_id
+        FROM meta_video_vec v
+        JOIN meta_video m ON m.id = v.meta_id
         ORDER BY v.embedding <=> %s::vector
         LIMIT %s
     """, (str(q_vec), str(q_vec), top_k))

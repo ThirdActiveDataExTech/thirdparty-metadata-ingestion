@@ -40,8 +40,8 @@
 ## 수집 대상 (실 DB 기준, 2026-07-28)
 
 `naver_persona_insight` 데이터셋에 카테고리 4개 등록됨(anchor 개념 없음 — 카테고리
-목록은 `meta_naver_persona` 테이블 직접 조회, `SELECT category_id, category_name
-FROM meta_naver_persona WHERE dataset_id='naver_persona_insight'`).
+목록은 `meta_persona_insight` 테이블 직접 조회, `SELECT category_id, category_name
+FROM meta_persona_insight WHERE dataset_id='naver_persona_insight'`).
 
 ## 등록 방법
 
@@ -57,6 +57,6 @@ python scripts/register_dataset.py persona_insight \
 - 콜렉터: `src/collectors/naver_persona_collector.py`(성별/연령 API 독립 호출),
   `src/collectors/naver_datalab_scale.py`(shopping_insight와 공유)
 - 파이프라인: `src/pipelines/naver_persona_pipeline.py`
-- DB: `src/database/meta_naver_persona.py`
-- DDL: `sql/meta_naver_persona.sql`, `sql/active_meta_naver_persona.sql`
+- DB: `src/database/meta_persona_insight.py`
+- DDL: `sql/meta_persona_insight.sql`, `sql/active_meta_persona_insight.sql`
 - 레거시 원본(포팅 참고용): `3amd/naver_persona.py`

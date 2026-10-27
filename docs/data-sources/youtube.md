@@ -39,7 +39,7 @@ YouTube Data API v3로 채널 영상 메타데이터를 수집한다. 등록 시
 ## 수집 항목 (구현 완료)
 
 - 영상 ID, 제목, 설명, 태그, 카테고리, topic categories
-- 업로드일, 조회수, 좋아요 수, 댓글 수(시계열, `active_meta_youtube`)
+- 업로드일, 조회수, 좋아요 수, 댓글 수(시계열, `active_meta_video`)
 - 썸네일 URL, 재생시간, 화질, 자막 유무, 언어
 - **트랜스크립트**(`has_transcript`/`transcribed_at` 컬럼, SeaweedFS
   `raw/video/{dataset_id}/{video_id}.json`에 세그먼트+전체텍스트 저장) — 자체

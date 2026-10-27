@@ -1,11 +1,11 @@
-"""meta_naver_shopping / active_meta_naver_shopping 읽기·쓰기 헬퍼."""
+"""meta_shopping_insight / active_meta_shopping_insight 읽기·쓰기 헬퍼."""
 
 from typing import Any, Dict, List, Optional
 
 from src.database.db import get_conn
 
 
-def get_meta_naver_shopping_rows(dataset_id: str) -> List[Dict[str, Any]]:
+def get_meta_shopping_insight_rows(dataset_id: str) -> List[Dict[str, Any]]:
     """이 dataset_id에 등록된 전체 카테고리(anchor 포함)."""
     conn = get_conn()
     try:
@@ -13,7 +13,7 @@ def get_meta_naver_shopping_rows(dataset_id: str) -> List[Dict[str, Any]]:
         cur.execute(
             """
             SELECT id, category_id, category_name, is_anchor
-            FROM meta_naver_shopping
+            FROM meta_shopping_insight
             WHERE dataset_id = %s
             """,
             (dataset_id,),
@@ -35,8 +35,8 @@ def get_last_period(dataset_id: str) -> Optional[str]:
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT MAX(a.period) FROM active_meta_naver_shopping a
-            JOIN meta_naver_shopping m ON m.id = a.meta_id
+            SELECT MAX(a.period) FROM active_meta_shopping_insight a
+            JOIN meta_shopping_insight m ON m.id = a.meta_id
             WHERE m.dataset_id = %s
             """,
             (dataset_id,),
@@ -61,7 +61,7 @@ def get_existing_anchor_raw(
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT period, raw_ratio FROM active_meta_naver_shopping
+            SELECT period, raw_ratio FROM active_meta_shopping_insight
             WHERE meta_id = %s AND gender = %s AND age = %s
               AND period = ANY(%s::date[])
             """,
@@ -72,7 +72,7 @@ def get_existing_anchor_raw(
         conn.close()
 
 
-def upsert_active_meta_naver_shopping(
+def upsert_active_meta_shopping_insight(
     meta_id: int,
     period: str,
     gender: str,
@@ -89,7 +89,7 @@ def upsert_active_meta_naver_shopping(
         cur = conn.cursor()
         cur.execute(
             """
-            INSERT INTO active_meta_naver_shopping
+            INSERT INTO active_meta_shopping_insight
                 (meta_id, period, gender, age, raw_ratio, anchor_raw_ratio,
                  normalized_ratio, scale_factor, pseudo_volume, batch_index)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
