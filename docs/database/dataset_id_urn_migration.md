@@ -107,10 +107,18 @@ jsonld/{source_type}/{dataset_id}/{dataset_id}.jsonld
 
 1. **URN 생성 규칙 확정** (와이즈넛 질의 회신 대기)
 2. 우리 FK 8개에 `ON UPDATE CASCADE` 부여
-3. `external_ids`에 기존 slug 보존 — 이미 마이그레이션 §2에 포함돼 있다
-   ```json
-   {"legacy_slug": "youtube_samsung_official"}
-   ```
+3. **기존 slug 보존** — `external_ids`는 쓰지 않는다
+   와이즈넛 회신에서 `external_ids`는 **비정형 미사용**으로 합의됐고, 형식도
+   `'포털:번호'` 문자열 배열(`["datagokr:15135932"]`)이라 우리 slug를 넣으면
+   형식·용도 양쪽에 어긋난다. 대신 두 경로로 추적성을 확보한다.
+
+   | 경로 | 내용 |
+   |---|---|
+   | **매핑표 커밋** | `sql/migration_*_dataset_id_map.sql`에 `(old_slug, new_urn)` 18건을 남긴다 |
+   | **S3 경로 유지** | 경로를 바꾸지 않으면 `raw/video/youtube_samsung_official/`에 slug가 그대로 남고, `data_registry.s3_raw_prefix`가 이를 가리킨다 |
+
+   > 비정형도 `external_ids`를 쓸 수 있는지는 와이즈넛에 확인한다 — "비정형 미사용"은
+   > *원천 포털 번호가 없어서*라는 취지로 보이고, slug 보존은 다른 용도이기 때문이다.
 4. 트랜잭션 안에서 `UPDATE dcat_dataset SET dataset_id = <urn>` (CASCADE 전파)
 5. `data_registry`의 `s3_*_prefix` 문자열 갱신 — **경로를 바꾸지 않기로 하면 생략**
 6. JSON-LD 전량 재생성
@@ -139,7 +147,7 @@ jsonld/{source_type}/{dataset_id}/{dataset_id}.jsonld
 - [ ] 케이웨어 전달 여부 확인 (이미 받아갔으면 통보 일정 협의)
 - [ ] 우리 FK 7개 `ON UPDATE CASCADE` 부여 (dcat_provenance 제외 — FK 없음)
 - [ ] `dcat_provenance.dataset_id` 명시적 UPDATE + 끊어진 참조 확인
-- [ ] `external_ids`에 legacy_slug 보존 확인
+- [ ] 매핑표(`old_slug` → `new_urn`) SQL 파일로 커밋
 - [ ] S3 경로 정책 결정 (유지 / 이전)
 - [ ] `UPDATE` 실행 (트랜잭션, 롤백 가능 상태에서)
 - [ ] JSON-LD 재생성

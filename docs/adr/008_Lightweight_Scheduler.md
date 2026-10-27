@@ -54,6 +54,23 @@ ADR-007이 원했던 "등록 즉시 반영"과 오히려 멀어진다.
    세션 락이므로 커넥션이 끊기면 자동 해제되어 TTL·하트비트가 불필요하다.
    CronJob `concurrencyPolicy: Forbid`를 함께 건다.
 3. 파이프라인은 **선언형 YAML 명세를 해석하는 자체 경량 러너**로 실행한다(구현량 150~250줄).
+4. **와이즈넛 「자동 실행 계약」(설계 초안 §4.3)을 그대로 따른다.**
+
+   | 항목 | 규격 |
+   |---|---|
+   | 폴링 대상 | `data_registry` |
+   | 조건 | `status IN ('pending','active') AND next_collect_at <= now()` |
+   | 주기 | **15분** |
+   | 실행 후 | `last_collected_at`·`next_collect_at`·`item_count`·`row_count` 갱신, `dcat_provenance` 1행 추가 |
+   | 실패 시 | `status='error'`, `last_error` 기록. 재시도는 다음 폴링에서 판단 |
+   | `next_collect_at` 산정 | **차기 등록 예정일(`dcat_dataset_attr.next_registration_date`) → 없으면 갱신 주기(`accrual_periodicity`) → 둘 다 없으면 주간** |
+
+   비정형은 `next_registration_date`가 NULL이므로 실질적으로 `accrual_periodicity`를 쓰며,
+   **"둘 다 없으면 주간" 폴백은 현재 코드에 없어 추가해야 한다.**
+
+   ⚠️ 04_Implementation_Methods.md §3 C4에서 제안한 **적응형 주기 조정(AIMD)은 이 계약에 없다.**
+   계약이 산정 규칙을 명시했으므로 도입하려면 별도 합의가 필요하다 — 선언값을 덮어쓰지 않고
+   `adaptive_interval` 컬럼을 따로 두는 설계는 유지하되, **적용은 합의 후로 미룬다.**
 4. 락 획득 실패는 **에러가 아니다.** debug 로그 후 skip하면 다음 틱에 자연히 재시도된다.
 
 ## 받아들이는 대가

@@ -8,7 +8,23 @@
 -- relation_type을 문자열 값으로 저장하므로 유형이 늘어도 스키마를 고치지 않는다.
 --
 -- 주의: FK로 묶여 있어 여기에 등록되지 않은 관계 유형은 INSERT 자체가 불가하다.
---       비정형 전용 유형을 추가하려면 와이즈넛과 합의 후 이 표에 먼저 넣어야 한다.
+--       와이즈넛 회신(2026-10-27): "새 코드는 같은 테이블에 추가한 뒤 사용할 수 있습니다."
+--       → 비정형 전용 유형 추가가 가능하다. 추가 전 공유만 하면 된다.
+--
+-- 표준값 개정 경위 (와이즈넛 메모, 2026-10-27)
+--   별첨 [5. 관계 유형 표준값] 시트의 11종을 8종으로 정리했다.
+--   - SEMANTICALLY_RELATED / KEYWORD_OVERLAP: 그대로 유지
+--   - 정형 데이터셋 간 관계는 '함께 쓰면 무엇을 할 수 있는가' 기준으로 4종으로 재정리
+--       DETAIL_FOR(속성 보완)    예) 어린이집 현황 ↔ 어린이집 교직원 현황
+--       STATISTIC_FOR(집계 맥락) 예) 드라마 회차 정보 ↔ 프로그램 시청률 통계
+--       ADJACENT_TO(인접 맥락)   예) 어린이집 현황 ↔ 유치원 현황
+--       SAME_KIND(동종 판본)     예) 전국 어린이집 현황 ↔ 성남시 어린이집 현황
+--   - 파일 간 2종: TIMESERIES_SUCCESSOR, COLUMN_NAME_SIMILAR
+--   삭제된 유형: SAME_PUBLISHER, JOINABLE, TEMPORAL_OVERLAP, SCHEMA_SIMILAR,
+--                COMPLEMENTARY, SPATIAL_OVERLAP, LINEAGE
+--
+-- 모비젠 운용 방침(설계 초안 3장 회신): 비정형은 우선 SEMANTICALLY_RELATED,
+--   KEYWORD_OVERLAP 2종만 활용한다.
 -- ═══════════════════════════════════════════════════════════════
 DROP TABLE IF EXISTS relation_type_registry CASCADE;
 

@@ -44,8 +44,10 @@ CREATE TABLE dcat_dataset_relation (
     --   KEYWORD_OVERLAP      (키워드 집합 자카드 계수)
 
     relation_label      TEXT,
-    -- 관계 표시명 | 화면 표기용 보조 명칭
-    -- (별첨 v2 이후 추가된 컬럼 — 원천 문서에는 없음)
+    -- 관계 설명 | relation_type에는 표준 코드만 넣고, 판정 과정에서 나온 구체적 설명을 여기 적는다
+    -- 예) relation_type='DETAIL_FOR',
+    --     relation_label='어린이집-교직원 1:N 참조 (어린이집코드 공통)'
+    -- 와이즈넛 회신: **비정형에서는 비워 두어도 된다** (2026-10-27)
 
     score               REAL NOT NULL,
     -- 관계 점수 | 0~1
