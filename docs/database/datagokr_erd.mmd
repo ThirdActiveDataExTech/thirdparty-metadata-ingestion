@@ -1,10 +1,8 @@
 %% datagokr DB — 전체 ERD
 %% 재생성: npx -y @mermaid-js/mermaid-cli -i datagokr_erd.mmd -o datagokr_erd.svg
-%%
-%% 명명 규칙 (2026-10-27): 비정형 테이블은 meta_{source_type} / active_meta_{source_type}
+%% 명명 규칙 (2026-10-27): 비정형 테이블은 meta_<source_type> / active_meta_<source_type>
 %% 점선(..)은 외래키가 없는 논리 참조 또는 아직 생성되지 않은 테이블
 erDiagram
-    %% ── 카탈로그와 부속 ──────────────────────────────
     dcat_dataset ||..o{ dcat_provenance : "수집 이력 (FK 없음 — 폐기 후에도 보존)"
     dcat_dataset ||--|| data_registry : "운영 현황"
     dcat_dataset ||--|| dcat_dataset_vec : "데이터셋 임베딩"
@@ -13,13 +11,11 @@ erDiagram
     dcat_dataset ||--o{ active_meta_dataset : "데이터셋 지표 시계열"
     dcat_dataset ||--o{ dcat_dataset_relation : "데이터셋 간 관계"
 
-    %% ── 표준값 레지스트리 ────────────────────────────
     metric_registry ||--o{ active_meta_dataset : "metric_code"
     metric_registry ||--o{ active_meta_file : "metric_code"
     relation_type_registry ||--o{ dcat_dataset_relation : "relation_type"
     relation_type_registry ||--o{ meta_file_relation : "relation_type"
 
-    %% ── 비정형 계층 (source_type별) ──────────────────
     dcat_dataset ||--o{ meta_video : "video"
     dcat_dataset ||--o{ meta_news : "news"
     dcat_dataset ||--o{ meta_blog : "blog"
@@ -35,16 +31,13 @@ erDiagram
     meta_shopping_insight ||--o{ active_meta_shopping_insight : "일별 지수"
     meta_persona_insight ||--o{ active_meta_persona_insight : "일별 Persona Index"
 
-    %% ── 정형 계층 ────────────────────────────────────
     dcat_dataset ||--o{ meta_datagokr_file : "structured_file"
     meta_datagokr_file ||--o{ active_meta_file : "파일 지표 시계열"
     meta_datagokr_file ||--o{ meta_file_relation : "파일·컬럼 간 관계"
     meta_datagokr_file ||--|| meta_datagokr_file_vec : "파일 임베딩"
 
-    %% ── 등재 대기 / 미분류 ───────────────────────────
     dcat_dataset_draft }o..|| dcat_dataset : "검토 후 등재"
 
-    %% ── AI 생성 메타 (예정 — ADR-009 공통 단일 테이블) ─
     dcat_dataset ||..o{ meta_ai_annotation : "AI 생성 메타 (예정)"
     ai_generator_registry ||..o{ meta_ai_annotation : "generator_version (예정)"
 
@@ -60,7 +53,7 @@ erDiagram
         text visibility
     }
     dcat_dataset_attr {
-        text dataset_id PK_FK
+        text dataset_id PK "dcat_dataset FK 겸용"
         date next_registration_date
         text stat_name "KOSIS 통계명"
         text spatial_unit "NATION/SIDO/SIGUNGU/EMD"
