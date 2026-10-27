@@ -264,6 +264,11 @@ pandas `describe()`, 결측률, 카디널리티. (쇼핑·페르소나 인사이
 
 **근거**: "데이터 패턴 모델링 기반 데이터 관계 분석 기술"
 
+> ⚠️ **저장은 와이즈넛 합의 스키마 `dcat_dataset_relation`을 쓴다**([ADR-012](../adr/012_Graph_Storage_PostgreSQL.md)).
+> `relation_type`이 `relation_type_registry`에 FK로 묶여 있어 **등록되지 않은 유형은 INSERT 자체가 불가능**하다.
+> 2026-10-27 기준 비정형에 쓸 수 있는 표준 유형은 **`SEMANTICALLY_RELATED`·`KEYWORD_OVERLAP` 2종뿐**이며,
+> 아래 `entity_shared`·`temporal_comovement`는 **registry 등록을 먼저 제안**해야 쓸 수 있다.
+
 **채택하는 엣지 4종**
 
 | 종류 | 산출 방법 | 비고 |
@@ -709,27 +714,50 @@ CPU에서 VLM 캡셔닝은 이미지 인코더(ViT) + 수백~수천 이미지 �
 | [ADR-012](../adr/012_Graph_Storage_PostgreSQL.md) | **관계 그래프 = PostgreSQL + NetworkX** | 그래프DB 미도입 |
 | [ADR-013](../adr/013_No_External_LLM_API.md) | **외부 LLM API 미사용, 로컬 추론 전용** | A2·C1·C2·C7 설계에 반영 완료 |
 
-## 7. 신규 테이블 목록
+## 7. 테이블 현황 (2026-10-27 실측 반영)
+
+와이즈넛 합의 스키마 15종이 **이미 DB에 생성되어 있다.** 초안에서 신규 설계했던
+`dcat_relation` / `dcat_graph_metric`은 철회하고 합의 스키마를 재사용한다([ADR-012](../adr/012_Graph_Storage_PostgreSQL.md)).
+
+### 이미 존재 — 재사용
+
+| 테이블 | 용도 | 관련 과업 |
+|---|---|---|
+| `dcat_dataset_relation` | 데이터셋 간 관계 (승인 상태의 정본) | B2·B3·B4 |
+| `relation_type_registry` | 관계 유형 표준값 — **FK로 강제됨** | B2 |
+| `active_meta_dataset` | 데이터셋 단위 지표 시계열 (EAV) → **그래프 지표도 여기** | B3 |
+| `meta_file_relation` | 파일·컬럼 간 관계 (정형, 와이즈넛 산출) | — |
+| `metric_registry` | 지표 코드 표준값 | B3 |
+| `meta_datagokr_file` / `_vec` / `active_meta_file` | 정형 파일 계층 | A3 |
+| `dcat_dataset_attr` / `dcat_dataset_draft` | 정형 현황·매핑 초안 | A3 |
+
+### 신규로 만들어야 하는 것
 
 | 테이블 | 용도 | 관련 과업 |
 |---|---|---|
 | `meta_feature` | 데이터셋·컬럼 단위 특징(통계·키워드·토픽) | B1 |
-| `dcat_relation` | 관계 엣지 (규칙·모델 공존, 단방향 + 전개 뷰) | B2·B3·B4 |
-| `dcat_graph_run` | 그래프 생성 1회 실행 = 1행 (params·modularity 기록) | B3 |
-| `dcat_graph_metric` | 중심성·커뮤니티 결과 환류 (run 단위 누적) | B3 |
-| `meta_ai_annotation` | AI 생성 메타 (공통 단일 + JSONB) | A2 |
-| `ai_generator_registry` | 현재 활성 생성기 버전 | A2 |
-| `schema_snapshot` | 스키마 해시 변경 이력 | C4 |
-| `drift_event` | 드리프트 감지·제안·승인 | C4 |
+| `meta_ai_annotation` / `ai_generator_registry` | AI 생성 메타 (공통 단일 + JSONB) | A2 |
+| `schema_snapshot` / `drift_event` | 스키마·볼륨 드리프트 | C4 |
 | `data_package` / `data_package_item` | 패키지 발급 이력·구성 | C5 |
 | `dcat_distribution` | 1 Dataset : N Distribution (외부 포털 수용) | C6 |
-| 컬럼 추가 | `data_registry.adaptive_interval`, `consecutive_failures`, `consecutive_no_change` | C4 |
-| 컬럼 추가 | `dcat_dataset.origin`, `source_system`, `source_id`, `source_url`, `harvested_at`, `is_active` | C6 |
-| 컬럼 추가 | `dcat_dataset.search_tokens`, `tokenizer_ver`, `search_tsv` | C1 |
 
-> `dcat_provenance`의 PK는 **`prov_id`** 다(확인 완료). FK 작성 시 주의.
+### 컬럼 추가
 
----
+| 대상 | 컬럼 |
+|---|---|
+| `dcat_dataset` | `source`·`publisher_code`·`external_ids`·`party`·`visibility` (마이그레이션 작성 완료, 적용 대기) |
+| `dcat_dataset` | `search_tokens`·`tokenizer_ver`·`search_tsv` (C1) |
+| `data_registry` | `adaptive_interval`·`consecutive_failures`·`consecutive_no_change` (C4) |
+
+### 등록 제안이 필요한 표준값 (와이즈넛 합의 대상)
+
+| 대상 | 제안 내용 |
+|---|---|
+| `relation_type_registry` | 비정형용 관계 유형 — 개체 공유, 시계열 공변동 (추가 가능 회신 받음) |
+| `relation_type_registry` | 모델 산출 엣지 분리용 유형 (쌍+유형당 1행 제약 때문) |
+| `metric_registry` | 그래프 지표 3종 — degree, PageRank, 커뮤니티 ID |
+
+> `dcat_provenance`의 PK는 **`prov_id`** 다(확인 완료).
 
 ## 8. 확인이 남은 항목
 

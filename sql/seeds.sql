@@ -20,17 +20,17 @@
 
 INSERT INTO dcat_dataset (
     dataset_id, title, description,
-    publisher, source_type, landing_page, access_url, subjects,
+    publisher, source, source_type, landing_page, access_url, subjects,
     language, spatial, temporal_start, temporal_end,
     temporal_resolution, accrual_periodicity, item_count,
     keywords, license, rights,
-    dataset_origin, owner_id
+    dataset_origin, owner_id, visibility
 ) VALUES
 (
     'naver_shopping_insight',
     '네이버 쇼핑 인사이트 카테고리 수집',
     '성별×연령(12조합) 필터로 수집한 카테고리별 일간 검색량 지수. anchor 보정(intra_scale) 및 inter_scale 적용.',
-    'Naver', 'shopping_insight',
+    'Naver', 'Naver', 'shopping_insight',
     'https://datalab.naver.com/shopping/',
     'https://openapi.naver.com/v1/datalab/shopping/categories',
     '["50000148","50001828","50001421","50000204","50000167"]',
@@ -38,13 +38,13 @@ INSERT INTO dcat_dataset (
     '["쇼핑","검색량","카테고리","성별","연령","네이버"]',
     'https://developers.naver.com/notice/terms',
     '네이버 API 이용약관 준수. 수집 데이터의 외부 배포 및 상업적 재판매 금지.',
-    'admin', NULL
+    'admin', NULL, 'ORG'
 ),
 (
     'naver_persona_insight',
     '네이버 쇼핑 인사이트 페르소나 분석',
     '카테고리별 성별·연령 독립 가정 기반 persona_index 산출. gender_pv × age_pv 교차 추정.',
-    'Naver', 'persona_insight',
+    'Naver', 'Naver', 'persona_insight',
     'https://datalab.naver.com/shopping/',
     'https://openapi.naver.com/v1/datalab/shopping/category/gender,age',
     '["50000148","50001828","50001421","50000204"]',
@@ -52,13 +52,13 @@ INSERT INTO dcat_dataset (
     '["쇼핑","페르소나","성별","연령","카테고리"]',
     'https://developers.naver.com/notice/terms',
     '네이버 API 이용약관 준수. 수집 데이터의 외부 배포 및 상업적 재판매 금지.',
-    'admin', NULL
+    'admin', NULL, 'ORG'
 ),
 (
     'youtube_samsung_official',
     '삼성전자 공식 유튜브 채널',
     '삼성전자 공식 YouTube 채널(@Samsung) 전체 영상 메타데이터 수집. 주간 단위 업데이트.',
-    'YouTube', 'video',
+    'YouTube', 'YouTube', 'video',
     'https://www.youtube.com/@Samsung',
     'https://www.googleapis.com/youtube/v3/videos',
     '["UCWwgaK7x0_FR1goeSRazfsQ"]',
@@ -66,13 +66,13 @@ INSERT INTO dcat_dataset (
     '["유튜브","삼성전자","테크","채널"]',
     'https://developers.google.com/youtube/terms/api-services-tos',
     'YouTube API Services Terms of Service 준수. 수집 데이터의 제3자 제공 시 Google 사전 승인 필요.',
-    'admin', NULL
+    'admin', NULL, 'ORG'
 ),
 (
     'naver_news_ai',
     '네이버 뉴스 AI 관련 기사 수집',
     '네이버 뉴스 API를 통해 인공지능 관련 키워드로 수집한 뉴스 기사. 본문 스크래핑 포함.',
-    'Naver', 'news',
+    'Naver', 'Naver', 'news',
     'https://news.naver.com',
     'https://openapi.naver.com/v1/search/news.json',
     '["인공지능","AI","머신러닝","딥러닝"]',
@@ -80,7 +80,7 @@ INSERT INTO dcat_dataset (
     '["뉴스","AI","인공지능","네이버"]',
     'https://developers.naver.com/notice/terms',
     '네이버 API 이용약관 준수. 뉴스 본문 스크래핑은 각 언론사 저작권 정책 별도 확인 필요.',
-    'admin', NULL
+    'admin', NULL, 'ORG'
 ),
 -- user 생성 예시: YouTube 채널 2개에서 HBM 관련 영상만 직접 선택한 사용자 정의 데이터셋
 -- owner_id는 예시값 — 실제 계정 테이블이 아직 없어 임의 문자열 (§10/2-6 참조)
@@ -88,20 +88,20 @@ INSERT INTO dcat_dataset (
     'user_hbm_video_collection',
     'HBM 관련 영상 모음',
     '삼성전자·SK하이닉스 채널에서 HBM(High Bandwidth Memory) 관련 영상을 직접 선택해 구성한 사용자 정의 데이터셋.',
-    'YouTube', 'video',
+    'YouTube', 'YouTube', 'video',
     NULL, NULL,
     '["UCWwgaK7x0_FR1goeSRazfsQ","UCltyil2FaQZZ4kUNinKkKmw"]',
     'ko', 'KR', NULL, NULL, NULL, NULL, 1,
     '["HBM","반도체","삼성전자","SK하이닉스"]',
     'https://developers.google.com/youtube/terms/api-services-tos',
     'YouTube API Services Terms of Service 준수.',
-    'user', 'demo-user-0001'
+    'user', 'demo-user-0001', 'ORG'
 ),
 (
     'naver_blog_ai',
     '네이버 블로그 AI·반도체 관련 게시물 수집',
     '네이버 블로그 검색 API를 통해 AI/반도체 관련 키워드로 수집한 블로그 게시물. 본문 스크래핑 포함.',
-    'Naver', 'blog',
+    'Naver', 'Naver', 'blog',
     'https://section.blog.naver.com/',
     'https://openapi.naver.com/v1/search/blog.json',
     '["인공지능","AI","반도체","HBM"]',
@@ -109,7 +109,7 @@ INSERT INTO dcat_dataset (
     '["블로그","AI","반도체","네이버"]',
     'https://developers.naver.com/notice/terms',
     '네이버 API 이용약관 준수. 블로그 본문 스크래핑은 저작권 정책 별도 확인 필요. active_meta_naver_blog는 ADR-006으로 반응 수 수집 확정(댓글 수·조회수는 미수집).',
-    'admin', NULL
+    'admin', NULL, 'ORG'
 );
 
 -- ── dcat_provenance ───────────────────────────────────────────

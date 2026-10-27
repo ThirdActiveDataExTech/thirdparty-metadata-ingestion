@@ -45,8 +45,11 @@ ADR-007이 원했던 "등록 즉시 반영"과 오히려 멀어진다.
 
 **Airflow를 도입하지 않는다.** 대신 다음을 채택한다.
 
-1. **K8s CronJob 1개**를 `*/5 * * * *`로 두고, `next_collect_at <= now()`인 데이터셋을
+1. **K8s CronJob 1개**를 `*/15 * * * *`로 두고, `next_collect_at <= now()`인 데이터셋을
    `LIMIT`만큼 집어 `run_dataset()`을 호출한다.
+   주기 15분은 와이즈넛 별첨 테이블정의서의 `data_registry.next_collect_at` 규약
+   ("스케줄러 폴링 조건 · 15분 주기")에 맞춘 값이다. 최소 수집주기가 일 단위이므로
+   폴링 지터는 문제가 되지 않는다.
 2. 중복 실행은 **`pg_try_advisory_lock(네임스페이스, hash(dataset_id))` 2-키 형태**로 막는다.
    세션 락이므로 커넥션이 끊기면 자동 해제되어 TTL·하트비트가 불필요하다.
    CronJob `concurrencyPolicy: Forbid`를 함께 건다.

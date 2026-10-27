@@ -1,0 +1,96 @@
+-- ═══════════════════════════════════════════════════════════════
+-- dcat_dataset_attr : 데이터셋 현황 메타데이터 (데이터셋 1건 = 1행)
+--
+-- 와이즈넛 「백엔드 설계 초안」 v2 별첨 테이블정의서 기준. [신규]
+-- DCAT에 대응 용어가 없는 정형 고유 항목 17종을 분리 보관한다. 검색 필터의 원본.
+-- 공공데이터포털 '목록개방현황' 항목 중 카탈로그(dcat_dataset)에 들어가지 않는 것들.
+--
+-- 비정형(video/news/blog/shopping/persona)은 이 테이블을 사용하지 않는다.
+-- ═══════════════════════════════════════════════════════════════
+DROP TABLE IF EXISTS dcat_dataset_attr CASCADE;
+
+CREATE TABLE dcat_dataset_attr (
+
+    dataset_id              TEXT PRIMARY KEY
+                            REFERENCES dcat_dataset(dataset_id)
+                            ON UPDATE CASCADE ON DELETE CASCADE,
+    -- 데이터셋 식별자 | dcat_dataset 참조 (1:1)
+    -- ON UPDATE CASCADE: dataset_id URN 전환 시 자동 전파된다
+
+    -- ── 목록 구분 ─────────────────────────────────────────────
+    list_type               TEXT,
+    -- 목록유형 | FILE / API / LINK
+
+    stat_name               TEXT,
+    -- 통계명 | 통계청 등 통계 데이터의 통계 명칭
+    -- (별첨 v2 이후 추가된 컬럼 — 원천 문서에는 없음)
+
+    spatial_unit            TEXT,
+    -- 공간 단위 | 시도/시군구 등 집계 단위
+    -- (별첨 v2 이후 추가된 컬럼 — 원천 문서에는 없음)
+
+    -- ── 갱신 ──────────────────────────────────────────────────
+    next_registration_date  DATE,
+    -- 차기 등록 예정일 | 원천이 공시하는 값
+    -- 주의: 스케줄러 실행 시각(data_registry.next_collect_at)과 구분해 보관한다
+    --       next_collect_at 산정 시 "예정일 우선 → accrual_periodicity → 주간" 순으로 참고
+
+    -- ── 제공 형태 ─────────────────────────────────────────────
+    media_type              TEXT,
+    -- 매체유형
+
+    provision_form          TEXT,
+    -- 제공형태 | 포털 다운로드 / 기관 URL 등
+
+    api_type                TEXT,
+    -- API 유형
+
+    allowed_traffic         TEXT,
+    -- 신청가능 트래픽
+    -- (별첨은 integer로 기술하나 원천 값에 단위 문자열이 섞여 들어와 TEXT로 생성됨)
+
+    review_type             TEXT,
+    -- 심의 유형
+
+    -- ── 분류 플래그 ───────────────────────────────────────────
+    national_core_yn        BOOLEAN,
+    -- 국가중점여부 | 원본 Y/N을 boolean으로 변환
+
+    standard_data_yn        BOOLEAN,
+    -- 표준데이터여부 | 표준데이터셋 식별
+
+    -- ── 비용 ──────────────────────────────────────────────────
+    cost_charged            TEXT,
+    -- 비용부과유무 | 무료 / 유료
+
+    cost_basis              TEXT,
+    -- 비용부과기준 및 단위
+
+    -- ── 담당 부서 ─────────────────────────────────────────────
+    dept_name               TEXT,
+    -- 관리 부서명
+
+    dept_phone              TEXT,
+    -- 관리부서 전화번호
+
+    -- ── 결측이 잦은 항목 (필수로 두지 않는다) ─────────────────
+    retention_basis         TEXT,
+    -- 보유근거
+
+    collection_method       TEXT,
+    -- 수집방법
+
+    data_limitation         TEXT,
+    -- 데이터 한계
+
+    other_notes             TEXT,
+    -- 기타 유의사항
+
+    -- ── 관리 ──────────────────────────────────────────────────
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
+    -- 갱신 시각
+);
+
+-- 검색 필터용
+CREATE INDEX idx_dcat_dataset_attr_list_type ON dcat_dataset_attr (list_type);
+CREATE INDEX idx_dcat_dataset_attr_stat_name ON dcat_dataset_attr (stat_name);

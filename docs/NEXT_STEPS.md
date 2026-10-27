@@ -392,7 +392,7 @@
 
 ---
 
-## 7. 와이즈넛 정형(공공데이터) 저장 설계 반영 (⏳ 와이즈넛 협의 후 진행)
+## 7. 와이즈넛 정형(공공데이터) 저장 설계 반영 (🔄 테이블 생성 완료 · 2026-10-27 실측 갱신)
 
 > **2026-10-16 기록.** 와이즈넛 「백엔드 설계 초안 v2」(+ 별첨 테이블정의서) 검토 완료,
 > 메일로 회신 전달함. 모비젠은 **대부분 수용** + 추가 의견 몇 건만 전달. **와이즈넛과
@@ -403,7 +403,13 @@
 > 가산**이며, 기존 `dcat_dataset`/`dcat_provenance`/`data_registry`/`dcat_dataset_vec`
 > 뼈대를 그대로 재사용한다. (원문 PDF 2종은 레포 밖 — 메일 첨부 참조)
 
-### 7.1 신규 테이블 생성 (8종)
+### 7.1 신규 테이블 생성 (8종) — ✅ **DB 생성 완료 (2026-10-27 확인)**
+
+> 8종 전부 DB에 생성돼 있으나 `sql/`에 DDL이 없어, 실제 구조를 떠서 한글 주석과 함께
+> 저장소에 추가했다. 와이즈넛 DDL 수령 시 `scripts/compare_wisenut_spec.py`로 재대조한다.
+> 별첨 v2에 없는 컬럼 3종이 발견됐다 — `dcat_dataset_attr.stat_name`·`spatial_unit`,
+> `dcat_dataset_relation.relation_label` (와이즈넛 개정판으로 보임, 확인 필요).
+
 
 - [ ] `dcat_dataset_attr` — 데이터셋 현황 메타 17항목 (DCAT 미대응 정형 고유), 1:1
 - [ ] `active_meta_dataset` — 데이터셋 단위 지표 시계열 (EAV·관측값만). **정형+비정형 공용** (별첨 지표표준값 + 모비젠 비정형 코드 추가)
@@ -414,13 +420,24 @@
 - [ ] `meta_datagokr_file_vec` — 파일 임베딩, 1:1
 - [ ] `dcat_dataset_draft` — 표준 매핑 초안·검토 큐 + 원본 스냅샷 참조 (원본 실체는 SeaweedFS raw)
 
-### 7.2 레지스트리 2종 신설 (모비젠 추가 제안)
+### 7.2 레지스트리 2종 신설 (모비젠 추가 제안) — ✅ **생성 완료 · 표준값 적재됨**
+
+> `metric_registry` 11행, `relation_type_registry` 8행. 와이즈넛이 반영했다.
+> ⚠️ 관계 유형 8종 중 **비정형(`applies_to=["*"]`)에 쓸 수 있는 것은 2종뿐**이다
+> (`SEMANTICALLY_RELATED`, `KEYWORD_OVERLAP`). 비정형용 유형 추가는 가능하다는 회신을 받았다.
+
 
 - [ ] `metric_registry` — 지표 코드 표준값 (8컬럼, `applies_to` JSONB로 적용 source_type 관리)
 - [ ] `relation_type_registry` — 관계 유형 표준값 (6컬럼, `applies_to` + `scope`)
 - 목적: 정형·비정형 코드가 한 테이블(`active_meta_*`, `*_relation`)에 섞여도 **범위 밖 적재·오생성 차단**. 별첨의 지표/관계 "표준값 시트"를 DB 테이블로 승격 + FK 강제. (`["*"]` = 전체 공통)
 
-### 7.3 기존 `dcat_dataset` 컬럼 추가 (6종) + backfill
+### 7.3 기존 `dcat_dataset` 컬럼 추가 (6종) + backfill — 🔄 **마이그레이션 작성 완료, 적용 대기**
+
+> [sql/migration_2026_10_27_wisenut_alignment.sql](../sql/migration_2026_10_27_wisenut_alignment.sql)
+> 5종만 추가한다 — `theme`은 같은 용도의 `category`(jsonb NOT NULL)가 이미 DB에 있어
+> **명칭이 같은 것인지 확인 전까지 보류**한다(중복 컬럼 방지).
+> `dataset_id` URN 전환은 [database/dataset_id_urn_migration.md](database/dataset_id_urn_migration.md) 참조.
+
 
 - [ ] 컬럼 추가: `source`, `publisher_code`, `theme`(jsonb,GIN), `external_ids`(jsonb,GIN), `party`, `visibility`
 - [ ] backfill: 기존 18개 데이터셋 — 현 `publisher`의 원천값(Naver/YouTube)을 `source`로 이전, `publisher`는 실제 제공기관으로 재설정; `visibility` NOT NULL 기본값(PUBLIC/ORG) 지정

@@ -91,6 +91,7 @@ DB 스키마, 테이블 정의. **테이블이 추가되거나 컬럼이 변경�
 | 문서 | 설명 | 상태 |
 |------|------|------|
 | [datagokr Schema](database/datagokr_schema.md) | metadata-ingestion 메인 DB | 완성 (테이블 대부분 생성 완료) |
+| [dataset_id URN 전환](database/dataset_id_urn_migration.md) | 와이즈넛 규약 대응 — 영향 범위·절차·체크리스트 | ⏳ URN 규칙 확인 대기 |
 | thirdparty Schema | 기존 thirdparty DB | 미작성(예정) |
 
 ---
@@ -123,7 +124,7 @@ DB 스키마, 테이블 정의. **테이블이 추가되거나 컬럼이 변경�
 | ADR-009 | [AI 생성 메타데이터 공통 단일 테이블](adr/009_AI_Metadata_Single_Table.md) | Accepted |
 | ADR-010 | [한국어 전문검색 — 앱단 토큰화 + tsvector](adr/010_Korean_Fulltext_Search.md) | Accepted |
 | ADR-011 | [데이터 패키징 표준 — RO-Crate](adr/011_Packaging_ROCrate.md) | Accepted |
-| ADR-012 | [관계 그래프 저장 — PostgreSQL + NetworkX](adr/012_Graph_Storage_PostgreSQL.md) | Accepted |
+| ADR-012 | [관계 그래프 저장 — 와이즈넛 합의 스키마 재사용 + NetworkX](adr/012_Graph_Storage_PostgreSQL.md) | Accepted (2026-10-27 개정) |
 | ADR-013 | [외부 LLM API 미사용 — 로컬 추론 전용](adr/013_No_External_LLM_API.md) | Accepted |
 
 ---

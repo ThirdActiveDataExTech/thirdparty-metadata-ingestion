@@ -2,6 +2,11 @@
 -- dcat_dataset : 데이터셋 전반 기술 (dcat:Dataset)
 -- 모든 데이터 소스(YouTube, Naver, 뉴스 등)가 공통으로 사용
 -- 1회 수집 코드 실행 = 1행 생성
+--
+-- 2026-10-27: 와이즈넛 「백엔드 설계 초안」 v2 별첨 테이블정의서에 맞춰 컬럼 추가
+--   source / publisher_code / external_ids / party / visibility (+ category 명칭 확인 중)
+--   정형(source_type='structured_file')과 비정형이 이 카탈로그를 공용한다
+--   기존 DB에 적용할 때는 DROP이 아니라 sql/migration_2026_10_27_wisenut_alignment.sql 사용
 -- ═══════════════════════════════════════════════════════════════
 
 -- 부모 테이블이므로 CASCADE 로 자식 테이블(dcat_provenance, data_registry,
@@ -27,6 +32,18 @@ CREATE TABLE dcat_dataset (
     publisher           TEXT NOT NULL,
     -- dct:publisher | 데이터 원천 플랫폼명
     -- 예) 'Naver', 'YouTube', '연합뉴스'
+
+    source              TEXT NOT NULL,
+    -- (와이즈넛 별첨 신규) 출처 | 원천 포털 코드
+    -- 정형) 'DATA_GO_KR', 'KOSIS', 'FIRST_PARTY'
+    -- 비정형) publisher와 같은 값을 쓴다 — 'Naver', 'YouTube'
+    --   (모비젠 회신 의견: "비정형 publisher 컬럼과 동일 내용 사용")
+    -- publisher(제공기관)와는 별개 항목이다. 공공데이터포털 외 통계청·1st party가
+    -- 합류하면서 "어느 포털에서 왔는가"를 구분할 필요가 생겨 추가됐다
+
+    publisher_code      TEXT,
+    -- (와이즈넛 별첨 신규) 제공기관코드 | 원천 포털의 기관 코드
+    -- 비정형은 미사용 (모비젠 회신에서 추가 동의)
 
     source_type         TEXT NOT NULL,
     -- (확장) 출처 유형 분류 — data_registry.pg_meta_table 라우팅과
@@ -91,6 +108,17 @@ CREATE TABLE dcat_dataset (
     keywords            JSONB,
     -- dcat:keyword | 검색·분류용 키워드 (JSON 배열)
     -- 예) ["쇼핑","검색량","카테고리","네이버"]
+    -- 와이즈넛 KEYWORD_OVERLAP 관계 판정의 근거 컬럼이다
+    -- (relation_type_registry.required_fields = ["keywords"])
+
+    category            JSONB NOT NULL DEFAULT '[]'::jsonb,
+    -- 분류체계 | '대분류 - 소분류'를 배열로 분해해 보관
+    -- 비정형은 사용자가 등록 시 카테고리를 설정하는 방향 (모비젠 회신 의견)
+    --
+    -- ⚠️ 명칭 확인 필요 (2026-10-27): 와이즈넛 별첨 테이블정의서는 같은 용도의 컬럼을
+    --    theme(dct:subject)로 기술한다. 실제 DB에는 category로 생성돼 있어
+    --    둘이 같은 것인지 확인 중이다. 같다면 이 컬럼이 theme의 구현 명칭이고,
+    --    다르다면 theme를 별도로 추가해야 한다. 중복 생성을 피하려고 보류 중.
 
     -- ── 이용 조건 ─────────────────────────────────────────────
     license             TEXT,
@@ -121,6 +149,22 @@ CREATE TABLE dcat_dataset (
     -- 계정 테이블 생성 후 실제 PK 컬럼명/타입 확인하여 ALTER TABLE로 FK 추가 필요
     -- (architecture/04_Collection_Pipeline_Operations.md §10, NEXT_STEPS.md 2-6 참조)
     -- dataset_origin='admin'이면 특정 사용자 소유가 아니므로 NULL 허용
+
+    -- ── 연계 · 권한 (와이즈넛 별첨 신규) ─────────────────────
+    external_ids        JSONB,
+    -- adms:identifier | 외부 식별자 | 수집 과정에서 부여된 식별자를 보존
+    -- 겹치면 동일 데이터셋 병합 후보로 판정한다
+    -- dataset_id를 URN으로 전환할 때 기존 slug를 여기에 보존한다
+    -- 예) {"legacy_slug": "youtube_samsung_official"}
+
+    party               TEXT,
+    -- 파티 구분 | '1st' / '3rd'
+    -- 케이웨어 cetus_dataset_file.data_tp_cd와 대응 (정형·비정형 동일 방식)
+
+    visibility          TEXT NOT NULL DEFAULT 'ORG',
+    -- 공개 범위 | PUBLIC / ORG / PRIVATE · 케이웨어 권한 판정의 원본
+    -- 기본값을 ORG로 둔다 — PUBLIC을 기본으로 하면 등록 실수가 곧 외부 공개가 된다.
+    -- 공개가 필요한 데이터셋은 등록 시 명시적으로 PUBLIC을 지정한다
 
     -- ── 관리 ──────────────────────────────────────────────────
     version             TEXT NOT NULL DEFAULT '1.0',
