@@ -50,7 +50,8 @@ def fetch_dcat_dataset(dataset_id: str) -> Dict[str, Any]:
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT dataset_id, title, description, publisher, source_type,
+            SELECT dataset_id, title, description, publisher, source, source_type,
+                   theme, category, visibility,
                    subjects, accrual_periodicity, dataset_origin, owner_id,
                    temporal_start, temporal_end
             FROM dcat_dataset WHERE dataset_id = %s

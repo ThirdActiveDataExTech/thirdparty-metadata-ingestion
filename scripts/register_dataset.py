@@ -112,12 +112,15 @@ def register_discovery(args) -> str:
         cur.execute(
             """
             INSERT INTO dcat_dataset (
-                dataset_id, title, description, publisher, source_type,
+                dataset_id, title, description, publisher, source, source_type,
                 subjects, accrual_periodicity, dataset_origin, owner_id, license
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
-                dataset_id, args.title, args.description, meta["publisher"],
+                dataset_id, args.title, args.description,
+                # 비정형은 원천(source)과 제공기관(publisher)이 같다 — 와이즈넛 합의 사항.
+                # source는 NOT NULL이고 기본값이 없으므로 반드시 채워야 한다.
+                meta["publisher"], meta["publisher"],
                 args.source_type, json.dumps(subjects), args.periodicity,
                 args.origin, args.owner_id, meta["license"],
             ),
@@ -153,13 +156,15 @@ def register_declarative(args) -> str:
         cur.execute(
             """
             INSERT INTO dcat_dataset (
-                dataset_id, title, description, publisher, source_type,
+                dataset_id, title, description, publisher, source, source_type,
                 subjects, accrual_periodicity, item_count,
                 dataset_origin, owner_id, license, temporal_start
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
-                dataset_id, args.title, args.description, meta["publisher"],
+                dataset_id, args.title, args.description,
+                # 비정형은 source = publisher (위 경로와 동일)
+                meta["publisher"], meta["publisher"],
                 args.source_type, json.dumps([cid for cid, _ in categories]), args.periodicity,
                 len(categories), args.origin, args.owner_id, meta["license"], args.temporal_start,
             ),
