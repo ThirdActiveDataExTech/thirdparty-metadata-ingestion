@@ -186,6 +186,21 @@ STT는 이미 `faster-whisper`(CPU, int8, small)로 동작 중이므로 추가 �
 - 🟩 **최소선**: 1개 소스(YouTube **자막** 기반). **LLM 없이** — 추출 요약(문장 선택) + TF-IDF 키워드. ADR-013
 - 🟦 **목표선**: 로컬 sLLM 생성 요약(구동 가용 확인됨, §3 C7), 개체명·분류 추가, 전 소스 확대, CLIP 이미지 태깅.
 
+#### 부속 과업 — 공통 분류(`category`) 부여
+
+와이즈넛 공통 분류(디지털 집현전 주제 분류, 대분류 7 / 중분류 76)를 비정형 데이터셋에도 부여해야 한다.
+분류표·규칙 전문은 [database/category_taxonomy.md](../database/category_taxonomy.md).
+
+> 💡 **ADR-013(외부 LLM 미사용)과 충돌하지 않는다.** 와이즈넛 정의 문서의 2단계 폴백이
+> **"데이터셋 요약 임베딩과 가장 가까운 중분류 1개"** 로 되어 있어, 그 경로를 주 경로로 쓰면 된다.
+
+- 🟩 **최소선**: 76개 중분류 라벨을 임베딩해 두고 `title + description + keywords` 임베딩과
+  코사인 최근접 1~3개 선택. 기존 mpnet(768차원) 재사용.
+  `perf_eval/metadata_theme_classification/`의 라벨 임베딩 zero-shot 코드 재활용 가능
+- 🟦 **목표선**: 로컬 sLLM이 분류표 범위 안에서 선택 → 실패 시 임베딩 최근접으로 폴백(와이즈넛과 동일 2단 구조)
+- ⚠️ `category`에 CHECK 제약이 없다. **앱에서 분류표 대조·중복 제거를 반드시 수행**한다
+- ⚠️ 입력 품질이 상한선이다 — §1.5에서 확인한 대로 `description`이 평균 25자인 데이터셋이 많다
+
 **처리량 현실**: 4B Q4 기준 요약 1건 ≈ 5~15초 → 10,000건 ≈ 14~42시간(단일 워커).
 → **야간 CronJob + 복수 Pod 수평 분할.** 입력 절삭(앞 N토큰 + 구조 기반 발췌)이 가장 효과 큰 비용 절감 수단.
 **과제 문서에 "비동기 배치 생성"으로 명시할 것. 실시간 응답을 약속하지 말 것.**
@@ -753,6 +768,7 @@ CPU에서 VLM 캡셔닝은 이미지 인코더(ViT) + 수백~수천 이미지 �
 |---|---|
 | `dcat_dataset` | `source`·`publisher_code`·`external_ids`·`party`·`visibility` (마이그레이션 작성 완료, 적용 대기) |
 | `dcat_dataset` | `search_tokens`·`tokenizer_ver`·`search_tsv` (C1) |
+| `dcat_dataset.category` | 컬럼은 와이즈넛이 반영 완료. **값 부여가 미착수**(A2 부속 과업) |
 | `data_registry` | `adaptive_interval`·`consecutive_failures`·`consecutive_no_change` (C4) |
 
 ### 등록 제안이 필요한 표준값 (와이즈넛 합의 대상)

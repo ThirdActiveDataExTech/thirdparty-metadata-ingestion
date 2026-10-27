@@ -37,13 +37,13 @@ ALTER TABLE dcat_dataset ADD COLUMN IF NOT EXISTS visibility     TEXT NOT NULL D
 -- 비정형은 source = publisher 원천값을 사용한다 (모비젠 회신 의견)
 UPDATE dcat_dataset SET source = publisher WHERE source IS NULL;
 
--- ※ external_ids에는 기존 slug를 넣지 않는다 (2026-10-27 정정).
---   와이즈넛 회신에서 external_ids는 **비정형 미사용**으로 합의됐고,
---   형식도 '포털:번호' 문자열 배열이다. 예) ["datagokr:15135932"],
---                                        ["kosis:DT_1B34E17","kosis-stat:1999038"]
---   용도는 "같은 데이터셋이 다른 경로로 두 번 수집됐을 때 병합 후보를 찾는 것"이라
---   우리 slug를 넣으면 형식과 용도 양쪽에 어긋난다.
---   URN 전환 시 기존 slug 추적은 database/dataset_id_urn_migration.md 참조.
+-- 기존 slug를 external_ids에 보존한다 — URN 전환 후 추적 경로가 된다.
+-- 와이즈넛 형식('네임스페이스:값' 문자열 배열)을 그대로 지키고 자체 네임스페이스를 쓴다.
+--   예) ["mobigen-legacy:youtube_samsung_official"]
+-- 포털 번호와 섞이지 않고, 값이 데이터셋마다 유일해 중복 병합 판정에 오탐을 만들지 않는다.
+UPDATE dcat_dataset
+   SET external_ids = jsonb_build_array('mobigen-legacy:' || dataset_id)
+ WHERE external_ids IS NULL;
 
 ALTER TABLE dcat_dataset ALTER COLUMN source SET NOT NULL;
 

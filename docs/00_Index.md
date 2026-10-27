@@ -92,6 +92,7 @@ DB 스키마, 테이블 정의. **테이블이 추가되거나 컬럼이 변경�
 |------|------|------|
 | [datagokr Schema](database/datagokr_schema.md) | metadata-ingestion 메인 DB | 완성 (테이블 대부분 생성 완료) |
 | [dataset_id URN 전환](database/dataset_id_urn_migration.md) | 와이즈넛 규약 대응 — 영향 범위·절차·체크리스트 | ⏳ URN 규칙 확인 대기 |
+| [공통 분류(category) 분류표](database/category_taxonomy.md) | 디지털 집현전 주제 분류 7/76, 부여 규칙, 비정형 부여 방법 | 완성 (2026-10-27) |
 | thirdparty Schema | 기존 thirdparty DB | 미작성(예정) |
 
 ---
