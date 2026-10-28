@@ -194,7 +194,7 @@ INSERT INTO data_registry (
 ) VALUES
 (
     'urn:naver:shopping_insight',
-    'raw/shopping/naver_shopping_insight/', 'jsonld/shopping/naver_shopping_insight/',
+    'raw/shopping_insight/naver_shopping_insight/', 'jsonld/shopping_insight/naver_shopping_insight/',
     'meta_shopping_insight', 'active_meta_shopping_insight', 'dcat_dataset_vec',
     'active', '2026-06-30 02:01:09+09', '2026-07-01 02:00:00+09', NULL,
     5, 5278, '2025-06-17', '2026-06-16'
@@ -202,7 +202,7 @@ INSERT INTO data_registry (
 ),
 (
     'urn:naver:persona_insight',
-    'raw/shopping/naver_persona_insight/', 'jsonld/shopping/naver_persona_insight/',
+    'raw/persona_insight/naver_persona_insight/', 'jsonld/persona_insight/naver_persona_insight/',
     'meta_persona_insight', 'active_meta_persona_insight', 'dcat_dataset_vec',
     'active', '2026-06-30 03:02:31+09', '2026-07-01 03:00:00+09', NULL,
     4, 57876, '2025-06-18', '2026-06-17'

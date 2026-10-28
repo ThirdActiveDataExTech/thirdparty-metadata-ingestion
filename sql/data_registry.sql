@@ -19,8 +19,14 @@ CREATE TABLE data_registry (
     -- ── 저장 위치 : SeaweedFS (S3 API) ───────────────────────
     s3_raw_prefix       TEXT,
     -- S3 raw 데이터 경로 prefix (버킷 루트 기준)
-    -- 예) 'raw/shopping/naver_shopping_insight/'
-    -- 실제 오브젝트: {prefix}YYYY/MM/DD/{dataset_id}_{timestamp}.json
+    -- 형식: raw/{source_type}/{storage_key(dataset_id)}/
+    --       storage_key()는 URN의 'urn:' 접두를 떼고 ':'를 '_'로 바꾼다
+    --       (콜론을 오브젝트 키에 넣지 않기 위함 — src/storage/s3_client.py)
+    -- 예) 'raw/shopping_insight/naver_shopping_insight/'
+    -- 실제 오브젝트: {prefix}{item_id}.txt (news/blog)
+    --               {prefix}{video_id}.json (video 자막)
+    --               {prefix}{storage_key}.csv (선언형 전체 시계열)
+    -- 내보내기 전에는 NULL이다 — 경로는 첫 export_dataset() 때 채워진다
 
     s3_jsonld_prefix    TEXT,
     -- S3 JSON-LD 경로 prefix
