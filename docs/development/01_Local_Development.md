@@ -12,7 +12,7 @@
 |------|-----|
 | OS | macOS(로컬 개발) / Linux(서버, `RnD-analyzer01`) |
 | Python | **3.9** — `pyproject.toml`의 `requires-python`도 실제 환경에 맞춰 `>=3.9`로 되어 있다(예전엔 `>=3.10`으로 잘못 적혀 있어서 서버에서 `pip install -e .`가 막힌 적 있음, 2026-07-28 수정) |
-| DB 접속 | 서버 PostgreSQL NodePort 직접 접속 (localhost:30433) |
+| DB 접속 | 서버 PostgreSQL NodePort 직접 접속 (<서버-IP>:30433) |
 | IDE | VSCode + Claude Code |
 
 ---

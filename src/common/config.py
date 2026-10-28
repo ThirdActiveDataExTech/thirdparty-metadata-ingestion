@@ -26,7 +26,9 @@ def get_youtube_api_keys() -> list:
     return [k for k in (os.getenv(n) for n in names) if k]
 
 
-DB_HOST = get_env("DB_HOST", "localhost")
+# 접속 정보는 .env/Secret에서만 온다. 내부망 주소를 기본값으로 두면 저장소에
+# 남고, .env 없이 돌렸을 때 조용히 엉뚱한 곳에 붙는다 — 없으면 바로 실패시킨다.
+DB_HOST = require_env("DB_HOST")
 DB_PORT = int(get_env("DB_PORT", "30433"))
 DB_NAME = get_env("DB_NAME", "datagokr")
 DB_USER = get_env("DB_USER")
@@ -34,7 +36,7 @@ DB_PASSWORD = get_env("DB_PASSWORD")
 
 TRIGGERED_BY = get_env("TRIGGERED_BY", "manual")
 
-S3_ENDPOINT = get_env("S3_ENDPOINT", "http://localhost:30920")
+S3_ENDPOINT = require_env("S3_ENDPOINT")
 S3_ACCESS_KEY = get_env("S3_ACCESS_KEY")
 S3_SECRET_KEY = get_env("S3_SECRET_KEY")
 S3_BUCKET = get_env("S3_BUCKET", "metadata-ingestion")

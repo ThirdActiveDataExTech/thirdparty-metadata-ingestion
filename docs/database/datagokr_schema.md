@@ -402,7 +402,7 @@ meta_video_ai INSERT
 
 ```bash
 # 1. 핵심 테이블 생성 (부모 → 자식 순서)
-psql -h localhost -p 30433 -U admin -d datagokr \
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
   -f sql/dcat_dataset.sql \
   -f sql/dcat_provenance.sql \
   -f sql/data_registry.sql \
@@ -410,36 +410,36 @@ psql -h localhost -p 30433 -U admin -d datagokr \
   -f sql/dataset_credentials.sql
 
 # 2. YouTube 메타 테이블 생성
-psql -h localhost -p 30433 -U admin -d datagokr \
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
   -f sql/meta_video.sql \
   -f sql/active_meta_video.sql \
   -f sql/meta_video_vec.sql
 
 # 3. Naver 뉴스 메타 테이블 생성
-psql -h localhost -p 30433 -U admin -d datagokr \
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
   -f sql/meta_news.sql \
   -f sql/meta_news_vec.sql \
   -f sql/active_meta_news.sql
 
 # 4. Naver 쇼핑·Persona 메타 테이블 생성
-psql -h localhost -p 30433 -U admin -d datagokr \
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
   -f sql/meta_shopping_insight.sql \
   -f sql/active_meta_shopping_insight.sql \
   -f sql/meta_persona_insight.sql \
   -f sql/active_meta_persona_insight.sql
 
 # 5. Naver 블로그 메타 테이블 생성 (active_meta_blog는 ADR-006으로 반응 수 수집 확정)
-psql -h localhost -p 30433 -U admin -d datagokr \
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
   -f sql/meta_blog.sql \
   -f sql/meta_blog_vec.sql \
   -f sql/active_meta_blog.sql
 
 # 6. 샘플 데이터 삽입 (개발용)
-psql -h localhost -p 30433 -U admin -d datagokr \
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
   -f sql/seeds.sql
 
 # 7. 뷰 생성
-psql -h localhost -p 30433 -U admin -d datagokr \
+psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
   -f sql/views.sql
 
 # 8. 임베딩 생성 (기존 데이터 일괄 — 신규 수집분은 파이프라인이 자동 처리)

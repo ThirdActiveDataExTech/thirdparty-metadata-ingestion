@@ -20,7 +20,7 @@ load_dotenv()
 
 def get_conn():
     return psycopg2.connect(
-        host=os.getenv("DB_HOST", "localhost"),
+        host=os.environ["DB_HOST"],
         port=int(os.getenv("DB_PORT", 30433)),
         dbname=os.getenv("DB_NAME", "datagokr"),
         user=os.getenv("DB_USER"),
