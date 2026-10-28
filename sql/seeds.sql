@@ -24,7 +24,7 @@ INSERT INTO dcat_dataset (
     language, spatial, temporal_start, temporal_end,
     temporal_resolution, accrual_periodicity, item_count,
     keywords, license, rights,
-    dataset_origin, owner_id, visibility
+    dataset_origin, owner_id, visibility, external_ids
 ) VALUES
 (
     'urn:naver:shopping_insight',
@@ -38,7 +38,7 @@ INSERT INTO dcat_dataset (
     '["쇼핑","검색량","카테고리","성별","연령","네이버"]',
     'https://developers.naver.com/notice/terms',
     '네이버 API 이용약관 준수. 수집 데이터의 외부 배포 및 상업적 재판매 금지.',
-    'admin', NULL, 'ORG'
+    'admin', NULL, 'ORG', '[]'
 ),
 (
     'urn:naver:persona_insight',
@@ -52,7 +52,7 @@ INSERT INTO dcat_dataset (
     '["쇼핑","페르소나","성별","연령","카테고리"]',
     'https://developers.naver.com/notice/terms',
     '네이버 API 이용약관 준수. 수집 데이터의 외부 배포 및 상업적 재판매 금지.',
-    'admin', NULL, 'ORG'
+    'admin', NULL, 'ORG', '[]'
 ),
 (
     'urn:youtube:samsung_official',
@@ -66,7 +66,7 @@ INSERT INTO dcat_dataset (
     '["유튜브","삼성전자","테크","채널"]',
     'https://developers.google.com/youtube/terms/api-services-tos',
     'YouTube API Services Terms of Service 준수. 수집 데이터의 제3자 제공 시 Google 사전 승인 필요.',
-    'admin', NULL, 'ORG'
+    'admin', NULL, 'ORG', '["youtube:UCWwgaK7x0_FR1goeSRazfsQ"]'
 ),
 (
     'urn:naver:news_ai',
@@ -80,7 +80,7 @@ INSERT INTO dcat_dataset (
     '["뉴스","AI","인공지능","네이버"]',
     'https://developers.naver.com/notice/terms',
     '네이버 API 이용약관 준수. 뉴스 본문 스크래핑은 각 언론사 저작권 정책 별도 확인 필요.',
-    'admin', NULL, 'ORG'
+    'admin', NULL, 'ORG', '[]'
 ),
 -- user 생성 예시: YouTube 채널 2개에서 HBM 관련 영상만 직접 선택한 사용자 정의 데이터셋
 -- owner_id는 예시값 — 실제 계정 테이블이 아직 없어 임의 문자열 (§10/2-6 참조)
@@ -95,7 +95,7 @@ INSERT INTO dcat_dataset (
     '["HBM","반도체","삼성전자","SK하이닉스"]',
     'https://developers.google.com/youtube/terms/api-services-tos',
     'YouTube API Services Terms of Service 준수.',
-    'user', 'demo-user-0001', 'ORG'
+    'user', 'demo-user-0001', 'ORG', '["youtube:UCWwgaK7x0_FR1goeSRazfsQ","youtube:UCltyil2FaQZZ4kUNinKkKmw"]'
 ),
 (
     'urn:naver:blog_ai',
@@ -109,7 +109,7 @@ INSERT INTO dcat_dataset (
     '["블로그","AI","반도체","네이버"]',
     'https://developers.naver.com/notice/terms',
     '네이버 API 이용약관 준수. 블로그 본문 스크래핑은 저작권 정책 별도 확인 필요. active_meta_blog는 ADR-006으로 반응 수 수집 확정(댓글 수·조회수는 미수집).',
-    'admin', NULL, 'ORG'
+    'admin', NULL, 'ORG', '[]'
 );
 
 -- ── dcat_provenance ───────────────────────────────────────────

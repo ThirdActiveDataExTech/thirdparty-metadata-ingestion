@@ -89,22 +89,48 @@ def slugify(title: str) -> str:
 URN_RE = re.compile(r"^urn:[a-z0-9]+:[a-z0-9_]+$")
 
 
+def _urn_key_prefix(source_type: str) -> str:
+    """네임스페이스가 source_type을 결정하지 못할 때만 키 앞에 붙일 접두를 돌려준다.
+
+    `youtube` 네임스페이스에는 source_type이 `video` 하나뿐이라 네임스페이스만으로
+    종류가 정해진다 → 접두 없음 (`urn:youtube:samsung_official`).
+    `naver`에는 news·blog·shopping_insight·persona_insight 넷이 들어오므로
+    키에 넣지 않으면 구분이 안 된다 → 접두 있음 (`urn:naver:news_ai`).
+
+    _SOURCE_META에서 세어 판단하므로, 나중에 한 네임스페이스에 source_type이
+    늘면 그때부터 자동으로 접두가 붙는다. 그 시점 이전에 만들어진 식별자는
+    그대로 두면 된다 — 접두 유무가 유일성에 영향을 주지는 않는다.
+    """
+    ns = _SOURCE_META[source_type]["urn_namespace"]
+    siblings = sum(1 for m in _SOURCE_META.values() if m["urn_namespace"] == ns)
+    return "" if siblings == 1 else f"{source_type}_"
+
+
 def make_dataset_id(conn, title: str, source_type: str) -> str:
-    """urn:{네임스페이스}:{slug}_{랜덤접미}. unique_violation 시 재시도 (§7.1).
+    """urn:{네임스페이스}:{수집단위키}_{랜덤접미}. unique_violation 시 재시도 (§7.1).
 
     비정형은 데이터셋이 원천 객체 하나에 1:1로 대응하지 않는다. 같은 채널로
     데이터셋을 둘 만들 수 있으므로 채널 ID를 식별자로 쓰면 충돌한다. 그래서
     원천 키 자리에 **수집 단위 키**를 넣는다 — 원천 객체 키는 external_ids에
     보존한다(2026-10-28 와이즈넛 승인).
 
+        뉴스 'AI'    → urn:naver:news_ai_a3f1c2
+        블로그 'AI'   → urn:naver:blog_ai_7d2e91
+        유튜브 채널    → urn:youtube:samsung_official_5c81af
+
     origin(admin/user)은 식별자에 넣지 않는다. dataset_origin 컬럼이 이미
     구분하고 있어 중복이고, 등록 주체가 바뀌면 식별자까지 흔들린다.
+
+    ⚠️ slugify는 영문·숫자만 남긴다. 한글 제목은 거의 다 걸러져 'dataset'으로
+    폴백하므로(`urn:naver:news_dataset_00fc83`) 그럴 땐 --dataset-id로 영문
+    키를 직접 주는 게 낫다.
     """
     base = slugify(title)
     ns = _SOURCE_META[source_type]["urn_namespace"]
+    key = f"{_urn_key_prefix(source_type)}{base}"
     cur = conn.cursor()
     for _ in range(5):
-        candidate = f"urn:{ns}:{base}_{secrets.token_hex(3)}"
+        candidate = f"urn:{ns}:{key}_{secrets.token_hex(3)}"
         if len(candidate) > 100:
             raise RuntimeError(f"dataset_id가 스펙 상한 100자를 넘습니다({len(candidate)}자) "
                                f"— --dataset-id로 짧은 값을 직접 지정해주세요")
@@ -123,6 +149,27 @@ def validate_dataset_id(dataset_id: str) -> str:
     if len(dataset_id) > 100:
         raise SystemExit(f"--dataset-id가 스펙 상한 100자를 넘습니다({len(dataset_id)}자)")
     return dataset_id
+
+
+def make_external_ids(source_type: str, subjects) -> str:
+    """원천 객체 키를 '네임스페이스:값' 문자열 배열로 만든다(와이즈넛 정의 형식).
+
+    같은 데이터셋이 다른 경로로 두 번 수집되면 이 값이 겹쳐 중복을 탐지할 수
+    있게 하는 컬럼이다. dataset_id는 수집 단위 키라서 그 역할을 못 한다.
+
+    ⚠️ **video만 채운다.** 채널 ID는 원천(YouTube)이 발급한 진짜 객체 키다.
+    반면 news·blog의 검색어와 shopping/persona의 카테고리 ID는 원천 객체가
+    아니라 우리가 정한 수집 조건이라, 넣으면 조건 하나만 겹쳐도 서로 다른
+    데이터셋이 중복으로 판정돼 오탐이 난다(실제로 shopping_insight와
+    shopping_insight_advertiser는 카테고리 50000148을 공유한다).
+
+    개별 영상 ID(videos)도 넣지 않는다 — 영상은 데이터셋의 원천 객체가 아니라
+    그 안의 항목이고, meta_video가 이미 들고 있다.
+    """
+    if source_type != "video":
+        return json.dumps([])
+    channels = subjects.get("channels", []) if isinstance(subjects, dict) else subjects
+    return json.dumps([f"youtube:{c}" for c in channels if c])
 
 
 def register_discovery(args) -> str:
@@ -147,8 +194,9 @@ def register_discovery(args) -> str:
             """
             INSERT INTO dcat_dataset (
                 dataset_id, title, description, publisher, source, source_type,
-                subjects, accrual_periodicity, dataset_origin, owner_id, license
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                subjects, accrual_periodicity, dataset_origin, owner_id, license,
+                external_ids
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
                 dataset_id, args.title, args.description,
@@ -157,6 +205,7 @@ def register_discovery(args) -> str:
                 meta["publisher"], meta["publisher"],
                 args.source_type, json.dumps(subjects), args.periodicity,
                 args.origin, args.owner_id, meta["license"],
+                make_external_ids(args.source_type, subjects),
             ),
         )
         cur.execute(

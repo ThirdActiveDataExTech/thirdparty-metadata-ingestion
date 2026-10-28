@@ -209,7 +209,78 @@ urn:naver:news_ai → naver_news_ai     (urn: 제거 후 ':' → '_')
 
 ---
 
-## 6. 남은 것
+## 6. 채번 규칙 (신규 등록)
+
+**`urn:{네임스페이스}:{수집단위키}_{랜덤접미}`**
+
+수집단위키는 **네임스페이스가 `source_type`을 결정하지 못할 때만** 앞에
+`source_type`을 붙인다.
+
+| 네임스페이스 | 들어오는 source_type | 접두 | 예 |
+|---|---|---|---|
+| `youtube` | `video` 하나 | 없음 | `urn:youtube:samsung_official_5c81af` |
+| `naver` | `news`·`blog`·`shopping_insight`·`persona_insight` 넷 | 있음 | `urn:naver:news_ai_a3f1c2` |
+
+```
+뉴스 'AI'    → urn:naver:news_ai_a3f1c2
+블로그 'AI'   → urn:naver:blog_ai_7d2e91
+유튜브 채널    → urn:youtube:samsung_official_5c81af
+```
+
+`naver`에 접두가 없으면 뉴스 'AI'와 블로그 'AI'가 둘 다 `urn:naver:ai_...`가 되어
+식별자만 보고는 종류를 알 수 없다. 기존 18건이 `urn:naver:news_ai` 형태인 것도
+같은 이유다. 판정은 `_SOURCE_META`에서 세므로, 한 네임스페이스에 source_type이
+늘면 그때부터 자동으로 접두가 붙는다.
+
+**`source_type`이 아니라 `source`를 네임스페이스에 두는 이유**는
+[B2 과업](../NEXT_STEPS.md)의 완료 기준이 "YAML 추가만으로 신규 소스 수집"이기
+때문이다. 두 번째 뉴스 원천이 들어오면 `urn:news:ai`는 이미 점유돼 있어
+`urn:news:daum_ai`처럼 원천을 키로 밀어넣게 된다. `urn:naver:news_ai` 쪽은
+그냥 `urn:daum:news_ai`로 늘어난다.
+
+> ⚠️ `slugify`는 영문·숫자만 남긴다. 한글 제목은 거의 다 걸러져 `dataset`으로
+> 폴백한다(`urn:naver:news_dataset_00fc83`). 영문 키를 쓰려면 `--dataset-id`로
+> 직접 지정한다. 직접 지정한 값도 URN 형식과 100자 상한을 검증한다.
+
+---
+
+## 7. `external_ids` 정책
+
+원천이 발급한 **객체 키**를 `'네임스페이스:값'` 문자열 배열로 보존한다
+(와이즈넛 정의 형식). `dataset_id`는 수집 단위 키라서 중복 판정에 못 쓰는데,
+이 컬럼이 그 역할을 한다 — **같은 데이터셋이 다른 경로로 두 번 수집되면 이 값이
+겹친다.**
+
+```json
+["youtube:UCWwgaK7x0_FR1goeSRazfsQ", "legacy:youtube_samsung_official"]
+```
+
+| source_type | 채우는 값 | 근거 |
+|---|---|---|
+| `video` | `youtube:{채널ID}` | YouTube가 발급한 진짜 객체 키 |
+| `news`·`blog` | **없음** (legacy만) | 검색어는 원천 객체가 아니라 우리 수집 조건 |
+| `shopping_insight`·`persona_insight` | **없음** (legacy만) | 카테고리 ID도 마찬가지 |
+
+**video 외에 넣지 않는 이유**: 조건 하나만 겹쳐도 서로 다른 데이터셋이 중복으로
+판정돼 오탐이 난다. 실제로 `urn:naver:shopping_insight`와
+`urn:naver:shopping_insight_advertiser`는 카테고리 `50000148`을 공유한다.
+
+반대로 **채널 겹침은 참 양성이다.** `urn:youtube:hbm_video_collection`은
+`samsung_official`·`sk_hynix_official`과 같은 채널을 수집 중이고, 그 사실이
+드러나는 것이 이 컬럼의 목적이다.
+
+개별 영상 ID는 넣지 않는다 — 영상은 데이터셋의 원천 객체가 아니라 그 안의
+항목이고 `meta_video`가 이미 들고 있다.
+
+`legacy:{전환 전 slug}`는 18건 전부에 남아 있다. 전환 추적과 S3 경로 대조의
+근거다.
+
+적용: [sql/migration_2026_10_28_external_ids.sql](../../sql/migration_2026_10_28_external_ids.sql)
+신규 등록은 `register_dataset.make_external_ids()`가 같은 규칙으로 채운다.
+
+---
+
+## 8. 남은 것
 
 - **와이즈넛 통보** — 전환 완료 사실과 URN 목록
 - `active_meta_*` 테이블은 현재 0행이라 전파 확인이 불가능했다. 첫 수집 이후
