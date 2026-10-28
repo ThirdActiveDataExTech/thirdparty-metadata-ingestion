@@ -29,6 +29,7 @@ runbooks/04_Add_New_Dataset_Existing_Source.md의 "A. 신규 데이터셋 생성
 """
 
 import argparse
+import hashlib
 import json
 import re
 import secrets
@@ -77,13 +78,6 @@ _SOURCE_META = {
 }
 
 
-def slugify(title: str) -> str:
-    """영문/숫자만 남기고 슬러그화 — 한글 제목이면 거의 다 걸러져 'dataset'으로
-    폴백하니, 그럴 땐 --dataset-id로 직접 영문 slug를 지정하는 걸 권장한다."""
-    slug = re.sub(r"[^a-z0-9]+", "_", title.lower()).strip("_")
-    return slug or "dataset"
-
-
 # 와이즈넛 별첨 테이블정의서가 규정한 dataset_id 형식 (TEXT 최대 100자).
 # 2026-10-28 전환 완료 — docs/database/dataset_id_urn_migration.md
 URN_RE = re.compile(r"^urn:[a-z0-9]+:[a-z0-9_]+$")
@@ -106,34 +100,40 @@ def _urn_key_prefix(source_type: str) -> str:
     return "" if siblings == 1 else f"{source_type}_"
 
 
-def make_dataset_id(conn, title: str, source_type: str) -> str:
-    """urn:{네임스페이스}:{수집단위키}_{랜덤접미}. unique_violation 시 재시도 (§7.1).
+def make_dataset_id(conn, source_type: str) -> str:
+    """urn:{네임스페이스}:{source_type}_dataset_{랜덤접미}. 충돌 시 재시도 (§7.1).
+
+        뉴스      → urn:naver:news_dataset_a3f1c2
+        블로그     → urn:naver:blog_dataset_7d2e91
+        유튜브     → urn:youtube:dataset_5c81af      (youtube는 video 하나뿐)
+
+    **제목에서 키를 만들지 않는다.** 이전에는 slugify(title)을 썼는데,
+    영문·숫자만 남기는 방식이라 결과를 예측할 수 없었다.
+
+        'AI 관련 뉴스'  → 'ai'       (AI만 살아남음)
+        '인공지능 뉴스'  → 'dataset'  (남는 게 없음)
+        '반도체 HBM'    → 'hbm'
+
+    한글 제목은 거의 다 'dataset'으로 떨어져서 어차피 의미가 없었고, 영문
+    제목은 제목을 조금만 바꿔도 식별자 모양이 달라졌다. 의미는 title 컬럼이
+    들고 있으면 되고, 식별자는 유일하고 안정적이기만 하면 된다.
+
+    읽을 수 있는 키가 필요하면 --dataset-id로 직접 지정한다 — 기존 18건이
+    urn:naver:news_ai, urn:youtube:samsung_official 처럼 돼 있는 이유다.
 
     비정형은 데이터셋이 원천 객체 하나에 1:1로 대응하지 않는다. 같은 채널로
     데이터셋을 둘 만들 수 있으므로 채널 ID를 식별자로 쓰면 충돌한다. 그래서
-    원천 키 자리에 **수집 단위 키**를 넣는다 — 원천 객체 키는 external_ids에
+    원천 키 자리에 **수집 단위 키**를 넣고, 원천 객체 키는 external_ids에
     보존한다(2026-10-28 와이즈넛 승인).
-
-        뉴스 'AI'    → urn:naver:news_ai_a3f1c2
-        블로그 'AI'   → urn:naver:blog_ai_7d2e91
-        유튜브 채널    → urn:youtube:samsung_official_5c81af
 
     origin(admin/user)은 식별자에 넣지 않는다. dataset_origin 컬럼이 이미
     구분하고 있어 중복이고, 등록 주체가 바뀌면 식별자까지 흔들린다.
-
-    ⚠️ slugify는 영문·숫자만 남긴다. 한글 제목은 거의 다 걸러져 'dataset'으로
-    폴백하므로(`urn:naver:news_dataset_00fc83`) 그럴 땐 --dataset-id로 영문
-    키를 직접 주는 게 낫다.
     """
-    base = slugify(title)
     ns = _SOURCE_META[source_type]["urn_namespace"]
-    key = f"{_urn_key_prefix(source_type)}{base}"
+    key = f"{_urn_key_prefix(source_type)}dataset"
     cur = conn.cursor()
     for _ in range(5):
         candidate = f"urn:{ns}:{key}_{secrets.token_hex(3)}"
-        if len(candidate) > 100:
-            raise RuntimeError(f"dataset_id가 스펙 상한 100자를 넘습니다({len(candidate)}자) "
-                               f"— --dataset-id로 짧은 값을 직접 지정해주세요")
         cur.execute("SELECT 1 FROM dcat_dataset WHERE dataset_id = %s", (candidate,))
         if cur.fetchone() is None:
             return candidate
@@ -151,25 +151,71 @@ def validate_dataset_id(dataset_id: str) -> str:
     return dataset_id
 
 
+def normalize_subject_key(terms) -> str:
+    """수집 조건(검색어·카테고리)을 순서와 무관한 정규 문자열로 만든다.
+
+        ['인공지능','AI','머신러닝','딥러닝']  →  'ai|딥러닝|머신러닝|인공지능'
+        ['AI','인공지능','딥러닝','머신러닝']  →  동일 (순서 흡수)
+        ['ai',' 인공지능 ','AI','딥러닝','머신러닝']  →  동일 (대소문자·공백·중복 흡수)
+
+    공백 제거 → 소문자 → 중복 제거 → **코드포인트 정렬** → '|' 결합.
+
+    ⚠️ 정렬은 반드시 코드포인트 순서여야 한다. SQL에서 같은 값을 만들 때는
+    `COLLATE "C"`를 붙여야 파이썬 sorted()와 같아진다. DB 기본 콜레이션은
+    한글을 영문보다 앞에 두어 결과가 달라진다.
+        SQL 기본      : 딥러닝|머신러닝|인공지능|ai
+        SQL COLLATE C : ai|딥러닝|머신러닝|인공지능   ← 파이썬과 같음
+    """
+    return "|".join(sorted({t.strip().lower() for t in terms if t and t.strip()}))
+
+
+def subject_set_hash(terms) -> str:
+    """정규화한 수집 조건의 sha256 앞 12자리.
+
+    sha1이 아니라 sha256을 쓰는 이유는 PostgreSQL에 sha256()이 내장돼 있어
+    SQL에서도 같은 값을 만들 수 있기 때문이다(sha1은 내장이 아니다).
+    """
+    return hashlib.sha256(normalize_subject_key(terms).encode("utf-8")).hexdigest()[:12]
+
+
 def make_external_ids(source_type: str, subjects) -> str:
     """원천 객체 키를 '네임스페이스:값' 문자열 배열로 만든다(와이즈넛 정의 형식).
 
     같은 데이터셋이 다른 경로로 두 번 수집되면 이 값이 겹쳐 중복을 탐지할 수
     있게 하는 컬럼이다. dataset_id는 수집 단위 키라서 그 역할을 못 한다.
 
-    ⚠️ **video만 채운다.** 채널 ID는 원천(YouTube)이 발급한 진짜 객체 키다.
-    반면 news·blog의 검색어와 shopping/persona의 카테고리 ID는 원천 객체가
-    아니라 우리가 정한 수집 조건이라, 넣으면 조건 하나만 겹쳐도 서로 다른
-    데이터셋이 중복으로 판정돼 오탐이 난다(실제로 shopping_insight와
-    shopping_insight_advertiser는 카테고리 50000148을 공유한다).
+    source_type별로 넣는 값이 다르다.
 
-    개별 영상 ID(videos)도 넣지 않는다 — 영상은 데이터셋의 원천 객체가 아니라
-    그 안의 항목이고, meta_video가 이미 들고 있다.
+    **video** — 채널 ID. 원천(YouTube)이 발급한 진짜 객체 키다.
+        ["youtube:UCWwgaK7x0_FR1goeSRazfsQ"]
+      개별 영상 ID는 넣지 않는다. 영상은 데이터셋의 원천 객체가 아니라 그 안의
+      항목이고 meta_video가 이미 들고 있다.
+
+    **그 외** — 수집 조건 집합의 해시.
+        ["naver:news:3c639c929baf"]
+      검색어·카테고리는 원천 객체가 아니라 우리가 정한 수집 조건이다. 개별
+      값을 그대로 넣으면 조건 하나만 겹쳐도 서로 다른 데이터셋이 중복으로
+      판정돼 오탐이 난다 — 실제로 shopping_insight와
+      shopping_insight_advertiser는 카테고리 50000148을 공유한다.
+      **집합 전체를 해시하면 완전히 같을 때만 겹친다.**
+
+      정규화(정렬·중복제거·소문자) 덕분에 검색어를 적은 순서는 영향이 없다.
+      원문은 subjects 컬럼에 그대로 남아 있어 해시는 언제든 다시 만들 수 있다.
+
+    ⚠️ 기간(temporal_start/end)은 해시에 넣지 않는다. 같은 검색어를 기간만
+    나눠 두 번 등록하면 두 데이터셋의 해시가 같아진다 — 의도적이다. 같은
+    대상을 보고 있다는 사실이 드러나야 하고, 기간이 다르다는 건 temporal_*
+    컬럼이 이미 말해준다.
     """
-    if source_type != "video":
+    if source_type == "video":
+        channels = subjects.get("channels", []) if isinstance(subjects, dict) else subjects
+        return json.dumps([f"youtube:{c}" for c in channels if c])
+
+    terms = subjects if isinstance(subjects, list) else []
+    if not terms:
         return json.dumps([])
-    channels = subjects.get("channels", []) if isinstance(subjects, dict) else subjects
-    return json.dumps([f"youtube:{c}" for c in channels if c])
+    ns = _SOURCE_META[source_type]["urn_namespace"]
+    return json.dumps([f"{ns}:{source_type}:{subject_set_hash(terms)}"])
 
 
 def register_discovery(args) -> str:
@@ -188,7 +234,7 @@ def register_discovery(args) -> str:
     conn = get_conn()
     try:
         dataset_id = (validate_dataset_id(args.dataset_id) if args.dataset_id
-                      else make_dataset_id(conn, args.title, args.source_type))
+                      else make_dataset_id(conn, args.source_type))
         cur = conn.cursor()
         cur.execute(
             """
@@ -235,7 +281,7 @@ def register_declarative(args) -> str:
     conn = get_conn()
     try:
         dataset_id = (validate_dataset_id(args.dataset_id) if args.dataset_id
-                      else make_dataset_id(conn, args.title, args.source_type))
+                      else make_dataset_id(conn, args.source_type))
         cur = conn.cursor()
         cur.execute(
             """

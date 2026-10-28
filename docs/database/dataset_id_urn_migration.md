@@ -211,71 +211,122 @@ urn:naver:news_ai → naver_news_ai     (urn: 제거 후 ':' → '_')
 
 ## 6. 채번 규칙 (신규 등록)
 
-**`urn:{네임스페이스}:{수집단위키}_{랜덤접미}`**
-
-수집단위키는 **네임스페이스가 `source_type`을 결정하지 못할 때만** 앞에
-`source_type`을 붙인다.
-
-| 네임스페이스 | 들어오는 source_type | 접두 | 예 |
-|---|---|---|---|
-| `youtube` | `video` 하나 | 없음 | `urn:youtube:samsung_official_5c81af` |
-| `naver` | `news`·`blog`·`shopping_insight`·`persona_insight` 넷 | 있음 | `urn:naver:news_ai_a3f1c2` |
+**`urn:{네임스페이스}:{source_type}_dataset_{랜덤접미}`**
 
 ```
-뉴스 'AI'    → urn:naver:news_ai_a3f1c2
-블로그 'AI'   → urn:naver:blog_ai_7d2e91
-유튜브 채널    → urn:youtube:samsung_official_5c81af
+뉴스    → urn:naver:news_dataset_a3f1c2
+블로그   → urn:naver:blog_dataset_7d2e91
+유튜브   → urn:youtube:dataset_5c81af        (youtube는 video 하나뿐)
 ```
 
-`naver`에 접두가 없으면 뉴스 'AI'와 블로그 'AI'가 둘 다 `urn:naver:ai_...`가 되어
-식별자만 보고는 종류를 알 수 없다. 기존 18건이 `urn:naver:news_ai` 형태인 것도
-같은 이유다. 판정은 `_SOURCE_META`에서 세므로, 한 네임스페이스에 source_type이
-늘면 그때부터 자동으로 접두가 붙는다.
+`source_type`은 **네임스페이스가 그것을 결정하지 못할 때만** 붙인다.
 
-**`source_type`이 아니라 `source`를 네임스페이스에 두는 이유**는
-[B2 과업](../NEXT_STEPS.md)의 완료 기준이 "YAML 추가만으로 신규 소스 수집"이기
-때문이다. 두 번째 뉴스 원천이 들어오면 `urn:news:ai`는 이미 점유돼 있어
-`urn:news:daum_ai`처럼 원천을 키로 밀어넣게 된다. `urn:naver:news_ai` 쪽은
-그냥 `urn:daum:news_ai`로 늘어난다.
+| 네임스페이스 | 들어오는 source_type | 접두 |
+|---|---|---|
+| `youtube` | `video` 하나 | 없음 |
+| `naver` | `news`·`blog`·`shopping_insight`·`persona_insight` 넷 | 있음 |
 
-> ⚠️ `slugify`는 영문·숫자만 남긴다. 한글 제목은 거의 다 걸러져 `dataset`으로
-> 폴백한다(`urn:naver:news_dataset_00fc83`). 영문 키를 쓰려면 `--dataset-id`로
-> 직접 지정한다. 직접 지정한 값도 URN 형식과 100자 상한을 검증한다.
+`naver`에 접두가 없으면 뉴스와 블로그를 식별자만 보고 구분할 수 없다.
+판정은 `_SOURCE_META`에서 세므로, 한 네임스페이스에 source_type이 늘면
+그때부터 자동으로 접두가 붙는다.
+
+### 제목에서 키를 만들지 않는다 (2026-10-28 변경)
+
+이전에는 `slugify(title)`을 썼는데 영문·숫자만 남기는 방식이라 결과를
+예측할 수 없었다.
+
+| 제목 | slugify | 결과 |
+|---|---|---|
+| `AI 관련 뉴스` | `ai` | `urn:naver:news_ai_b2989d` |
+| `인공지능 뉴스` | `dataset` | `urn:naver:news_dataset_00fc83` |
+| `반도체 HBM` | `hbm` | `urn:naver:news_hbm_5eab7d` |
+
+**한글만 있는 제목은 전부 `dataset`으로 떨어져 어차피 의미가 없었고**, 영문
+제목은 제목을 조금만 고쳐도 식별자 모양이 달라졌다. 의미는 `title` 컬럼이
+들고 있으면 되고, 식별자는 유일하고 안정적이기만 하면 된다.
+
+읽을 수 있는 키가 필요하면 `--dataset-id`로 직접 지정한다. 기존 18건이
+`urn:naver:news_ai`, `urn:youtube:samsung_official`인 이유이고, 직접 지정한
+값도 URN 형식과 100자 상한을 검증한다.
+
+### `source_type`이 아니라 `source`를 네임스페이스에 두는 이유
+
+[B2 과업](../NEXT_STEPS.md)의 완료 기준이 "YAML 추가만으로 신규 소스 수집"이다.
+두 번째 뉴스 원천이 들어오면 `urn:news:ai`는 이미 점유돼 있어 `urn:news:daum_ai`
+처럼 원천을 키로 밀어넣게 된다. `urn:naver:news_ai` 쪽은 그냥 `urn:daum:news_ai`로
+늘어난다.
 
 ---
 
 ## 7. `external_ids` 정책
 
-원천이 발급한 **객체 키**를 `'네임스페이스:값'` 문자열 배열로 보존한다
-(와이즈넛 정의 형식). `dataset_id`는 수집 단위 키라서 중복 판정에 못 쓰는데,
-이 컬럼이 그 역할을 한다 — **같은 데이터셋이 다른 경로로 두 번 수집되면 이 값이
-겹친다.**
+원천이 발급한 객체 키, 또는 수집 조건 집합의 해시를 `'네임스페이스:값'` 문자열
+배열로 보존한다(와이즈넛 정의 형식). `dataset_id`는 수집 단위 키라서 중복 판정에
+못 쓰는데, 이 컬럼이 그 역할을 한다.
 
-```json
-["youtube:UCWwgaK7x0_FR1goeSRazfsQ", "legacy:youtube_samsung_official"]
+| source_type | 값 | 예 |
+|---|---|---|
+| `video` | `youtube:{채널ID}` | `youtube:UCWwgaK7x0_FR1goeSRazfsQ` |
+| 그 외 | `{source}:{source_type}:{집합해시}` | `naver:news:3c639c929baf` |
+
+`legacy:{전환 전 slug}`는 18건 전부에 남아 있다.
+
+### 왜 개별 값이 아니라 집합 해시인가
+
+검색어·카테고리는 **원천 객체가 아니라 우리가 정한 수집 조건**이다. 개별 값을
+그대로 넣으면 조건 하나만 겹쳐도 서로 다른 데이터셋이 중복으로 판정된다 —
+실제로 `urn:naver:shopping_insight`와 `urn:naver:shopping_insight_advertiser`는
+카테고리 `50000148`을 공유한다.
+
+**집합 전체를 해시하면 완전히 같을 때만 겹친다.**
+
+| 상황 | 개별 값 | 집합 해시 |
+|---|---|---|
+| 검색어 완전 일치 | 탐지됨 | **탐지됨** |
+| 검색어 1개만 겹침 | **오탐** | 안 겹침 |
+
+### 정규화 — 순서는 영향이 없다
+
+```
+공백 제거 → 소문자 → 중복 제거 → 코드포인트 정렬 → '|' 결합 → sha256 앞 12자리
 ```
 
-| source_type | 채우는 값 | 근거 |
-|---|---|---|
-| `video` | `youtube:{채널ID}` | YouTube가 발급한 진짜 객체 키 |
-| `news`·`blog` | **없음** (legacy만) | 검색어는 원천 객체가 아니라 우리 수집 조건 |
-| `shopping_insight`·`persona_insight` | **없음** (legacy만) | 카테고리 ID도 마찬가지 |
+```
+['인공지능','AI','머신러닝','딥러닝']        → ai|딥러닝|머신러닝|인공지능 → 3c639c929baf
+['AI','인공지능','딥러닝','머신러닝']        → 동일  (순서 흡수)
+['ai',' 인공지능 ','AI','딥러닝','머신러닝'] → 동일  (대소문자·공백·중복 흡수)
+['인공지능','AI','머신러닝']                 → ai|머신러닝|인공지능 → fdd75d65cbb0
+```
 
-**video 외에 넣지 않는 이유**: 조건 하나만 겹쳐도 서로 다른 데이터셋이 중복으로
-판정돼 오탐이 난다. 실제로 `urn:naver:shopping_insight`와
-`urn:naver:shopping_insight_advertiser`는 카테고리 `50000148`을 공유한다.
+원문은 `subjects` 컬럼에 그대로 남아 있어 해시는 언제든 다시 만들 수 있다.
 
-반대로 **채널 겹침은 참 양성이다.** `urn:youtube:hbm_video_collection`은
-`samsung_official`·`sk_hynix_official`과 같은 채널을 수집 중이고, 그 사실이
-드러나는 것이 이 컬럼의 목적이다.
+> ⚠️ **정렬에 `COLLATE "C"`가 반드시 필요하다.** DB 기본 콜레이션은 한글을 영문보다
+> 앞에 두어 파이썬 `sorted()`와 결과가 달라진다.
+> ```
+> SQL 기본      : 딥러닝|머신러닝|인공지능|ai
+> SQL COLLATE C : ai|딥러닝|머신러닝|인공지능   ← 파이썬과 같음
+> ```
 
-개별 영상 ID는 넣지 않는다 — 영상은 데이터셋의 원천 객체가 아니라 그 안의
-항목이고 `meta_video`가 이미 들고 있다.
+> ⚠️ **sha1이 아니라 sha256을 쓴다.** PostgreSQL에 `sha256()`이 내장돼 있어 SQL에서도
+> 같은 값을 만들 수 있다(`sha1`은 내장이 아니다). 두 구현이 같은 값을 내는지
+> 마이그레이션에서 5건 전수 대조했다.
 
-`legacy:{전환 전 slug}`는 18건 전부에 남아 있다. 전환 추적과 S3 경로 대조의
-근거다.
+### 기간은 해시에 넣지 않는다
 
-적용: [sql/migration_2026_10_28_external_ids.sql](../../sql/migration_2026_10_28_external_ids.sql)
+같은 검색어를 기간만 나눠 두 번 등록하면 해시가 같아진다 — **의도적이다.**
+같은 대상을 보고 있다는 사실이 드러나야 하고, 기간이 다르다는 건 `temporal_*`
+컬럼이 이미 말해준다.
+
+### video는 왜 해시가 아닌가
+
+채널 ID는 YouTube가 발급한 진짜 객체 키라 그대로 쓰면 된다. 채널 겹침은
+**참 양성**이다 — `urn:youtube:hbm_video_collection`은 `samsung_official`·
+`sk_hynix_official`과 같은 채널을 수집 중이고, 그 사실이 드러나는 것이 이
+컬럼의 목적이다. 개별 영상 ID는 넣지 않는다(데이터셋의 원천 객체가 아니라 그
+안의 항목이고 `meta_video`가 이미 들고 있다).
+
+적용: [migration_2026_10_28_external_ids.sql](../../sql/migration_2026_10_28_external_ids.sql)(video),
+[migration_2026_10_28_subject_hash.sql](../../sql/migration_2026_10_28_subject_hash.sql)(그 외)
 신규 등록은 `register_dataset.make_external_ids()`가 같은 규칙으로 채운다.
 
 ---
