@@ -43,6 +43,21 @@ _DCAT_DATASET_COLUMNS = {
     "item_count",
 }
 
+# data_registry와 dcat_dataset이 함께 들고 있는 컬럼.
+#
+# data_registry 쪽이 운영 중 실시간 갱신되는 원본이고 dcat_dataset 쪽은 조회
+# 편의를 위한 미러다(sql/data_registry.sql item_count 주석). DDL 주석은 둘이
+# "동기화된다"고 적어 두었지만 **실제로 동기화하는 코드가 없었다** — 파이프라인
+# 5종이 전부 update_data_registry만 부르고 dcat_dataset은 그대로 뒀다.
+# 2026-10-28 실측에서 18건 중 14건이 어긋나 있었다(blog_ai: dcat 3 / registry 2,192).
+#
+# 호출부가 잊어버릴 수 있는 구조였으므로, update_data_registry가 같은
+# 트랜잭션에서 미러까지 갱신하도록 바꿨다. 호출부는 아무것도 더 하지 않아도 된다.
+#
+# dcat_dataset은 와이즈넛과 공용하는 카탈로그다. 여기 값이 틀리면 상대가 읽는
+# 카탈로그가 틀린 말을 한다.
+_MIRRORED_TO_DCAT = _DCAT_DATASET_COLUMNS & _DATA_REGISTRY_COLUMNS
+
 
 def fetch_dcat_dataset(dataset_id: str) -> Dict[str, Any]:
     conn = get_conn()
@@ -127,7 +142,12 @@ def insert_dcat_provenance(
 
 
 def update_data_registry(dataset_id: str, **fields: Any) -> None:
-    """전달된 필드만 UPDATE. updated_at은 항상 now()로 같이 갱신."""
+    """전달된 필드만 UPDATE. updated_at은 항상 now()로 같이 갱신.
+
+    item_count·temporal_start·temporal_end는 dcat_dataset에도 같은 값이 있어
+    **같은 트랜잭션에서 함께 갱신한다**(_MIRRORED_TO_DCAT 참조). 둘이 갈라지면
+    와이즈넛과 공용하는 카탈로그가 틀린 값을 보여준다.
+    """
     unknown = set(fields) - _DATA_REGISTRY_COLUMNS
     if unknown:
         raise ValueError(f"data_registry에 없는 컬럼: {unknown}")
@@ -136,6 +156,7 @@ def update_data_registry(dataset_id: str, **fields: Any) -> None:
 
     set_clause = ", ".join(f"{col} = %s" for col in fields)
     values = list(fields.values()) + [dataset_id]
+    mirror = {k: v for k, v in fields.items() if k in _MIRRORED_TO_DCAT}
 
     conn = get_conn()
     try:
@@ -145,6 +166,13 @@ def update_data_registry(dataset_id: str, **fields: Any) -> None:
             f"WHERE dataset_id = %s",
             values,
         )
+        if mirror:
+            m_clause = ", ".join(f"{col} = %s" for col in mirror)
+            cur.execute(
+                f"UPDATE dcat_dataset SET {m_clause}, updated_at = now() "
+                f"WHERE dataset_id = %s",
+                list(mirror.values()) + [dataset_id],
+            )
         conn.commit()
     finally:
         conn.close()

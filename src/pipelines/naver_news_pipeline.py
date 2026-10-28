@@ -79,6 +79,30 @@ def _collect_comment_stats(meta_id: int, article: Dict[str, Any], prev: Optional
     )
 
 
+def _current_temporal_start(dataset_id: str) -> Optional[str]:
+    """지금까지 수집된 항목 중 가장 이른 게시일. 데이터 없으면 None.
+
+    dcat_dataset.temporal_start는 "수집 후 자동 갱신"으로 정의돼 있는데
+    (sql/dcat_dataset.sql) 이 파이프라인은 갱신하지 않고 있었다 — 2026-10-28 발견.
+
+    매 수집마다 다시 계산한다. 과거 게시물이 나중에 발견되면 시작일이 앞당겨져야
+    하기 때문이다(쇼핑/Persona는 수집 범위가 고정이라 첫 수집 때만 계산한다).
+
+    temporal_end는 두지 않는다 — NULL이 "현재 진행 중(open-ended)"을 뜻한다.
+    """
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT MIN(published_at)::date FROM meta_news WHERE dataset_id = %s",
+            (dataset_id,),
+        )
+        row = cur.fetchone()
+        return row[0] if row else None
+    finally:
+        conn.close()
+
+
 def run(dataset_id: str, triggered_by: str) -> None:
     dataset = dcat.fetch_dcat_dataset(dataset_id)
     was_pending = _get_registry_status(dataset_id) == "pending"
@@ -153,6 +177,7 @@ def run(dataset_id: str, triggered_by: str) -> None:
             status="active",
             item_count=_current_item_count(dataset_id),
             row_count=_current_row_count(dataset_id),
+            temporal_start=_current_temporal_start(dataset_id),
             last_collected_at=ended_at,
             next_collect_at=ended_at + dcat.parse_iso8601_duration_to_timedelta(dataset["accrual_periodicity"]),
             last_error=None,

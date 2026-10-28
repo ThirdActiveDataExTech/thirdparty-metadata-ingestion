@@ -19,7 +19,7 @@ collectors(순수 API 호출)와 database(순수 DB IO) 모듈을 조합해 다�
 import json
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional, Tuple
 
 from src.collectors import youtube_collector, youtube_transcript_collector
 from src.database import dcat
@@ -111,13 +111,62 @@ def _fetch_remote_videos(service, channel_ids: list, video_ids: list) -> list:
     return videos
 
 
+def _normalize_subjects(subjects: Any) -> Tuple[List[str], List[str]]:
+    """subjects를 (채널 ID 목록, 개별 영상 ID 목록)으로 정규화한다.
+
+    두 형태가 공존한다.
+
+      배열형  ["UCxxxx", ...]                        2026-07-28 이전 등록분
+      객체형  {"channels": [...], "videos": [...]}   2026-07-28 확장 이후
+
+    확장할 때 객체형만 처리하도록 바꿔서 **배열형 데이터셋 10건이 수집 불가
+    상태였다**(2026-10-28 발견 — TypeError: the JSON object must be str...).
+    배열형은 "채널만 있고 개별 영상은 없다"는 뜻이므로 videos를 빈 목록으로 둔다.
+
+    psycopg2는 jsonb를 파이썬 객체(list/dict)로 돌려주지만, 호출부가 문자열을
+    넘기는 경우도 받아 준다.
+    """
+    if isinstance(subjects, (str, bytes)):
+        subjects = json.loads(subjects)
+    if isinstance(subjects, dict):
+        return list(subjects.get("channels") or []), list(subjects.get("videos") or [])
+    if isinstance(subjects, list):
+        return list(subjects), []
+    raise ValueError(
+        f"subjects 형식을 알 수 없습니다: {type(subjects).__name__} — "
+        f"배열(채널 ID 목록) 또는 {{'channels': [...], 'videos': [...]}} 이어야 합니다"
+    )
+
+
+def _current_temporal_start(dataset_id: str) -> Optional[str]:
+    """지금까지 수집된 항목 중 가장 이른 게시일. 데이터 없으면 None.
+
+    dcat_dataset.temporal_start는 "수집 후 자동 갱신"으로 정의돼 있는데
+    (sql/dcat_dataset.sql) 이 파이프라인은 갱신하지 않고 있었다 — 2026-10-28 발견.
+
+    매 수집마다 다시 계산한다. 과거 게시물이 나중에 발견되면 시작일이 앞당겨져야
+    하기 때문이다(쇼핑/Persona는 수집 범위가 고정이라 첫 수집 때만 계산한다).
+
+    temporal_end는 두지 않는다 — NULL이 "현재 진행 중(open-ended)"을 뜻한다.
+    """
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT MIN(published_at)::date FROM meta_video WHERE dataset_id = %s",
+            (dataset_id,),
+        )
+        row = cur.fetchone()
+        return row[0] if row else None
+    finally:
+        conn.close()
+
+
 def run(dataset_id: str, triggered_by: str) -> None:
     dataset = dcat.fetch_dcat_dataset(dataset_id)
     was_pending = _get_registry_status(dataset_id) == "pending"
     api_key = dcat.get_api_key(dataset_id, "youtube_api_key")
-    subjects = dataset["subjects"] if isinstance(dataset["subjects"], dict) else json.loads(dataset["subjects"])
-    channel_ids = subjects.get("channels", [])
-    video_ids = subjects.get("videos", [])
+    channel_ids, video_ids = _normalize_subjects(dataset["subjects"])
     started_at = datetime.now(timezone.utc)
 
     try:
@@ -177,6 +226,7 @@ def run(dataset_id: str, triggered_by: str) -> None:
             status="active",
             item_count=_current_item_count(dataset_id),
             row_count=_current_row_count(dataset_id),
+            temporal_start=_current_temporal_start(dataset_id),
             last_collected_at=ended_at,
             next_collect_at=ended_at + dcat.parse_iso8601_duration_to_timedelta(dataset["accrual_periodicity"]),
             last_error=None,
