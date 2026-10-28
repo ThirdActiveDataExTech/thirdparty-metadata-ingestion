@@ -17,6 +17,7 @@ _CONTEXT = {
     "dct": "http://purl.org/dc/terms/",
     "dcat": "http://www.w3.org/ns/dcat#",
     "schema": "https://schema.org/",
+    "adms": "http://www.w3.org/ns/adms#",
     "mi": "https://metadata-ingestion.internal/ns#",
 }
 
@@ -28,7 +29,8 @@ def _fetch_dataset_context(dataset_id: str) -> Dict[str, Any]:
         cur.execute(
             """
             SELECT d.dataset_id, d.source_type, d.title, d.description, d.publisher,
-                   d.license, d.keywords, d.accrual_periodicity, d.temporal_start, d.temporal_end,
+                   d.license, d.keywords, d.external_ids,
+                   d.accrual_periodicity, d.temporal_start, d.temporal_end,
                    r.status, r.item_count, r.row_count, r.last_collected_at, r.next_collect_at
             FROM dcat_dataset d
             JOIN data_registry r ON r.dataset_id = d.dataset_id
@@ -64,6 +66,16 @@ def _base_jsonld(ctx: Dict[str, Any]) -> Dict[str, Any]:
         "dct:license": ctx["license"],
         "dct:accrualPeriodicity": ctx["accrual_periodicity"],
         "dcat:keyword": ctx["keywords"] or [],
+        # 외부 식별자 — 와이즈넛 정형과 같은 컬럼·같은 '네임스페이스:값' 형식이다.
+        # 두 종류가 섞여 있고, 값 자체로 구분된다.
+        #   youtube:UCWwg...            원천(YouTube)이 발급한 채널 ID
+        #   naver:news:sha256-3c639c...  우리가 계산한 수집 조건 집합 해시
+        #   legacy:naver_news_ai         URN 전환 전 우리 식별자
+        # adms:identifier의 본래 뜻은 "어떤 기관이 발급한 식별자"라서 해시는
+        # 엄밀히는 그 범주가 아니다. 그래도 같은 속성으로 내보내는 이유는 형식을
+        # 와이즈넛과 맞춰야 받는 쪽이 한 가지 규칙으로 기록할 수 있기 때문이고,
+        # sha256- 접두가 있어 합성값인지는 값만 보고 가려낼 수 있다.
+        "adms:identifier": ctx["external_ids"] or [],
         "mi:temporalStart": _iso(ctx["temporal_start"]),
         "mi:temporalEnd": _iso(ctx["temporal_end"]),
         "mi:activeMetadata": {

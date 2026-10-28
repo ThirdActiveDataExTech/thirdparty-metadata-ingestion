@@ -170,12 +170,19 @@ def normalize_subject_key(terms) -> str:
 
 
 def subject_set_hash(terms) -> str:
-    """정규화한 수집 조건의 sha256 앞 12자리.
+    """정규화한 수집 조건의 sha256 앞 12자리. 'sha256-' 접두를 붙인다.
 
     sha1이 아니라 sha256을 쓰는 이유는 PostgreSQL에 sha256()이 내장돼 있어
     SQL에서도 같은 값을 만들 수 있기 때문이다(sha1은 내장이 아니다).
+
+    **접두를 붙이는 이유**: external_ids의 와이즈넛 정의는 `adms:identifier` —
+    "원천 포털이 데이터셋에 붙여 둔 고유번호"다. 이 해시는 어떤 기관도 발급한
+    적이 없는 합성값이라 의미가 다르다. 동등성 비교라는 기능은 같지만 원천에
+    조회되지 않는다. 접두가 없으면 `naver:news:3c639c929baf`가 네이버가 발급한
+    ID처럼 보여 구분할 수 없다.
     """
-    return hashlib.sha256(normalize_subject_key(terms).encode("utf-8")).hexdigest()[:12]
+    return "sha256-" + hashlib.sha256(
+        normalize_subject_key(terms).encode("utf-8")).hexdigest()[:12]
 
 
 def make_external_ids(source_type: str, subjects) -> str:
@@ -192,7 +199,7 @@ def make_external_ids(source_type: str, subjects) -> str:
       항목이고 meta_video가 이미 들고 있다.
 
     **그 외** — 수집 조건 집합의 해시.
-        ["naver:news:3c639c929baf"]
+        ["naver:news:sha256-3c639c929baf"]
       검색어·카테고리는 원천 객체가 아니라 우리가 정한 수집 조건이다. 개별
       값을 그대로 넣으면 조건 하나만 겹쳐도 서로 다른 데이터셋이 중복으로
       판정돼 오탐이 난다 — 실제로 shopping_insight와

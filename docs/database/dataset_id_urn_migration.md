@@ -267,7 +267,7 @@ urn:naver:news_ai → naver_news_ai     (urn: 제거 후 ':' → '_')
 | source_type | 값 | 예 |
 |---|---|---|
 | `video` | `youtube:{채널ID}` | `youtube:UCWwgaK7x0_FR1goeSRazfsQ` |
-| 그 외 | `{source}:{source_type}:{집합해시}` | `naver:news:3c639c929baf` |
+| 그 외 | `{source}:{source_type}:sha256-{해시}` | `naver:news:sha256-3c639c929baf` |
 
 `legacy:{전환 전 slug}`는 18건 전부에 남아 있다.
 
@@ -292,10 +292,10 @@ urn:naver:news_ai → naver_news_ai     (urn: 제거 후 ':' → '_')
 ```
 
 ```
-['인공지능','AI','머신러닝','딥러닝']        → ai|딥러닝|머신러닝|인공지능 → 3c639c929baf
+['인공지능','AI','머신러닝','딥러닝']        → ai|딥러닝|머신러닝|인공지능 → sha256-3c639c929baf
 ['AI','인공지능','딥러닝','머신러닝']        → 동일  (순서 흡수)
 ['ai',' 인공지능 ','AI','딥러닝','머신러닝'] → 동일  (대소문자·공백·중복 흡수)
-['인공지능','AI','머신러닝']                 → ai|머신러닝|인공지능 → fdd75d65cbb0
+['인공지능','AI','머신러닝']                 → ai|머신러닝|인공지능 → sha256-fdd75d65cbb0
 ```
 
 원문은 `subjects` 컬럼에 그대로 남아 있어 해시는 언제든 다시 만들 수 있다.
@@ -325,8 +325,38 @@ urn:naver:news_ai → naver_news_ai     (urn: 제거 후 ':' → '_')
 컬럼의 목적이다. 개별 영상 ID는 넣지 않는다(데이터셋의 원천 객체가 아니라 그
 안의 항목이고 `meta_video`가 이미 들고 있다).
 
-적용: [migration_2026_10_28_external_ids.sql](../../sql/migration_2026_10_28_external_ids.sql)(video),
-[migration_2026_10_28_subject_hash.sql](../../sql/migration_2026_10_28_subject_hash.sql)(그 외)
+### 왜 `sha256-` 접두를 붙이는가
+
+이 컬럼의 와이즈넛 정의는 **`adms:identifier` — "원천 포털이 데이터셋에 붙여 둔
+고유번호"**다. 우리 해시는 어떤 기관도 발급한 적이 없는 합성값이라 의미가 다르다.
+동등성 비교라는 기능은 같지만 **원천에 조회되지 않는다.**
+
+접두가 없으면 `naver:news:3c639c929baf`가 네이버가 발급한 ID처럼 보여 구분할 수
+없다. 접두를 붙이면 값만 보고 가려낼 수 있다. 네임스페이스는 `naver`로 유지되므로
+`youtube:UC...`와 구조는 같다.
+
+채널 ID(`youtube:UC...`)에는 접두를 붙이지 않는다 — 그쪽은 진짜 원천 발급 키다.
+
+### JSON-LD 내보내기
+
+`adms:identifier`로 내보낸다. 와이즈넛 정형과 **같은 속성, 같은 형식**이라 받는
+쪽이 한 가지 규칙으로 기록할 수 있고, 합성값 여부는 `sha256-` 접두로 가려낸다.
+
+```json
+{
+  "@id": "urn:naver:news_ai",
+  "adms:identifier": ["naver:news:sha256-3c639c929baf", "legacy:naver_news_ai"]
+}
+```
+
+### 적용
+
+| 파일 | 대상 |
+|---|---|
+| [migration_2026_10_28_external_ids.sql](../../sql/migration_2026_10_28_external_ids.sql) | video — 채널 ID |
+| [migration_2026_10_28_subject_hash.sql](../../sql/migration_2026_10_28_subject_hash.sql) | 그 외 — 집합 해시 |
+| [migration_2026_10_28_subject_hash_prefix.sql](../../sql/migration_2026_10_28_subject_hash_prefix.sql) | 해시에 `sha256-` 접두 |
+
 신규 등록은 `register_dataset.make_external_ids()`가 같은 규칙으로 채운다.
 
 ---

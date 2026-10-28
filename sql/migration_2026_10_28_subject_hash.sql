@@ -7,7 +7,7 @@
 --        그 대가로 **검색어가 완전히 같은 데이터셋도 탐지되지 않았다.**
 --        집합 전체를 해시하면 둘 다 해결된다.
 --
---          naver:news:3c639c929baf
+--          naver:news:sha256-3c639c929baf
 --
 --        완전히 같을 때만 겹치고, 하나라도 다르면 안 겹친다.
 --
@@ -23,6 +23,12 @@
 --
 -- ⚠️ sha1이 아니라 sha256을 쓴다. PostgreSQL에 sha256()이 내장돼 있어 SQL에서도
 --    같은 값을 만들 수 있다(sha1은 내장이 아니다). 앞 12자리만 쓴다.
+--
+-- ⚠️ 값에 'sha256-' 접두를 붙인다. external_ids의 와이즈넛 정의는
+--    adms:identifier — "원천 포털이 데이터셋에 붙여 둔 고유번호"다. 이 해시는
+--    어떤 기관도 발급한 적이 없는 합성값이라 의미가 다르다. 동등성 비교라는
+--    기능은 같지만 원천에 조회되지 않는다. 접두가 없으면
+--    naver:news:3c639c929baf 가 네이버가 발급한 ID처럼 보여 구분할 수 없다.
 --
 -- ⚠️ 기간(temporal_start/end)은 해시에 넣지 않는다. 같은 검색어를 기간만 나눠
 --    두 번 등록하면 해시가 같아진다 — 의도적이다. 같은 대상을 보고 있다는
@@ -47,7 +53,7 @@ WITH norm AS (
 )
 UPDATE dcat_dataset d
    SET external_ids = jsonb_build_array(
-           n.ns || ':' || n.source_type || ':' ||
+           n.ns || ':' || n.source_type || ':sha256-' ||
            substring(encode(sha256(convert_to(n.norm_key, 'UTF8')), 'hex') from 1 for 12)
        ) || d.external_ids              -- 원천 키를 앞, legacy를 뒤에
   FROM norm n
@@ -87,7 +93,7 @@ BEGIN
     SELECT count(*) INTO n FROM dcat_dataset d,
            jsonb_array_elements_text(d.external_ids) AS x
      WHERE x LIKE lower(d.source) || ':' || d.source_type || ':%'
-       AND x !~ (':[0-9a-f]{12}$');
+       AND x !~ (':sha256-[0-9a-f]{12}$');
     IF n > 0 THEN RAISE EXCEPTION 'B-4 실패: 해시 형식 위반 %건', n; END IF;
 
     -- B-5. shopping_insight와 shopping_insight_advertiser는 카테고리 50000148을
