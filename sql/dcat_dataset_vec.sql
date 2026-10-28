@@ -10,7 +10,7 @@ DROP TABLE IF EXISTS dcat_dataset_vec;
 CREATE TABLE dcat_dataset_vec (
 
     dataset_id   TEXT PRIMARY KEY
-                 REFERENCES dcat_dataset(dataset_id) ON DELETE CASCADE,
+                 REFERENCES dcat_dataset(dataset_id) ON UPDATE CASCADE ON DELETE CASCADE,
     -- dcat_dataset 과 1:1 대응
     -- ON DELETE CASCADE: 데이터셋 삭제 시 임베딩도 자동 삭제
 

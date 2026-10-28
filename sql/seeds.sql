@@ -27,7 +27,7 @@ INSERT INTO dcat_dataset (
     dataset_origin, owner_id, visibility
 ) VALUES
 (
-    'naver_shopping_insight',
+    'urn:naver:shopping_insight',
     '네이버 쇼핑 인사이트 카테고리 수집',
     '성별×연령(12조합) 필터로 수집한 카테고리별 일간 검색량 지수. anchor 보정(intra_scale) 및 inter_scale 적용.',
     'Naver', 'Naver', 'shopping_insight',
@@ -41,7 +41,7 @@ INSERT INTO dcat_dataset (
     'admin', NULL, 'ORG'
 ),
 (
-    'naver_persona_insight',
+    'urn:naver:persona_insight',
     '네이버 쇼핑 인사이트 페르소나 분석',
     '카테고리별 성별·연령 독립 가정 기반 persona_index 산출. gender_pv × age_pv 교차 추정.',
     'Naver', 'Naver', 'persona_insight',
@@ -55,7 +55,7 @@ INSERT INTO dcat_dataset (
     'admin', NULL, 'ORG'
 ),
 (
-    'youtube_samsung_official',
+    'urn:youtube:samsung_official',
     '삼성전자 공식 유튜브 채널',
     '삼성전자 공식 YouTube 채널(@Samsung) 전체 영상 메타데이터 수집. 주간 단위 업데이트.',
     'YouTube', 'YouTube', 'video',
@@ -69,7 +69,7 @@ INSERT INTO dcat_dataset (
     'admin', NULL, 'ORG'
 ),
 (
-    'naver_news_ai',
+    'urn:naver:news_ai',
     '네이버 뉴스 AI 관련 기사 수집',
     '네이버 뉴스 API를 통해 인공지능 관련 키워드로 수집한 뉴스 기사. 본문 스크래핑 포함.',
     'Naver', 'Naver', 'news',
@@ -85,7 +85,7 @@ INSERT INTO dcat_dataset (
 -- user 생성 예시: YouTube 채널 2개에서 HBM 관련 영상만 직접 선택한 사용자 정의 데이터셋
 -- owner_id는 예시값 — 실제 계정 테이블이 아직 없어 임의 문자열 (§10/2-6 참조)
 (
-    'user_hbm_video_collection',
+    'urn:youtube:hbm_video_collection',
     'HBM 관련 영상 모음',
     '삼성전자·SK하이닉스 채널에서 HBM(High Bandwidth Memory) 관련 영상을 직접 선택해 구성한 사용자 정의 데이터셋.',
     'YouTube', 'YouTube', 'video',
@@ -98,7 +98,7 @@ INSERT INTO dcat_dataset (
     'user', 'demo-user-0001', 'ORG'
 ),
 (
-    'naver_blog_ai',
+    'urn:naver:blog_ai',
     '네이버 블로그 AI·반도체 관련 게시물 수집',
     '네이버 블로그 검색 API를 통해 AI/반도체 관련 키워드로 수집한 블로그 게시물. 본문 스크래핑 포함.',
     'Naver', 'Naver', 'blog',
@@ -119,65 +119,65 @@ INSERT INTO dcat_provenance (
     started_at, ended_at, status, rows_affected, params, error_message, notes
 ) VALUES
 (
-    'naver_shopping_insight', 'initial', 'naver_shopping_insight', 'manual',
+    'urn:naver:shopping_insight', 'initial', 'urn:naver:shopping_insight', 'manual',
     '2025-06-18 02:00:00+09', '2025-06-18 02:04:31+09', 'success', 4732,
     '{"phase":"1/2","start_date":"2024-06-18","end_date":"2025-06-17"}',
     NULL, '최초 실행 1단계: 1년치 소급 수집'
 ),
 (
-    'naver_shopping_insight', 'initial', 'naver_shopping_insight', 'manual',
+    'urn:naver:shopping_insight', 'initial', 'urn:naver:shopping_insight', 'manual',
     '2025-06-18 02:04:31+09', '2025-06-18 02:05:58+09', 'success', 364,
     '{"phase":"2/2","start_date":"2025-05-21","end_date":"2025-06-17"}',
     NULL, '최초 실행 2단계: 28일 overlap 수집'
 ),
 (
-    'naver_shopping_insight', 'update', 'naver_shopping_insight',
+    'urn:naver:shopping_insight', 'update', 'urn:naver:shopping_insight',
     'K8s CronJob naver-shopping-cronjob',
     '2025-06-25 02:00:00+09', '2025-06-25 02:01:12+09', 'success', 91,
     '{"start_date":"2025-05-28","end_date":"2025-06-24","overlap_days":28}',
     NULL, NULL
 ),
 (
-    'naver_shopping_insight', 'update', 'naver_shopping_insight',
+    'urn:naver:shopping_insight', 'update', 'urn:naver:shopping_insight',
     'K8s CronJob naver-shopping-cronjob',
     '2026-06-30 02:00:00+09', '2026-06-30 02:01:09+09', 'success', 91,
     '{"start_date":"2026-06-02","end_date":"2026-06-29","overlap_days":28}',
     NULL, NULL
 ),
 (
-    'naver_persona_insight', 'initial', 'naver_persona', 'manual',
+    'urn:naver:persona_insight', 'initial', 'naver_persona', 'manual',
     '2025-06-18 03:00:00+09', '2025-06-18 03:12:44+09', 'success', 56784,
     '{"start_date":"2025-06-18","end_date":"2026-06-17"}',
     NULL, '최초 실행: gender×age 12조합 전체'
 ),
 (
-    'naver_persona_insight', 'update', 'naver_persona',
+    'urn:naver:persona_insight', 'update', 'naver_persona',
     'K8s CronJob naver-persona-cronjob',
     '2026-06-30 03:00:00+09', '2026-06-30 03:02:31+09', 'success', 1092,
     '{"start_date":"2026-06-23","end_date":"2026-06-29","overlap_days":28}',
     NULL, NULL
 ),
 (
-    'youtube_samsung_official', 'initial', 'youtube_collector', 'manual',
+    'urn:youtube:samsung_official', 'initial', 'youtube_collector', 'manual',
     '2026-06-30 04:00:00+09', '2026-06-30 04:03:21+09', 'success', 3,
     '{"channel_id":"UCWwgaK7x0_FR1goeSRazfsQ","max_results":500}',
     NULL, '채널 전체 영상 최초 수집 (샘플 3건)'
 ),
 (
-    'naver_news_ai', 'initial', 'naver_news', 'manual',
+    'urn:naver:news_ai', 'initial', 'naver_news', 'manual',
     '2026-01-01 06:00:00+09', '2026-01-01 06:00:47+09', 'success', 1200,
     '{"keywords":["인공지능","AI","머신러닝"],"display":100}',
     NULL, '최초 수집'
 ),
 (
-    'naver_news_ai', 'update', 'naver_news',
+    'urn:naver:news_ai', 'update', 'naver_news',
     'K8s CronJob naver-news-cronjob',
     '2026-06-30 06:00:00+09', '2026-06-30 06:00:12+09', 'failure', 0,
     '{"keywords":["인공지능","AI"],"display":100}',
     'HTTP 429 Too Many Requests: API 일일 호출 한도 초과', NULL
 ),
 (
-    'naver_blog_ai', 'initial', 'naver_blog', 'manual',
+    'urn:naver:blog_ai', 'initial', 'naver_blog', 'manual',
     '2026-06-28 07:00:00+09', '2026-06-28 07:00:33+09', 'success', 3,
     '{"keywords":["인공지능","AI","반도체"],"display":30}',
     NULL, '최초 수집 (샘플 3건, active_meta 파이프라인은 ADR-006으로 반응 수 수집 확정)'
@@ -193,7 +193,7 @@ INSERT INTO data_registry (
     item_count, row_count, temporal_start, temporal_end
 ) VALUES
 (
-    'naver_shopping_insight',
+    'urn:naver:shopping_insight',
     'raw/shopping/naver_shopping_insight/', 'jsonld/shopping/naver_shopping_insight/',
     'meta_shopping_insight', 'active_meta_shopping_insight', 'dcat_dataset_vec',
     'active', '2026-06-30 02:01:09+09', '2026-07-01 02:00:00+09', NULL,
@@ -201,14 +201,14 @@ INSERT INTO data_registry (
     -- item_count=5: 이 데이터셋이 추적하는 카테고리 수 (anchor 포함, meta_shopping_insight 행 수)
 ),
 (
-    'naver_persona_insight',
+    'urn:naver:persona_insight',
     'raw/shopping/naver_persona_insight/', 'jsonld/shopping/naver_persona_insight/',
     'meta_persona_insight', 'active_meta_persona_insight', 'dcat_dataset_vec',
     'active', '2026-06-30 03:02:31+09', '2026-07-01 03:00:00+09', NULL,
     4, 57876, '2025-06-18', '2026-06-17'
 ),
 (
-    'youtube_samsung_official',
+    'urn:youtube:samsung_official',
     'raw/video/youtube_samsung_official/', 'jsonld/video/youtube_samsung_official/',
     'meta_video', 'active_meta_video', 'dcat_dataset_vec',
     'active', '2026-06-30 04:03:21+09', '2026-07-07 04:00:00+09', NULL,
@@ -218,7 +218,7 @@ INSERT INTO data_registry (
     -- dcat_provenance 'update' 기록이 없어 아직 갱신 전 (기존 시드 데이터의 기존 격차, 오늘 범위 아님)
 ),
 (
-    'naver_news_ai',
+    'urn:naver:news_ai',
     'raw/news/naver_news_ai/', 'jsonld/news/naver_news_ai/',
     'meta_news', 'active_meta_news', 'dcat_dataset_vec',
     'error', '2026-01-01 06:00:47+09', '2026-07-01 06:00:00+09',
@@ -227,7 +227,7 @@ INSERT INTO data_registry (
     -- item_count=3: 수집된 기사 3건 (meta_news 행 수)
 ),
 (
-    'user_hbm_video_collection',
+    'urn:youtube:hbm_video_collection',
     NULL, NULL,
     'meta_video', 'active_meta_video', 'dcat_dataset_vec',
     'pending', NULL, NULL, NULL,
@@ -235,7 +235,7 @@ INSERT INTO data_registry (
     -- item_count=1: yt_vid_002 1편만 직접 선택
 ),
 (
-    'naver_blog_ai',
+    'urn:naver:blog_ai',
     'raw/blog/naver_blog_ai/', 'jsonld/blog/naver_blog_ai/',
     'meta_blog', 'active_meta_blog', 'dcat_dataset_vec',
     'active', '2026-06-28 07:00:33+09', '2026-07-01 07:00:00+09', NULL,
@@ -261,9 +261,9 @@ INSERT INTO meta_video (
     has_caption, thumbnail_url,
     initial_view_count, initial_like_count, initial_comment_count
 ) VALUES
--- youtube_samsung_official 채널 영상 3건
+-- urn:youtube:samsung_official 채널 영상 3건
 (
-    'youtube_samsung_official',
+    'urn:youtube:samsung_official',
     'yt_vid_001',
     'Samsung Galaxy S25 Ultra | Official Introduction',
     '삼성전자 갤럭시 S25 Ultra 공식 소개 영상. 새로운 AI 기능과 카메라 성능 업그레이드를 담았습니다.',
@@ -277,7 +277,7 @@ INSERT INTO meta_video (
     15230000, 98000, 4200
 ),
 (
-    'youtube_samsung_official',
+    'urn:youtube:samsung_official',
     'yt_vid_002',
     'Samsung HBM3E | 12단 적층 기술 소개',
     '삼성전자 HBM3E 12단 적층 D램의 기술 개요. AI 서버용 고성능 메모리 솔루션.',
@@ -291,7 +291,7 @@ INSERT INTO meta_video (
     3820000, 41000, 890
 ),
 (
-    'youtube_samsung_official',
+    'urn:youtube:samsung_official',
     'yt_vid_003',
     'Galaxy AI | 2025 AI 기능 완벽 정리',
     '갤럭시 AI의 2025년 주요 기능을 한눈에 정리. 실시간 통역, 서클 투 서치 등 핵심 AI 기능 시연.',
@@ -304,9 +304,9 @@ INSERT INTO meta_video (
     TRUE, 'https://i.ytimg.com/vi/yt_vid_003/maxresdefault.jpg',
     8940000, 67000, 2100
 ),
--- user_hbm_video_collection: yt_vid_002는 위와 동일한 영상이지만 별도 데이터셋으로 추적
+-- urn:youtube:hbm_video_collection: yt_vid_002는 위와 동일한 영상이지만 별도 데이터셋으로 추적
 (
-    'user_hbm_video_collection',
+    'urn:youtube:hbm_video_collection',
     'yt_vid_002',
     'Samsung HBM3E | 12단 적층 기술 소개',
     '삼성전자 HBM3E 12단 적층 D램의 기술 개요. AI 서버용 고성능 메모리 솔루션.',
@@ -322,10 +322,10 @@ INSERT INTO meta_video (
 
 -- ── active_meta_video ───────────────────────────────────────
 -- meta_video.id 는 BIGSERIAL이라 삽입 순서대로 1,2,3,4 가 됨
--- 1 = youtube_samsung_official / yt_vid_001
--- 2 = youtube_samsung_official / yt_vid_002
--- 3 = youtube_samsung_official / yt_vid_003
--- 4 = user_hbm_video_collection / yt_vid_002
+-- 1 = urn:youtube:samsung_official / yt_vid_001
+-- 2 = urn:youtube:samsung_official / yt_vid_002
+-- 3 = urn:youtube:samsung_official / yt_vid_003
+-- 4 = urn:youtube:hbm_video_collection / yt_vid_002
 
 INSERT INTO active_meta_video (
     meta_id, collected_at,
@@ -355,7 +355,7 @@ INSERT INTO meta_news (
 ) VALUES
 -- Naver 호스팅 기사 (댓글 수집 가능)
 (
-    'naver_news_ai',
+    'urn:naver:news_ai',
     'https://www.yna.co.kr/view/AKR20260704000000017',
     '삼성전자, 차세대 AI 반도체 HBM4 개발 본격화',
     '삼성전자가 엔비디아 차세대 AI 가속기에 탑재될 HBM4(High Bandwidth Memory 4) 개발을 본격화했다고 밝혔다.',
@@ -369,7 +369,7 @@ INSERT INTO meta_news (
 ),
 -- Naver 호스팅 기사 (댓글 수집 가능)
 (
-    'naver_news_ai',
+    'urn:naver:news_ai',
     'https://biz.chosun.com/it-science/ict/2026/07/03/ai-data-center',
     'AI 데이터센터 전력 수요 급증... 2030년 국내 전력 소비의 15% 차지',
     'AI 데이터센터의 폭발적인 성장으로 전력 수요가 급증하고 있으며 2030년에는 국내 전체 전력 소비의 15%를 차지할 것으로 전망된다.',
@@ -383,7 +383,7 @@ INSERT INTO meta_news (
 ),
 -- 외부 기사 (댓글 수집 불가 — is_naver_hosted=FALSE)
 (
-    'naver_news_ai',
+    'urn:naver:news_ai',
     'https://www.sedaily.com/NewsView/2DABCDEF12',
     '머신러닝 모델 경량화 기술 동향... 온디바이스 AI 시대 가속',
     '온디바이스 AI 구현을 위한 머신러닝 모델 경량화 기술이 빠르게 발전하고 있다.',
@@ -398,9 +398,9 @@ INSERT INTO meta_news (
 
 -- ── active_meta_news ────────────────────────────────────
 -- meta_news.id 는 BIGSERIAL이라 삽입 순서대로 1,2,3 이 됨
--- 1 = naver_news_ai / 연합뉴스 HBM4 기사 (Naver 호스팅)
--- 2 = naver_news_ai / 조선비즈 데이터센터 기사 (Naver 호스팅)
--- 3 = naver_news_ai / 서울경제 경량화 기사 (외부 기사 — 행 없음)
+-- 1 = urn:naver:news_ai / 연합뉴스 HBM4 기사 (Naver 호스팅)
+-- 2 = urn:naver:news_ai / 조선비즈 데이터센터 기사 (Naver 호스팅)
+-- 3 = urn:naver:news_ai / 서울경제 경량화 기사 (외부 기사 — 행 없음)
 
 INSERT INTO active_meta_news (
     meta_id, collected_at,
@@ -416,7 +416,7 @@ INSERT INTO active_meta_news (
 -- meta_id=3 (서울경제 외부 기사): is_naver_hosted=FALSE → 행 없음
 
 -- ── meta_shopping_insight ───────────────────────────────────────
--- naver_shopping_insight 데이터셋의 카테고리 정보
+-- urn:naver:shopping_insight 데이터셋의 카테고리 정보
 -- anchor: 패션의류 (50000148) — 모든 배치에 포함되는 기준 카테고리
 
 INSERT INTO meta_shopping_insight (
@@ -424,11 +424,11 @@ INSERT INTO meta_shopping_insight (
     cat_level1, cat_level2, cat_level3, cat_level4,
     is_anchor
 ) VALUES
-('naver_shopping_insight', '50000148', '패션의류',           '패션의류', NULL,     NULL,    NULL,  TRUE),
-('naver_shopping_insight', '50001828', '패션의류>남성의류',   '패션의류', '남성의류', NULL,   NULL,  FALSE),
-('naver_shopping_insight', '50001421', '패션의류>여성의류',   '패션의류', '여성의류', NULL,   NULL,  FALSE),
-('naver_shopping_insight', '50000204', '패션잡화',           '패션잡화', NULL,     NULL,    NULL,  FALSE),
-('naver_shopping_insight', '50000167', '스포츠/레저',        '스포츠/레저', NULL,   NULL,    NULL,  FALSE);
+('urn:naver:shopping_insight', '50000148', '패션의류',           '패션의류', NULL,     NULL,    NULL,  TRUE),
+('urn:naver:shopping_insight', '50001828', '패션의류>남성의류',   '패션의류', '남성의류', NULL,   NULL,  FALSE),
+('urn:naver:shopping_insight', '50001421', '패션의류>여성의류',   '패션의류', '여성의류', NULL,   NULL,  FALSE),
+('urn:naver:shopping_insight', '50000204', '패션잡화',           '패션잡화', NULL,     NULL,    NULL,  FALSE),
+('urn:naver:shopping_insight', '50000167', '스포츠/레저',        '스포츠/레저', NULL,   NULL,    NULL,  FALSE);
 
 -- ── active_meta_shopping_insight ────────────────────────────────
 -- meta_shopping_insight.id 삽입 순서: 1=패션의류(anchor), 2=남성의류, 3=여성의류, 4=패션잡화, 5=스포츠/레저
@@ -455,16 +455,16 @@ INSERT INTO active_meta_shopping_insight (
 (5, '2026-07-07', '', '',  16.3, 100.0,  16.3, 1.0123,  16.50, 1, '2026-07-07 02:00:51+09');
 
 -- ── meta_persona_insight ────────────────────────────────────────
--- naver_persona_insight 데이터셋의 카테고리 정보 (anchor 개념 없음)
+-- urn:naver:persona_insight 데이터셋의 카테고리 정보 (anchor 개념 없음)
 
 INSERT INTO meta_persona_insight (
     dataset_id, category_id, category_name,
     cat_level1, cat_level2, cat_level3, cat_level4
 ) VALUES
-('naver_persona_insight', '50000148', '패션의류',         '패션의류', NULL,     NULL, NULL),
-('naver_persona_insight', '50001828', '패션의류>남성의류', '패션의류', '남성의류', NULL, NULL),
-('naver_persona_insight', '50001421', '패션의류>여성의류', '패션의류', '여성의류', NULL, NULL),
-('naver_persona_insight', '50000204', '패션잡화',         '패션잡화', NULL,     NULL, NULL);
+('urn:naver:persona_insight', '50000148', '패션의류',         '패션의류', NULL,     NULL, NULL),
+('urn:naver:persona_insight', '50001828', '패션의류>남성의류', '패션의류', '남성의류', NULL, NULL),
+('urn:naver:persona_insight', '50001421', '패션의류>여성의류', '패션의류', '여성의류', NULL, NULL),
+('urn:naver:persona_insight', '50000204', '패션잡화',         '패션잡화', NULL,     NULL, NULL);
 
 -- ── active_meta_persona_insight ─────────────────────────────────
 -- meta_persona_insight.id 삽입 순서: 1=패션의류, 2=남성의류, 3=여성의류, 4=패션잡화
@@ -489,7 +489,7 @@ INSERT INTO active_meta_persona_insight (
 (1, '2026-07-07', 'f', '30', 57.8, 36.2, 1.0089, 1.0042, 58.31, 36.35, 2119.57, '2026-07-07 03:01:14+09');
 
 -- ── meta_blog ───────────────────────────────────────────
--- naver_blog_ai 데이터셋의 게시물 3건 (본문 스크래핑 실패 1건 포함)
+-- urn:naver:blog_ai 데이터셋의 게시물 3건 (본문 스크래핑 실패 1건 포함)
 
 INSERT INTO meta_blog (
     dataset_id, post_url,
@@ -500,7 +500,7 @@ INSERT INTO meta_blog (
 ) VALUES
 -- 본문 스크래핑 성공
 (
-    'naver_blog_ai',
+    'urn:naver:blog_ai',
     'https://blog.naver.com/techinsight_kr/223456781',
     'HBM4 이란 무엇인가 - 차세대 메모리 완벽 정리',
     '삼성전자와 SK하이닉스가 개발 중인 HBM4에 대해 알기 쉽게 정리해봤습니다. HBM3E와의 차이점부터 양산 일정까지.',
@@ -512,7 +512,7 @@ INSERT INTO meta_blog (
 ),
 -- 본문 스크래핑 성공
 (
-    'naver_blog_ai',
+    'urn:naver:blog_ai',
     'https://blog.naver.com/galaxy_review/223456912',
     '갤럭시 S25 울트라 AI 기능 3주 사용 후기',
     '갤럭시 S25 울트라를 3주간 사용하면서 느낀 AI 기능들을 솔직하게 리뷰합니다.',
@@ -524,7 +524,7 @@ INSERT INTO meta_blog (
 ),
 -- 본문 스크래핑 실패 (has_content=FALSE)
 (
-    'naver_blog_ai',
+    'urn:naver:blog_ai',
     'https://blog.naver.com/semicon_daily/223457033',
     '2026년 반도체 업계 하반기 전망',
     'AI 반도체 수요 증가와 함께 메모리 업계가 어떻게 움직이고 있는지 정리했습니다.',

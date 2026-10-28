@@ -12,7 +12,7 @@ CREATE TABLE meta_video (
     id                      BIGSERIAL PRIMARY KEY,
 
     dataset_id              TEXT NOT NULL
-                            REFERENCES dcat_dataset(dataset_id) ON DELETE CASCADE,
+                            REFERENCES dcat_dataset(dataset_id) ON UPDATE CASCADE ON DELETE CASCADE,
     -- 어느 데이터셋 소속인지 (FK)
 
     video_id                TEXT NOT NULL,

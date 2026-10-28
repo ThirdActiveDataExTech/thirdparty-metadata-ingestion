@@ -26,7 +26,7 @@ CREATE TABLE dcat_provenance (
     -- ⚠️ FK가 없으므로 dataset_id 변경(URN 전환)이 자동 전파되지 않는다.
     --    전환 시 이 테이블을 명시적으로 UPDATE해야 한다
     --    (database/dataset_id_urn_migration.md 참조)
-    -- 예) 'naver_shopping_insight', 'youtube_samsung_official'
+    -- 예) 'urn:naver:shopping_insight', 'urn:youtube:samsung_official'
 
     -- ── 활동 유형 ─────────────────────────────────────────────
     activity_type   TEXT NOT NULL,

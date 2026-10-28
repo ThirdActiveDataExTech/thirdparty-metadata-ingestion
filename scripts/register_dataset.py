@@ -40,30 +40,35 @@ DECLARATIVE_TYPES = {"shopping_insight", "persona_insight"}
 
 _SOURCE_META = {
     "video": {
+        "urn_namespace": "youtube",
         "publisher": "YouTube",
         "pg_meta_table": "meta_video",
         "pg_active_table": "active_meta_video",
         "license": "https://developers.google.com/youtube/terms/api-services-tos",
     },
     "news": {
+        "urn_namespace": "naver",
         "publisher": "Naver",
         "pg_meta_table": "meta_news",
         "pg_active_table": "active_meta_news",
         "license": "https://developers.naver.com/notice/terms",
     },
     "blog": {
+        "urn_namespace": "naver",
         "publisher": "Naver",
         "pg_meta_table": "meta_blog",
         "pg_active_table": "active_meta_blog",
         "license": "https://developers.naver.com/notice/terms",
     },
     "shopping_insight": {
+        "urn_namespace": "naver",
         "publisher": "Naver",
         "pg_meta_table": "meta_shopping_insight",
         "pg_active_table": "active_meta_shopping_insight",
         "license": "https://developers.naver.com/notice/terms",
     },
     "persona_insight": {
+        "urn_namespace": "naver",
         "publisher": "Naver",
         "pg_meta_table": "meta_persona_insight",
         "pg_active_table": "active_meta_persona_insight",
@@ -79,17 +84,45 @@ def slugify(title: str) -> str:
     return slug or "dataset"
 
 
-def make_dataset_id(conn, title: str, origin: str) -> str:
-    """slug + 랜덤 접미사. unique_violation 시 재시도 (§7.1)."""
+# 와이즈넛 별첨 테이블정의서가 규정한 dataset_id 형식 (TEXT 최대 100자).
+# 2026-10-28 전환 완료 — docs/database/dataset_id_urn_migration.md
+URN_RE = re.compile(r"^urn:[a-z0-9]+:[a-z0-9_]+$")
+
+
+def make_dataset_id(conn, title: str, source_type: str) -> str:
+    """urn:{네임스페이스}:{slug}_{랜덤접미}. unique_violation 시 재시도 (§7.1).
+
+    비정형은 데이터셋이 원천 객체 하나에 1:1로 대응하지 않는다. 같은 채널로
+    데이터셋을 둘 만들 수 있으므로 채널 ID를 식별자로 쓰면 충돌한다. 그래서
+    원천 키 자리에 **수집 단위 키**를 넣는다 — 원천 객체 키는 external_ids에
+    보존한다(2026-10-28 와이즈넛 승인).
+
+    origin(admin/user)은 식별자에 넣지 않는다. dataset_origin 컬럼이 이미
+    구분하고 있어 중복이고, 등록 주체가 바뀌면 식별자까지 흔들린다.
+    """
     base = slugify(title)
-    prefix = "user_" if origin == "user" else ""
+    ns = _SOURCE_META[source_type]["urn_namespace"]
     cur = conn.cursor()
     for _ in range(5):
-        candidate = f"{prefix}{base}_{secrets.token_hex(3)}"
+        candidate = f"urn:{ns}:{base}_{secrets.token_hex(3)}"
+        if len(candidate) > 100:
+            raise RuntimeError(f"dataset_id가 스펙 상한 100자를 넘습니다({len(candidate)}자) "
+                               f"— --dataset-id로 짧은 값을 직접 지정해주세요")
         cur.execute("SELECT 1 FROM dcat_dataset WHERE dataset_id = %s", (candidate,))
         if cur.fetchone() is None:
             return candidate
     raise RuntimeError("dataset_id 채번 5회 시도 후에도 충돌 — 다시 시도해주세요")
+
+
+def validate_dataset_id(dataset_id: str) -> str:
+    """--dataset-id로 직접 지정한 값도 URN 형식이어야 한다."""
+    if not URN_RE.match(dataset_id):
+        raise SystemExit(f"--dataset-id는 urn:{{소스}}:{{수집단위키}} 형식이어야 합니다 "
+                         f"(받은 값: {dataset_id!r})\n"
+                         f"  예) urn:youtube:samsung_official")
+    if len(dataset_id) > 100:
+        raise SystemExit(f"--dataset-id가 스펙 상한 100자를 넘습니다({len(dataset_id)}자)")
+    return dataset_id
 
 
 def register_discovery(args) -> str:
@@ -107,7 +140,8 @@ def register_discovery(args) -> str:
 
     conn = get_conn()
     try:
-        dataset_id = args.dataset_id or make_dataset_id(conn, args.title, args.origin)
+        dataset_id = (validate_dataset_id(args.dataset_id) if args.dataset_id
+                      else make_dataset_id(conn, args.title, args.source_type))
         cur = conn.cursor()
         cur.execute(
             """
@@ -151,7 +185,8 @@ def register_declarative(args) -> str:
 
     conn = get_conn()
     try:
-        dataset_id = args.dataset_id or make_dataset_id(conn, args.title, args.origin)
+        dataset_id = (validate_dataset_id(args.dataset_id) if args.dataset_id
+                      else make_dataset_id(conn, args.title, args.source_type))
         cur = conn.cursor()
         cur.execute(
             """

@@ -292,7 +292,7 @@ Whisper 계열 모델은 애초에 "구간(segment) + 시작·끝 시각 + 그 �
 **실측 (2026-07-28)**: 미처리 영상 2,076개, 평균 길이 447초, 배속 0.2~0.3x 적용 시
 순수 연산 약 52~77시간(중간값 65시간) — 초기 추정(25~50시간)보다 김.
 
-**결정: 지금 백로그를 처리하지 않는다.** 현재 YouTube 데이터셋 2개(`youtube_samsung_official`
+**결정: 지금 백로그를 처리하지 않는다.** 현재 YouTube 데이터셋 2개(`urn:youtube:samsung_official`
 등)는 §6.1 개발·검증 과정에서 써온 **작업 편의/테스트용 데이터셋**이고, 실제 서비스에
 필요한 데이터셋으로 교체될 가능성이 크다 — 곧 지워질 수도 있는 데이터에 65시간
 연산을 쏟을 이유가 없다고 판단. **기능 자체(STT → 세그먼트 JSON 저장)는 이미 이
@@ -436,7 +436,7 @@ except Exception as e:
 **구현 완료 (2026-07-27)**: `src/storage/{s3_client,raw_export,jsonld_export}.py`,
 `src/collectors/youtube_transcript_collector.py`, 5개 파이프라인 통합, `meta_video.
 has_transcript`/`transcribed_at` 마이그레이션 적용, `scripts/backfill_youtube_transcripts.py`
-전부 실 서버(`naver_news_ai`, `youtube_samsung_official`)로 검증 완료 — SeaweedFS에
+전부 실 서버(`urn:naver:news_ai`, `urn:youtube:samsung_official`)로 검증 완료 — SeaweedFS에
 실제 오브젝트 생성, `data_registry.s3_raw_prefix`/`s3_jsonld_prefix` 채워짐, 트랜스크립트
 JSON 정상 생성 확인.
 

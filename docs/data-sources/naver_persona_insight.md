@@ -1,7 +1,7 @@
 # Naver Persona Insight
 
 > **Last Updated:** 2026-07-28
-> **dataset_id:** `naver_persona_insight` (외 사용자 정의 데이터셋 추가 가능)
+> **dataset_id:** `urn:naver:persona_insight` (외 사용자 정의 데이터셋 추가 가능)
 > **source_type:** `persona_insight`
 > **상태:** Collector 구현·검증 완료(§6.1), 실 API로 검증됨
 
@@ -39,9 +39,9 @@
 
 ## 수집 대상 (실 DB 기준, 2026-07-28)
 
-`naver_persona_insight` 데이터셋에 카테고리 4개 등록됨(anchor 개념 없음 — 카테고리
+`urn:naver:persona_insight` 데이터셋에 카테고리 4개 등록됨(anchor 개념 없음 — 카테고리
 목록은 `meta_persona_insight` 테이블 직접 조회, `SELECT category_id, category_name
-FROM meta_persona_insight WHERE dataset_id='naver_persona_insight'`).
+FROM meta_persona_insight WHERE dataset_id='urn:naver:persona_insight'`).
 
 ## 등록 방법
 

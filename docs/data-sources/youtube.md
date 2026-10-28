@@ -29,9 +29,9 @@ YouTube Data API v3로 채널 영상 메타데이터를 수집한다. 등록 시
 
 | dataset_id | 채널 | 성격 |
 |---|---|---|
-| `youtube_samsung_official` | 삼성전자 글로벌 채널(`UCWwgaK7x0_FR1goeSRazfsQ`) | 개발/검증용 — 실 서비스 데이터셋으로 교체될 가능성 있음 |
-| `youtube_sk_hynix_official` | SK하이닉스 채널(`UCltyil2FaQZZ4kUNinKkKmw`) | 개발/검증용 |
-| `user_hbm_video_collection` | 위 두 채널 혼합 | 개발/검증용 |
+| `urn:youtube:samsung_official` | 삼성전자 글로벌 채널(`UCWwgaK7x0_FR1goeSRazfsQ`) | 개발/검증용 — 실 서비스 데이터셋으로 교체될 가능성 있음 |
+| `urn:youtube:sk_hynix_official` | SK하이닉스 채널(`UCltyil2FaQZZ4kUNinKkKmw`) | 개발/검증용 |
+| `urn:youtube:hbm_video_collection` | 위 두 채널 혼합 | 개발/검증용 |
 
 과거 이 문서에 적혀있던 채널 ID(`UCWwgaK7x0_FR1goeSRDDOkg`)는 **실존하지 않는
 오기**였다 — 실제 삼성전자 채널 ID로 정정됨(`UCWwgaK7x0_FR1goeSRazfsQ`).

@@ -19,7 +19,7 @@ def write_video_transcript(
     language는 Whisper가 감지한 실제 언어(youtube_transcript_collector.transcribe 참조) —
     이 콜렉터가 특정 언어 채널 전용이 아니라서 고정값을 쓰지 않는다.
     """
-    key = f"raw/video/{dataset_id}/{video_id}.json"
+    key = f"raw/video/{s3_client.storage_key(dataset_id)}/{video_id}.json"
     s3_client.upload_json(
         key,
         {
@@ -34,7 +34,7 @@ def write_video_transcript(
 
 def write_article_content(dataset_id: str, source_type: str, item_id: int, text: str) -> str:
     """raw/{source_type}/{dataset_id}/{item_id}.txt — news/blog 공용, item_id는 meta_* PK."""
-    key = f"raw/{source_type}/{dataset_id}/{item_id}.txt"
+    key = f"raw/{source_type}/{s3_client.storage_key(dataset_id)}/{item_id}.txt"
     s3_client.upload_text(key, text)
     return key
 
@@ -45,7 +45,7 @@ def write_declarative_csv(dataset_id: str, source_type: str, rows: List[Dict[str
     rows가 빈 리스트여도(카테고리는 있지만 아직 시계열이 없는 경우 등) 헤더만 있는
     빈 CSV를 씀 — 호출부에서 별도 분기 불필요.
     """
-    key = f"raw/{source_type}/{dataset_id}/{dataset_id}.csv"
+    key = f"raw/{source_type}/{s3_client.storage_key(dataset_id)}/{s3_client.storage_key(dataset_id)}.csv"
     buf = io.StringIO()
     if rows:
         writer = csv.DictWriter(buf, fieldnames=list(rows[0].keys()))

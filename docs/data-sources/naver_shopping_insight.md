@@ -1,7 +1,7 @@
 # Naver Shopping Insight
 
 > **Last Updated:** 2026-07-28
-> **dataset_id:** `naver_shopping_insight` (외 사용자 정의 데이터셋 추가 가능)
+> **dataset_id:** `urn:naver:shopping_insight` (외 사용자 정의 데이터셋 추가 가능)
 > **source_type:** `shopping_insight`
 > **상태:** Collector 구현·검증 완료(§6.1), 실 API로 검증됨
 
@@ -28,7 +28,7 @@
 ## 수집 로직
 
 - **anchor 카테고리**: 등록 시 첫 번째로 지정한 카테고리가 자동 지정(§4.3) — 지금
-  운영 중인 `naver_shopping_insight`는 `50000148`(패션의류)
+  운영 중인 `urn:naver:shopping_insight`는 `50000148`(패션의류)
 - **intra_scale**: 동일 수집 내 배치 간 M(최댓값) 차이 보정 — 첫 유효 배치를 기준으로
   median(ref_anchor/batch_anchor)
 - **inter_scale**: 수집 구간 간 M 차이 보정 — DB 기존 anchor 값과 신규 anchor 값의

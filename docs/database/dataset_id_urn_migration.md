@@ -1,11 +1,14 @@
 # dataset_id URN 전환 — 영향 범위와 절차
 
 > **Last Updated:** 2026-10-28
-> **상태:** ✅ 방안 확정 (와이즈넛 승인) — 실행 대기
+> **상태:** ✅ **전환 완료 (2026-10-28)**
 >
-> ⚠️ **와이즈넛 정형 데이터 적재 개시 전에 완료해야 한다.**
-> 적재 후에는 FK `ALTER`가 양측 합의 사항이 되고, 전환 범위에 와이즈넛 데이터가 들어간다.
+> 와이즈넛 정형 데이터 적재 개시 **전에** 완료했다. 적재 후였다면 FK `ALTER`가
+> 양측 합의 사항이 되고 전환 범위에 상대 데이터가 들어갔을 것이다.
 > ([ADR-014](../adr/014_Schema_Ownership_And_Change_Control.md))
+>
+> 실행 스크립트: [sql/migration_2026_10_28_dataset_id_urn.sql](../../sql/migration_2026_10_28_dataset_id_urn.sql)
+> 이 문서는 전환의 근거와 범위를 남긴 기록이다. 아래 §1·§2는 **전환 전** 상태다.
 >
 > 와이즈넛 「백엔드 설계 초안」 v2 별첨 테이블정의서는 `dataset_id`를
 > **TEXT 최대 100자 URN**, 케이웨어 `cetus_*.metadata_id`와 **동일 값**으로 규정한다.
@@ -13,7 +16,7 @@
 
 ---
 
-## 1. 현재 상태
+## 1. 전환 전 상태 (2026-10-27 실측)
 
 | 항목 | 값 |
 |---|---|
@@ -118,15 +121,17 @@ jsonld/{source_type}/{dataset_id}/{dataset_id}.jsonld
 
 ### 2.5 외부 통보
 
-**케이웨어가 이미 우리 `dataset_id`를 받아갔다면 변경 통보가 필요하다.**
-전환 시점을 양측과 맞춰야 한다.
+~~**케이웨어가 이미 우리 `dataset_id`를 받아갔다면 변경 통보가 필요하다.**~~
+→ **불필요.** 2026-10-28 기준 케이웨어와 연계된 것이 없어 통보 대상이 없다.
+연계 이후에 전환했다면 양측 일정 조율이 필요했을 것이다.
 
 ---
 
-## 3. 권장 절차
+## 3. 수행한 절차 (전부 완료, 2026-10-28)
 
-1. ~~URN 생성 규칙 확정~~ — **완료** (2026-10-28 와이즈넛 승인)
-2. 우리 FK 8개에 `ON UPDATE CASCADE` 부여
+1. ~~URN 생성 규칙 확정~~ — 2026-10-28 와이즈넛 승인
+2. 우리 FK **8개**에 `ON UPDATE CASCADE` 부여
+   (문서 초안에 7개로 적었으나 실측 8개 — `dataset_credentials`가 빠져 있었다)
 3. **기존 slug를 `external_ids`에 보존** — 마이그레이션 §2에 포함돼 있다
    와이즈넛 형식('네임스페이스:값' 문자열 배열)을 그대로 지키고 자체 네임스페이스를 쓴다.
    ```json
@@ -137,12 +142,31 @@ jsonld/{source_type}/{dataset_id}/{dataset_id}.jsonld
    S3 경로를 유지하면 경로에도 slug가 남아 이중으로 추적된다.
 
 4. 트랜잭션 안에서 `UPDATE dcat_dataset SET dataset_id = <urn>` (CASCADE 전파)
-5. `data_registry`의 `s3_*_prefix` 문자열 갱신 — **경로를 바꾸지 않기로 하면 생략**
-6. JSON-LD 전량 재생성
+5. ~~`data_registry`의 `s3_*_prefix` 갱신~~ — **생략.** S3 경로를 유지하기로 했다
+6. JSON-LD 재생성 (3건) — `@id`를 `mi:dataset/{slug}` → URN 자체로 바꿨다
 7. `seeds.sql`·문서 예시 갱신
-8. 케이웨어·와이즈넛에 전환 완료 통보
+8. 와이즈넛에 전환 완료 통보 (케이웨어는 연계 없음)
 
 > **순서 주의**: 3번(slug 보존)을 4번보다 먼저 해야 한다. 나중에 하면 원래 값을 잃는다.
+> 실제로는 2026-10-27 `migration_2026_10_27_wisenut_alignment.sql`에서 이미 보존돼 있었다.
+
+### 코드 변경 2건
+
+**`scripts/register_dataset.py`** — 신규 등록이 다시 slug를 만들지 않도록 채번을
+`urn:{네임스페이스}:{slug}_{랜덤}`으로 바꿨다. `--dataset-id` 직접 지정값도 URN 형식과
+100자 상한을 검증한다. `origin`(admin/user)은 식별자에서 뺐다 — `dataset_origin`
+컬럼이 이미 구분하고 있어 중복이고, 등록 주체가 바뀌면 식별자까지 흔들린다.
+
+**`src/storage/s3_client.storage_key()`** — 오브젝트 키에는 `dataset_id` 대신 이
+함수를 쓴다. 콜론은 S3 키에 쓸 수는 있지만 URL 인코딩·CLI 인용에서 걸린다.
+
+```
+urn:naver:news_ai → naver_news_ai     (urn: 제거 후 ':' → '_')
+```
+
+**이 변환 결과가 전환 전 slug와 같아서 기존 S3 경로가 그대로 유지된다.**
+객체가 있는 경로 6개 전부 보존을 실측으로 확인했다. 유일한 예외
+`user_hbm_video_collection` → `youtube_hbm_video_collection`은 객체가 0개다.
 
 ---
 
@@ -161,12 +185,32 @@ jsonld/{source_type}/{dataset_id}/{dataset_id}.jsonld
 ## 5. 체크리스트
 
 - [x] URN 생성 규칙 확정 — 2026-10-28 와이즈넛 승인
-- [ ] 케이웨어 전달 여부 확인 (이미 받아갔으면 통보 일정 협의)
-- [ ] 우리 FK 7개 `ON UPDATE CASCADE` 부여 (dcat_provenance 제외 — FK 없음)
-- [ ] `dcat_provenance.dataset_id` 명시적 UPDATE + 끊어진 참조 확인
-- [ ] `external_ids`에 `legacy:<slug>` 보존 확인
-- [ ] S3 경로 정책 결정 (유지 / 이전)
-- [ ] `UPDATE` 실행 (트랜잭션, 롤백 가능 상태에서)
-- [ ] JSON-LD 재생성
-- [ ] `seeds.sql`·문서 예시 갱신
-- [ ] `scripts/compare_wisenut_spec.py` 재실행으로 정합성 확인
+- [x] 케이웨어 전달 여부 확인 — **연계 없음, 통보 불필요**
+- [x] 우리 FK **8개** `ON UPDATE CASCADE` 부여 → 13개 전부 CASCADE
+- [x] `dcat_provenance.dataset_id` 명시적 UPDATE (41행) + 끊어진 참조 0건 확인
+- [x] `external_ids`에 `legacy:<slug>` 보존 확인 — 18건 전부
+- [x] S3 경로 정책 결정 — **유지** (`storage_key()`로 구현)
+- [x] `UPDATE` 실행 — 드라이런(롤백) 검증 후 커밋, 32,209행 전파
+- [x] JSON-LD 재생성 (3건)
+- [x] `seeds.sql`·문서 예시 갱신
+- [x] 정본 DDL 8종에 `ON UPDATE CASCADE` 반영 (`sql/` 재구축 시 DB와 일치)
+- [x] `scripts/validate_ddl.py` 29/29, `check_insert_coverage.py` 누락 0
+
+### 검증 결과 (마이그레이션 §D)
+
+| 검사 | 결과 |
+|---|---|
+| D-1 전부 URN 형식 | 18/18 |
+| D-2 건수 보존 | 18건 |
+| D-3 `dcat_provenance` 끊어진 참조 | 0건 |
+| D-4 자식 테이블 구 slug 잔존 | 0건 (8개 테이블 32,209행) |
+| D-5 `legacy:` slug 보존 | 18/18 |
+| D-6 길이 상한 | 최대 37자 / 100자 |
+
+---
+
+## 6. 남은 것
+
+- **와이즈넛 통보** — 전환 완료 사실과 URN 목록
+- `active_meta_*` 테이블은 현재 0행이라 전파 확인이 불가능했다. 첫 수집 이후
+  `dataset_id`가 URN으로 들어가는지 한 번 확인할 것

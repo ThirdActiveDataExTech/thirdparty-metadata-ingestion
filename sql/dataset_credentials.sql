@@ -24,7 +24,7 @@ CREATE TABLE dataset_credentials (
 
     -- ── 식별 ──────────────────────────────────────────────────
     dataset_id          TEXT NOT NULL
-                        REFERENCES dcat_dataset(dataset_id) ON DELETE CASCADE,
+                        REFERENCES dcat_dataset(dataset_id) ON UPDATE CASCADE ON DELETE CASCADE,
 
     credential_type     TEXT NOT NULL,
     -- 자격증명 종류 — Collector가 어떤 키인지 구분하는 용도

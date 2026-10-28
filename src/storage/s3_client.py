@@ -41,3 +41,27 @@ def upload_json(key: str, obj: Dict[str, Any]) -> None:
     get_s3_client().put_object(
         Bucket=config.S3_BUCKET, Key=key, Body=body.encode("utf-8"), ContentType="application/json; charset=utf-8"
     )
+
+
+def storage_key(dataset_id: str) -> str:
+    """dataset_id를 오브젝트 키에 쓸 수 있는 경로 조각으로 바꾼다.
+
+    2026-10-28 dataset_id가 slug에서 URN(`urn:naver:news_ai`)으로 바뀌었다.
+    콜론은 S3 키에 쓸 수는 있지만 URL 인코딩·CLI 인용·일부 도구에서 걸리므로
+    경로에는 넣지 않는다. `urn:` 접두를 떼고 나머지 콜론을 `_`로 바꾼다.
+
+        urn:naver:news_ai          → naver_news_ai
+        urn:youtube:samsung_official → youtube_samsung_official
+
+    **이 변환은 전환 전 slug와 같은 값을 돌려준다** — 그래서 URN 전환 후에도
+    기존 S3 경로가 그대로 유지된다(실측: 객체가 있는 경로 6개 전부 보존).
+    S3에는 rename이 없어 경로 이전은 복사 후 삭제가 필요한데, 경로가 식별자와
+    일치해야 할 이유가 없어 그 비용을 치르지 않기로 했다.
+    (docs/database/dataset_id_urn_migration.md §2.2)
+
+    예외는 `user_hbm_video_collection` → `youtube_hbm_video_collection` 하나뿐이고,
+    이 데이터셋에는 S3 객체가 없다.
+    """
+    if dataset_id.startswith("urn:"):
+        return dataset_id[4:].replace(":", "_")
+    return dataset_id

@@ -15,7 +15,7 @@ CREATE TABLE meta_blog (
     id                  BIGSERIAL PRIMARY KEY,
 
     dataset_id          TEXT NOT NULL
-                        REFERENCES dcat_dataset(dataset_id) ON DELETE CASCADE,
+                        REFERENCES dcat_dataset(dataset_id) ON UPDATE CASCADE ON DELETE CASCADE,
 
     post_url            TEXT NOT NULL,
     -- schema:url | 블로그 검색 API의 link 값 (예: 'https://blog.naver.com/{blogId}/{logNo}')

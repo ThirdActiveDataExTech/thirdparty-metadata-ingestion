@@ -12,7 +12,7 @@ CREATE TABLE data_registry (
 
     -- ── 식별 ──────────────────────────────────────────────────
     dataset_id          TEXT PRIMARY KEY
-                        REFERENCES dcat_dataset(dataset_id) ON DELETE CASCADE,
+                        REFERENCES dcat_dataset(dataset_id) ON UPDATE CASCADE ON DELETE CASCADE,
     -- dcat_dataset 의 dataset_id 를 PK 겸 FK 로 사용 (1:1 관계)
     -- ON DELETE CASCADE: 데이터셋 삭제 시 레지스트리 항목도 함께 삭제
 

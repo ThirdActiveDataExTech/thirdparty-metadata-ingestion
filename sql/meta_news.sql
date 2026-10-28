@@ -12,7 +12,7 @@ CREATE TABLE meta_news (
     id                  BIGSERIAL PRIMARY KEY,
 
     dataset_id          TEXT NOT NULL
-                        REFERENCES dcat_dataset(dataset_id) ON DELETE CASCADE,
+                        REFERENCES dcat_dataset(dataset_id) ON UPDATE CASCADE ON DELETE CASCADE,
 
     article_url         TEXT NOT NULL,
     -- schema:url | 언론사 원본 URL (Naver API: originallink)

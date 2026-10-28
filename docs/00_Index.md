@@ -63,11 +63,11 @@
 
 | 문서 | dataset_id | source_type | 상태 |
 |------|-----------|-------------|------|
-| [Naver Shopping Insight](data-sources/naver_shopping_insight.md) | `naver_shopping_insight` | shopping_insight | 완성 |
-| [Naver Persona Insight](data-sources/naver_persona_insight.md) | `naver_persona_insight` | persona_insight | 완성 |
-| [YouTube](data-sources/youtube.md) | `youtube_{채널명}` | video | 완성 |
-| [Naver News](data-sources/naver_news.md) | `naver_news_{주제}` | news | 완성 |
-| [Naver Blog](data-sources/naver_blog.md) | `naver_blog_{주제}` | blog | 완성 (2026-07-28 신규 작성) |
+| [Naver Shopping Insight](data-sources/naver_shopping_insight.md) | `urn:naver:shopping_insight` | shopping_insight | 완성 |
+| [Naver Persona Insight](data-sources/naver_persona_insight.md) | `urn:naver:persona_insight` | persona_insight | 완성 |
+| [YouTube](data-sources/youtube.md) | `urn:youtube:{채널명}` | video | 완성 |
+| [Naver News](data-sources/naver_news.md) | `urn:naver:news_{주제}` | news | 완성 |
+| [Naver Blog](data-sources/naver_blog.md) | `urn:naver:blog_{주제}` | blog | 완성 (2026-07-28 신규 작성) |
 
 ---
 

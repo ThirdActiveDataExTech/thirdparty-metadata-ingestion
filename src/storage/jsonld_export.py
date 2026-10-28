@@ -52,7 +52,10 @@ def _iso(value):
 def _base_jsonld(ctx: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "@context": _CONTEXT,
-        "@id": f"mi:dataset/{ctx['dataset_id']}",
+        # dataset_id 자체가 URN이므로 그대로 @id로 쓴다(URN은 유효한 IRI).
+        # 전환 전에는 mi:dataset/{slug} CURIE였다 — 이제는 그 안에 콜론이 섞여
+        # mi:dataset/urn:naver:news_ai 같은 어색한 값이 된다. 2026-10-28 변경.
+        "@id": ctx["dataset_id"],
         "@type": "dcat:Dataset",
         "dct:identifier": ctx["dataset_id"],
         "dct:title": ctx["title"],
@@ -457,7 +460,10 @@ def export_dataset(dataset_id: str) -> Tuple[str, str]:
         raise ValueError(f"알 수 없는 source_type: {source_type}")
 
     doc = builder(dataset_id, ctx)
-    jsonld_key = f"jsonld/{source_type}/{dataset_id}/{dataset_id}.jsonld"
+    # 경로에는 dataset_id 대신 storage_key()를 쓴다 — URN의 콜론을 키에 넣지
+    # 않으면서 전환 전 경로를 그대로 유지한다(s3_client.storage_key 참조).
+    key = s3_client.storage_key(dataset_id)
+    jsonld_key = f"jsonld/{source_type}/{key}/{key}.jsonld"
     s3_client.upload_json(jsonld_key, doc)
 
-    return f"raw/{source_type}/{dataset_id}/", f"jsonld/{source_type}/{dataset_id}/"
+    return f"raw/{source_type}/{key}/", f"jsonld/{source_type}/{key}/"

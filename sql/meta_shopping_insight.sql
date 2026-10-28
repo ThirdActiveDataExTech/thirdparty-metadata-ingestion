@@ -19,7 +19,7 @@ CREATE TABLE meta_shopping_insight (
     id              BIGSERIAL PRIMARY KEY,
 
     dataset_id      TEXT NOT NULL
-                    REFERENCES dcat_dataset(dataset_id) ON DELETE CASCADE,
+                    REFERENCES dcat_dataset(dataset_id) ON UPDATE CASCADE ON DELETE CASCADE,
 
     category_id     TEXT NOT NULL,
     -- 네이버 쇼핑 카테고리 코드 (예: '50000148')
