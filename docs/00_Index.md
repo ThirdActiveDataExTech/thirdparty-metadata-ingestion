@@ -127,6 +127,7 @@ DB 스키마, 테이블 정의. **테이블이 추가되거나 컬럼이 변경�
 | ADR-011 | [데이터 패키징 표준 — RO-Crate](adr/011_Packaging_ROCrate.md) | Accepted |
 | ADR-012 | [관계 그래프 저장 — 와이즈넛 합의 스키마 재사용 + NetworkX](adr/012_Graph_Storage_PostgreSQL.md) | Accepted (2026-10-27 개정) |
 | ADR-013 | [외부 LLM API 미사용 — 로컬 추론 전용](adr/013_No_External_LLM_API.md) | Accepted |
+| ADR-014 | [DB 스키마 정본 소유권 — 모비젠 단일 관리](adr/014_Schema_Ownership_And_Change_Control.md) | Accepted |
 
 ---
 

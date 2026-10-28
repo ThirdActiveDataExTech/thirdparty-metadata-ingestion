@@ -1,7 +1,11 @@
 # dataset_id URN 전환 — 영향 범위와 절차
 
-> **Last Updated:** 2026-10-27
-> **상태:** ⏳ URN 생성 규칙 확인 대기 (와이즈넛 질의 중)
+> **Last Updated:** 2026-10-28
+> **상태:** ✅ 방안 확정 (와이즈넛 승인) — 실행 대기
+>
+> ⚠️ **와이즈넛 정형 데이터 적재 개시 전에 완료해야 한다.**
+> 적재 후에는 FK `ALTER`가 양측 합의 사항이 되고, 전환 범위에 와이즈넛 데이터가 들어간다.
+> ([ADR-014](../adr/014_Schema_Ownership_And_Change_Control.md))
 >
 > 와이즈넛 「백엔드 설계 초안」 v2 별첨 테이블정의서는 `dataset_id`를
 > **TEXT 최대 100자 URN**, 케이웨어 `cetus_*.metadata_id`와 **동일 값**으로 규정한다.
@@ -22,7 +26,23 @@
 외부에서 ID를 받아와 맞추는 것이 아니라 **우리가 정한 값을 URN 형식으로 바꾸면 된다.**
 → 마이그레이션 난이도가 크게 낮아진다. 값 자체의 의미는 보존할 수 있다.
 
-**남은 질의**: URN 생성 규칙(네임스페이스·구분자·소스 표기 방식).
+**확정 규칙** (2026-10-28 와이즈넛 승인): `urn:{소스}:{수집단위키}`
+
+비정형은 데이터셋이 원천 객체 하나에 1:1로 대응하지 않으므로, 원천 키 대신
+**유일성이 보장된 수집 단위 키**를 쓴다. 원천 객체 키는 `external_ids`에 보존한다.
+
+| 현재 slug | 전환 후 URN |
+|---|---|
+| `youtube_samsung_official` | `urn:youtube:samsung_official` |
+| `user_hbm_video_collection` | `urn:youtube:hbm_video_collection` |
+| `naver_news_ai` | `urn:naver:news_ai` |
+| `naver_blog_ai` | `urn:naver:blog_ai` |
+| `naver_shopping_insight` | `urn:naver:shopping_insight` |
+| `naver_shopping_insight_advertiser` | `urn:naver:shopping_insight_advertiser` |
+| `naver_persona_insight` | `urn:naver:persona_insight` |
+
+신규 등록은 기존 채번 로직(슬러그 + 임의 접미 `secrets.token_hex(3)`)이 유일성을 보장한다.
+→ `urn:naver:news_ai_a3f1c2`
 
 ---
 
@@ -105,7 +125,7 @@ jsonld/{source_type}/{dataset_id}/{dataset_id}.jsonld
 
 ## 3. 권장 절차
 
-1. **URN 생성 규칙 확정** (와이즈넛 질의 회신 대기)
+1. ~~URN 생성 규칙 확정~~ — **완료** (2026-10-28 와이즈넛 승인)
 2. 우리 FK 8개에 `ON UPDATE CASCADE` 부여
 3. **기존 slug를 `external_ids`에 보존** — 마이그레이션 §2에 포함돼 있다
    와이즈넛 형식('네임스페이스:값' 문자열 배열)을 그대로 지키고 자체 네임스페이스를 쓴다.
@@ -140,7 +160,7 @@ jsonld/{source_type}/{dataset_id}/{dataset_id}.jsonld
 
 ## 5. 체크리스트
 
-- [ ] URN 생성 규칙 확정
+- [x] URN 생성 규칙 확정 — 2026-10-28 와이즈넛 승인
 - [ ] 케이웨어 전달 여부 확인 (이미 받아갔으면 통보 일정 협의)
 - [ ] 우리 FK 7개 `ON UPDATE CASCADE` 부여 (dcat_provenance 제외 — FK 없음)
 - [ ] `dcat_provenance.dataset_id` 명시적 UPDATE + 끊어진 참조 확인
