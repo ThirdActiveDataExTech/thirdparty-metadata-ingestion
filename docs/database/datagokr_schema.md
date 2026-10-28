@@ -442,11 +442,8 @@ psql -h localhost -p 30433 -U admin -d datagokr \
 psql -h localhost -p 30433 -U admin -d datagokr \
   -f sql/views.sql
 
-# 8. 임베딩 생성
-python scripts/embed_datasets.py         # dcat_dataset_vec
-python scripts/embed_video.py   # meta_video_vec
-python scripts/embed_news.py       # meta_news_vec
-python scripts/embed_blog.py       # meta_blog_vec
+# 8. 임베딩 생성 (기존 데이터 일괄 — 신규 수집분은 파이프라인이 자동 처리)
+PYTHONPATH=. python scripts/backfill_embeddings.py
 ```
 
 ---

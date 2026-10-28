@@ -25,6 +25,7 @@ from src.collectors import youtube_collector, youtube_transcript_collector
 from src.database import dcat
 from src.database import meta_video
 from src.database.db import get_conn
+from src.embedding import sync as embedding_sync
 from src.storage import jsonld_export, raw_export
 
 AGENT = "youtube_collector"
@@ -237,6 +238,23 @@ def run(dataset_id: str, triggered_by: str) -> None:
             dcat.update_data_registry(dataset_id, s3_raw_prefix=s3_raw_prefix, s3_jsonld_prefix=s3_jsonld_prefix)
         except Exception as e:
             logger.warning(f"S3 export 실패, 수집 자체는 성공 처리: {e}")
+
+        # 임베딩 동기화 — 바뀐 항목만 다시 만든다(src/embedding/sync.py).
+        # 2026-10-28 편입. 그 전에는 scripts/embed_*.py 수동 실행이었고 실데이터에
+        # 한 번도 돌지 않아 임베딩이 사실상 0건이었다. 벡터 검색과 관계 산출이
+        # 여기에 의존한다.
+        #
+        # S3 export와 같은 이유로 실패해도 수집은 성공 처리한다 — 수집 데이터는
+        # 이미 DB에 들어갔고, 임베딩은 다음 수집 때 다시 시도된다(증분이므로
+        # 밀린 분이 자동으로 따라잡힌다).
+        try:
+            stat = embedding_sync.sync_for_dataset("video", dataset_id)
+            if stat["embedded"]:
+                logger.info(
+                    "임베딩 %d건 생성 (검사 %d건)", stat["embedded"], stat["checked"]
+                )
+        except Exception as e:
+            logger.warning(f"임베딩 실패, 수집 자체는 성공 처리: {e}")
     except Exception as e:
         ended_at = datetime.now(timezone.utc)
         dcat.insert_dcat_provenance(
