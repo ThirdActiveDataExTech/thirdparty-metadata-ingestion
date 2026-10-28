@@ -174,3 +174,28 @@ LEFT JOIN LATERAL (
             AND p2.age IN ('10','20','30','40','50','60')
       )
 ) a ON true;
+
+
+-- ═══════════════════════════════════════════════════════════════
+-- dcat_dataset_relation_canonical : 데이터셋 간 관계의 정본 (쌍+유형당 1행)
+--
+-- 출처: 와이즈넛 DDL 5(관계 method 확장). 모비젠 제안 우선순위를 그대로 구현한 것.
+--   원본: sql/_received/wisenut_20261028/5_관계_method_확장.sql
+--
+-- 배경: dcat_dataset_relation의 UNIQUE에 method가 들어가면서 같은 쌍·같은 유형에
+--       산출 방법별로 행이 여러 개 존재하게 됐다. "A와 B는 의미적으로 유사한가"를
+--       묻는 쪽은 그중 무엇을 답으로 삼을지 알 수 없다.
+--       그 판단 규칙을 뷰로 고정해, 조회하는 쪽이 규칙을 몰라도 되게 한다.
+--
+-- 우선순위: APPROVED 우선 → score 최대 → created_at 최신
+--
+-- ※ 관계를 조회하는 코드는 dcat_dataset_relation이 아니라 이 뷰를 읽는다.
+--   테이블을 직접 읽으면 같은 쌍이 method 수만큼 중복으로 나온다.
+-- ═══════════════════════════════════════════════════════════════
+DROP VIEW IF EXISTS dcat_dataset_relation_canonical;
+
+CREATE VIEW dcat_dataset_relation_canonical AS
+SELECT DISTINCT ON (source_dataset_id, target_dataset_id, relation_type) *
+FROM dcat_dataset_relation
+ORDER BY source_dataset_id, target_dataset_id, relation_type,
+         (status = 'APPROVED') DESC, score DESC, created_at DESC;

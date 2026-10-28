@@ -7,6 +7,7 @@
 -- 산출 주체: 컬럼 관계 산출은 와이즈넛 알고리즘이 담당한다 (NEXT_STEPS.md §7.4).
 --   데이터셋 관계(dcat_dataset_relation)로 후보 쌍을 좁힌 뒤 종속 산출한다.
 --   조합 폭발과 도메인 교차 오탐을 막기 위한 설계이며 우리 스키마 조치는 없다.
+-- 출처 통합: 와이즈넛 DDL과 통합한 정본. 원본은 sql/_received/wisenut_20261028/ 참조.
 -- ═══════════════════════════════════════════════════════════════
 DROP TABLE IF EXISTS meta_file_relation CASCADE;
 
@@ -38,7 +39,7 @@ CREATE TABLE meta_file_relation (
     -- 관계 점수 | 0~1
 
     evidence        JSONB NOT NULL DEFAULT '{}'::jsonb,
-    -- 판정 근거 | 값 중첩률, 타입 일치, 명칭 유사도
+    -- 판정 근거 | [와이즈넛] 값 중첩률, 타입 일치, 명칭 유사도
 
     status          TEXT NOT NULL,
     -- 검토 상태 | PENDING / APPROVED / REJECTED

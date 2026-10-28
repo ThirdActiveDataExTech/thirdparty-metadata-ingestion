@@ -7,7 +7,11 @@
 --   source / publisher_code / theme / external_ids / party / visibility
 --   category는 와이즈넛이 직접 반영(포털 공통 분류). theme와 별개 컬럼이다.
 --   정형(source_type='structured_file')과 비정형이 이 카탈로그를 공용한다
---   기존 DB에 적용할 때는 DROP이 아니라 sql/migration_2026_10_27_wisenut_alignment.sql 사용
+--   기존 DB에 적용할 때는 DROP이 아니라 sql/migration_*.sql 사용
+--
+-- 2026-10-28: 와이즈넛 DDL 2(정형 데이터셋)와 통합한 정본.
+--   원본: sql/_received/wisenut_20261028/2_정형_데이터셋.sql
+--   양측 정의가 다른 컬럼에는 [와이즈넛] 주석으로 상대 정의와 우리 판단을 함께 적는다.
 -- ═══════════════════════════════════════════════════════════════
 
 -- 부모 테이블이므로 CASCADE 로 자식 테이블(data_registry, dcat_dataset_vec,
@@ -31,11 +35,16 @@ CREATE TABLE dcat_dataset (
     -- 예) '네이버 쇼핑 인사이트 카테고리 수집'
 
     description         TEXT NOT NULL,
+    -- [와이즈넛] nullable (정형은 결측이 잦다)
+    -- ※ NOT NULL 유지 — SEMANTICALLY_RELATED 판정 근거(required_fields)라
+    --   비어 있으면 관계가 아예 산출되지 않는다.
     -- dct:description | 수집 목적, 수집 방식, 특이사항 등 상세 설명
     -- title과 함께 핵심 속성으로 취급 (P02 DCAT 커버리지 목표: 핵심 속성 95%+)
 
     -- ── 출처 ──────────────────────────────────────────────────
     publisher           TEXT NOT NULL,
+    -- [와이즈넛] nullable · 제공기관
+    -- ※ NOT NULL 유지 — 비정형은 source와 같은 값이 항상 있다.
     -- dct:publisher | 데이터 원천 플랫폼명
     -- 예) 'Naver', 'YouTube', '연합뉴스'
 
@@ -52,6 +61,9 @@ CREATE TABLE dcat_dataset (
     -- 비정형은 미사용 (모비젠 회신에서 추가 동의)
 
     source_type         TEXT NOT NULL,
+    -- [와이즈넛] DEFAULT 'structured_file'
+    -- ※ 기본값을 두지 않는다 — 비정형 등록 시 실수로 structured_file이 되면
+    --   pg_meta_table 라우팅이 통째로 어긋난다.
     -- (확장) 출처 유형 분류 — data_registry.pg_meta_table 라우팅과
     -- "1 dataset = 1 source_type" 불변 규칙이 이 값의 존재를 전제로 함
     -- 값) 'video', 'news', 'blog', 'shopping_insight', 'persona_insight'
@@ -76,7 +88,7 @@ CREATE TABLE dcat_dataset (
     --       src/pipelines/youtube_pipeline.py 참조
 
     -- ── 언어 / 지역 ───────────────────────────────────────────
-    language            TEXT DEFAULT 'ko',
+    language            TEXT NOT NULL DEFAULT 'ko',
     -- dct:language | ISO 639-1 언어 코드
     -- 예) 'ko', 'en'
 
@@ -103,6 +115,9 @@ CREATE TABLE dcat_dataset (
 
     -- ── 데이터 규모 ───────────────────────────────────────────
     item_count          BIGINT,
+    -- [와이즈넛] 구성 데이터파일 수 · INTEGER
+    -- ※ BIGINT 유지 — data_registry.item_count(BIGINT)의 미러이므로 타입을 맞춘다.
+    --   넘침 위험 때문은 아니다(실측 최대 17,932, INTEGER 상한 21억).
     -- (확장) DCAT/DCT에 대응 표준 용어 없음 — source_type과 같은 자체 확장 필드
     -- 이 데이터셋을 구성하는 고유 아이템 수 | temporal_start/end와 동일하게
     -- 수집 후 자동 갱신되며 data_registry.item_count와 동기화된다
@@ -111,13 +126,13 @@ CREATE TABLE dcat_dataset (
     --  여기 값은 dcat_dataset 조회만으로 데이터셋 규모를 바로 알 수 있도록 둔 미러)
 
     -- ── 태그 ──────────────────────────────────────────────────
-    keywords            JSONB,
+    keywords            JSONB NOT NULL DEFAULT '[]'::jsonb,
     -- dcat:keyword | 검색·분류용 키워드 (JSON 배열)
     -- 예) ["쇼핑","검색량","카테고리","네이버"]
     -- 와이즈넛 KEYWORD_OVERLAP 관계 판정의 근거 컬럼이다
     -- (relation_type_registry.required_fields = ["keywords"])
 
-    theme               JSONB,
+    theme               JSONB NOT NULL DEFAULT '[]'::jsonb,
     -- dct:subject | 분류체계 | '대분류 - 소분류' 문자열을 배열로 분해해 보관
     -- 와이즈넛 별첨 테이블정의서 기준 신규 컬럼. 정형·비정형 공용.
     -- 예) ["보건의료","의료서비스"]
@@ -171,7 +186,7 @@ CREATE TABLE dcat_dataset (
     -- dataset_origin='admin'이면 특정 사용자 소유가 아니므로 NULL 허용
 
     -- ── 연계 · 권한 (와이즈넛 별첨 신규) ─────────────────────
-    external_ids        JSONB,
+    external_ids        JSONB NOT NULL DEFAULT '[]'::jsonb,
     -- adms:identifier | 외부 식별자 | 원천 포털이 데이터셋에 붙여 둔 고유번호
     -- 형식: '포털:번호' 문자열의 배열 (와이즈넛 회신, 2026-10-27)
     -- 예) ["datagokr:15135932"]
@@ -207,7 +222,24 @@ CREATE TABLE dcat_dataset (
 );
 
 -- 검색용 인덱스
-CREATE INDEX idx_dcat_dataset_source_type ON dcat_dataset(source_type);
-CREATE INDEX idx_dcat_dataset_publisher   ON dcat_dataset(publisher);
-CREATE INDEX idx_dcat_dataset_updated     ON dcat_dataset(updated_at DESC);
-CREATE INDEX idx_dcat_dataset_owner       ON dcat_dataset(owner_id);
+-- ── 인덱스 ────────────────────────────────────────────────────
+-- 모비젠(운영·비정형) + 와이즈넛(검색 필터·관계 판정) 양측을 합친 것
+
+-- 모비젠 — 운영 조회
+CREATE INDEX idx_dcat_dataset_source_type  ON dcat_dataset (source_type);
+CREATE INDEX idx_dcat_dataset_updated      ON dcat_dataset (updated_at DESC);
+CREATE INDEX idx_dcat_dataset_owner        ON dcat_dataset (owner_id);
+CREATE INDEX idx_dcat_dataset_source       ON dcat_dataset (source);
+CREATE INDEX idx_dcat_dataset_visibility   ON dcat_dataset (visibility);
+
+-- 와이즈넛 — 검색 필터·관계 판정
+CREATE INDEX idx_dcat_dataset_publisher    ON dcat_dataset (publisher);
+CREATE INDEX idx_dcat_dataset_party        ON dcat_dataset (party);
+CREATE INDEX idx_dcat_dataset_periodicity  ON dcat_dataset (accrual_periodicity);
+CREATE INDEX idx_dcat_dataset_temporal     ON dcat_dataset (temporal_start, temporal_end);
+
+-- JSONB 포함 검색 (GIN) — KEYWORD_OVERLAP 판정과 분류 필터의 전제
+CREATE INDEX idx_dcat_dataset_keywords     ON dcat_dataset USING GIN (keywords);
+CREATE INDEX idx_dcat_dataset_theme        ON dcat_dataset USING GIN (theme);
+CREATE INDEX idx_dcat_dataset_category     ON dcat_dataset USING GIN (category);
+CREATE INDEX idx_dcat_dataset_external_ids ON dcat_dataset USING GIN (external_ids);

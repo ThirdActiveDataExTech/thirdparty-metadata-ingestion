@@ -20,7 +20,7 @@ CREATE TABLE meta_datagokr_file_vec (
     -- 요약 임베딩 | meta_datagokr_file.table_summary 기반
 
     keywords_embedding  vector(768),
-    -- 키워드 임베딩 | 컬럼명·키워드 평균
+    -- 키워드 임베딩 | [와이즈넛] 키워드 평균 (별첨은 '컬럼명·키워드 평균')
 
     embed_text          TEXT,
     -- 임베딩 원문 | 재현성 확보

@@ -6,6 +6,7 @@
 -- 공공데이터포털 '목록개방현황' 항목 중 카탈로그(dcat_dataset)에 들어가지 않는 것들.
 --
 -- 비정형(video/news/blog/shopping/persona)은 이 테이블을 사용하지 않는다.
+-- 출처 통합: 와이즈넛 DDL과 통합한 정본. 원본은 sql/_received/wisenut_20261028/ 참조.
 -- ═══════════════════════════════════════════════════════════════
 DROP TABLE IF EXISTS dcat_dataset_attr CASCADE;
 
@@ -19,7 +20,8 @@ CREATE TABLE dcat_dataset_attr (
 
     -- ── 목록 구분 ─────────────────────────────────────────────
     list_type               TEXT,
-    -- 목록유형 | FILE / API / LINK
+    -- 목록유형 | [와이즈넛] FILE / API / STD / STAT(KOSIS 통계표)
+    -- ※ 별첨 v2는 FILE/API/LINK였으나 KOSIS 합류로 개정됐다. 와이즈넛 DDL 기준을 따른다.
 
     stat_name               TEXT,
     -- 통계명 | KOSIS 통계명. 같은 통계에 속한 통계표를 묶는 데 쓴다
@@ -47,7 +49,7 @@ CREATE TABLE dcat_dataset_attr (
     -- API 유형
 
     allowed_traffic         TEXT,
-    -- 신청가능 트래픽
+    -- 신청가능 트래픽 | [와이즈넛] 원문이 문장이라 text
     -- (별첨은 integer로 기술하나 원천 값에 단위 문자열이 섞여 들어와 TEXT로 생성됨)
 
     review_type             TEXT,
@@ -76,16 +78,16 @@ CREATE TABLE dcat_dataset_attr (
 
     -- ── 결측이 잦은 항목 (필수로 두지 않는다) ─────────────────
     retention_basis         TEXT,
-    -- 보유근거
+    -- 보유근거 | [와이즈넛] 법적 근거
 
     collection_method       TEXT,
-    -- 수집방법
+    -- 수집방법 | [와이즈넛] 작성방법
 
     data_limitation         TEXT,
     -- 데이터 한계
 
     other_notes             TEXT,
-    -- 기타 유의사항
+    -- 기타 유의사항 | [와이즈넛] 통계표 주석
 
     -- ── 관리 ──────────────────────────────────────────────────
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()

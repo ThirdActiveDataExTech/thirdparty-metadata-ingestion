@@ -15,6 +15,7 @@
 --   - 무변화 시 적재하지 않는다 (직전 관측값과 같으면 skip).
 --     변화량은 실제 변화가 발생한 관측 간격 기준으로 계산되므로 정확도 손실이 없다
 --   - 변화량은 저장하지 않고 조회 시 계산한다 (모비젠 v_*_latest와 같은 계약의 뷰)
+-- 출처 통합: 와이즈넛 DDL과 통합한 정본. 원본은 sql/_received/wisenut_20261028/ 참조.
 -- ═══════════════════════════════════════════════════════════════
 DROP TABLE IF EXISTS active_meta_dataset CASCADE;
 
@@ -31,6 +32,8 @@ CREATE TABLE active_meta_dataset (
     metric_code     TEXT NOT NULL
                     REFERENCES metric_registry(metric_code) ON UPDATE CASCADE,
     -- 지표 코드 | metric_registry 참조 (layer='dataset'인 코드만 적재)
+    -- [와이즈넛] 지표 표준값 · FK는 레지스트리 시드 적재 뒤에 건다
+    --            (기존 코드를 표준값으로 맞춘 다음이어야 FK가 걸린다)
 
     metric_value    NUMERIC(20,4) NOT NULL,
     -- 관측값 | 변화량이 아니라 "그 시점의 값"
