@@ -21,6 +21,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
+from src.common import config
 from src.collectors import youtube_collector, youtube_transcript_collector
 from src.database import dcat
 from src.database import meta_video
@@ -112,6 +113,22 @@ def _fetch_remote_videos(service, channel_ids: list, video_ids: list) -> list:
     return videos
 
 
+# ⚠️ **신규 영상마다 STT를 돌리지 않는다 (기본값).**
+#
+# fetch_transcript()는 오디오를 내려받아 faster-whisper(small, CPU int8)로 전사한다.
+# 2026-10-29 실측: 영상 1건당 약 1.4분. 채널 하나만 해도 수십~수백 건이라
+# 수집이 끝나지 않는다 — 시나리오 점검에서 영상 4개 데이터셋(약 1,500건)의
+# 예상 소요가 35시간으로 나와 중단했다.
+#
+# 자막은 `scripts/backfill_youtube_transcripts.py`가 --limit으로 속도를 통제하며
+# 따로 처리한다(has_transcript=FALSE 대상, 멱등). 같은 일을 수집 경로에서도 하면
+# 중복이고, 수집이 자막에 묶여 끝나지 않는다.
+#
+# 자막을 수집과 함께 돌려야 하는 상황(소량 데이터셋, 자막이 즉시 필요)에서는
+# YOUTUBE_INLINE_TRANSCRIPT=true로 켠다.
+INLINE_TRANSCRIPT = config.get_env("YOUTUBE_INLINE_TRANSCRIPT", "false").lower() == "true"
+
+
 def _normalize_subjects(subjects: Any) -> Tuple[List[str], List[str]]:
     """subjects를 (채널 ID 목록, 개별 영상 ID 목록)으로 정규화한다.
 
@@ -181,16 +198,19 @@ def run(dataset_id: str, triggered_by: str) -> None:
             if video["video_id"] not in existing:
                 meta_id = meta_video.insert_meta_video(dataset_id, video)
                 meta_video.insert_active_meta_video(meta_id, video)
-                try:
-                    transcript = youtube_transcript_collector.fetch_transcript(video["video_id"])
-                    if transcript is not None:
-                        segments, full_text, language = transcript
-                        raw_export.write_video_transcript(
-                            dataset_id, video["video_id"], segments, full_text, language
-                        )
-                        meta_video.mark_transcribed(meta_id, transcribed_at=datetime.now(timezone.utc))
-                except Exception as e:
-                    logger.warning(f"트랜스크립트 처리 실패 (video_id={video['video_id']}): {e}")
+                if INLINE_TRANSCRIPT:
+                    try:
+                        transcript = youtube_transcript_collector.fetch_transcript(video["video_id"])
+                        if transcript is not None:
+                            segments, full_text, language = transcript
+                            raw_export.write_video_transcript(
+                                dataset_id, video["video_id"], segments, full_text, language
+                            )
+                            meta_video.mark_transcribed(
+                                meta_id, transcribed_at=datetime.now(timezone.utc))
+                    except Exception as e:
+                        logger.warning(
+                            f"트랜스크립트 처리 실패 (video_id={video['video_id']}): {e}")
                 new_count += 1
             else:
                 meta_id = existing[video["video_id"]]
@@ -249,9 +269,10 @@ def run(dataset_id: str, triggered_by: str) -> None:
         # 밀린 분이 자동으로 따라잡힌다).
         try:
             stat = embedding_sync.sync_for_dataset("video", dataset_id)
-            if stat["embedded"]:
+            if stat["items"]:
                 logger.info(
-                    "임베딩 %d건 생성 (검사 %d건)", stat["embedded"], stat["checked"]
+                    "임베딩 %d건(청크 %d개) 생성 — 검사 %d건",
+                    stat["items"], stat["chunks"], stat["checked"],
                 )
         except Exception as e:
             logger.warning(f"임베딩 실패, 수집 자체는 성공 처리: {e}")

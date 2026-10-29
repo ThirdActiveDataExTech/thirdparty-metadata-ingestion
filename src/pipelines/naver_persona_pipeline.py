@@ -150,9 +150,10 @@ def run(dataset_id: str, triggered_by: str) -> None:
         # 밀린 분이 자동으로 따라잡힌다).
         try:
             stat = embedding_sync.sync_for_dataset("persona_insight", dataset_id)
-            if stat["embedded"]:
+            if stat["items"]:
                 logger.info(
-                    "임베딩 %d건 생성 (검사 %d건)", stat["embedded"], stat["checked"]
+                    "임베딩 %d건(청크 %d개) 생성 — 검사 %d건",
+                    stat["items"], stat["chunks"], stat["checked"],
                 )
         except Exception as e:
             logger.warning(f"임베딩 실패, 수집 자체는 성공 처리: {e}")

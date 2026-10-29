@@ -39,6 +39,10 @@ from src.database.db import get_conn
 DISCOVERY_TYPES = {"video", "news", "blog"}
 DECLARATIVE_TYPES = {"shopping_insight", "persona_insight"}
 
+# 비정형은 전부 외부 원천에서 가져온다 — 1st(자체 생산)가 아니라 3rd다.
+# 정형(공공데이터포털)은 와이즈넛이 포털 메타데이터를 보고 직접 채운다.
+PARTY_THIRD_PARTY = "3rd"
+
 _SOURCE_META = {
     "video": {
         "urn_namespace": "youtube",
@@ -46,6 +50,10 @@ _SOURCE_META = {
         "pg_meta_table": "meta_video",
         "pg_active_table": "active_meta_video",
         "license": "https://developers.google.com/youtube/terms/api-services-tos",
+        "landing_page": "https://www.youtube.com/",
+        "access_url": "https://www.googleapis.com/youtube/v3/",
+        "rights": "YouTube API Services Terms of Service 준수. 수집 데이터의 제3자 제공 시 Google 사전 승인 필요.",
+        "temporal_resolution": None,
     },
     "news": {
         "urn_namespace": "naver",
@@ -53,6 +61,10 @@ _SOURCE_META = {
         "pg_meta_table": "meta_news",
         "pg_active_table": "active_meta_news",
         "license": "https://developers.naver.com/notice/terms",
+        "landing_page": "https://search.naver.com/search.naver?where=news",
+        "access_url": "https://openapi.naver.com/v1/search/news.json",
+        "rights": "네이버 API 이용약관 준수. 수집 데이터의 외부 배포 및 상업적 재판매 금지.",
+        "temporal_resolution": None,
     },
     "blog": {
         "urn_namespace": "naver",
@@ -60,6 +72,10 @@ _SOURCE_META = {
         "pg_meta_table": "meta_blog",
         "pg_active_table": "active_meta_blog",
         "license": "https://developers.naver.com/notice/terms",
+        "landing_page": "https://search.naver.com/search.naver?where=blog",
+        "access_url": "https://openapi.naver.com/v1/search/blog.json",
+        "rights": "네이버 API 이용약관 준수. 수집 데이터의 외부 배포 및 상업적 재판매 금지.",
+        "temporal_resolution": None,
     },
     "shopping_insight": {
         "urn_namespace": "naver",
@@ -67,6 +83,10 @@ _SOURCE_META = {
         "pg_meta_table": "meta_shopping_insight",
         "pg_active_table": "active_meta_shopping_insight",
         "license": "https://developers.naver.com/notice/terms",
+        "landing_page": "https://datalab.naver.com/shopping/",
+        "access_url": "https://openapi.naver.com/v1/datalab/shopping/categories",
+        "rights": "네이버 API 이용약관 준수. 수집 데이터의 외부 배포 및 상업적 재판매 금지.",
+        "temporal_resolution": "P1D",
     },
     "persona_insight": {
         "urn_namespace": "naver",
@@ -74,6 +94,10 @@ _SOURCE_META = {
         "pg_meta_table": "meta_persona_insight",
         "pg_active_table": "active_meta_persona_insight",
         "license": "https://developers.naver.com/notice/terms",
+        "landing_page": "https://datalab.naver.com/shopping/",
+        "access_url": "https://openapi.naver.com/v1/datalab/shopping/category/gender,age",
+        "rights": "네이버 API 이용약관 준수. 수집 데이터의 외부 배포 및 상업적 재판매 금지.",
+        "temporal_resolution": "P1D",
     },
 }
 
@@ -215,14 +239,56 @@ def make_external_ids(source_type: str, subjects) -> str:
     컬럼이 이미 말해준다.
     """
     if source_type == "video":
-        channels = subjects.get("channels", []) if isinstance(subjects, dict) else subjects
-        return json.dumps([f"youtube:{c}" for c in channels if c])
+        if isinstance(subjects, dict):
+            channels = subjects.get("channels") or []
+            videos = subjects.get("videos") or []
+        else:
+            channels, videos = subjects or [], []
+        ids = [f"youtube:{c}" for c in channels if c]
+        # 큐레이션한 개별 영상은 집합 해시로 넣는다.
+        # 채널 ID는 YouTube가 발급한 객체 키라 그대로 쓰지만, "이 영상들을 골랐다"는
+        # 선택 자체는 우리가 정한 수집 조건이다. 영상 하나하나를 넣으면 한 편만
+        # 겹쳐도 중복으로 오판되므로 news/blog와 같은 집합 해시 방식을 쓴다.
+        #
+        # 이 처리가 없으면 **채널 없이 영상만 고른 데이터셋은 external_ids가 통째로
+        # 비어** 중복 판정 근거가 사라진다(2026-10-29 시나리오 점검에서 발견).
+        if videos:
+            ids.append(f"youtube:videoset:{subject_set_hash(videos)}")
+        return json.dumps(ids)
 
     terms = subjects if isinstance(subjects, list) else []
     if not terms:
         return json.dumps([])
     ns = _SOURCE_META[source_type]["urn_namespace"]
     return json.dumps([f"{ns}:{source_type}:{subject_set_hash(terms)}"])
+
+
+def resolve_keywords(args, subjects) -> list:
+    """등록 시 keywords를 정한다.
+
+    **사용자 입력이다.** 아이템에서 자동 추출한 값으로 대체하지 않는다 —
+    meta_video.tags는 업로더 SEO 문구라 데이터셋 주제가 되지 못하고
+    (["대항병원","사당대항병원","EBS명의", …]), 같은 카테고리를 다른 의도로 본
+    데이터셋도 구별되지 않는다. 자세한 근거는
+    docs/api/01_Dataset_Registration_Scenario.md §5.1 참조.
+
+    news·blog만 검색어를 기본값으로 쓴다 — 검색어가 곧 주제인 경우가 많다.
+    그 외는 필수다. 비어 있으면 그 데이터셋은 키워드 검색과 KEYWORD_OVERLAP
+    관계 산출에서 통째로 빠진다(keywords에 GIN 인덱스가 걸려 있다).
+    """
+    if args.keywords:
+        kws = [k.strip() for k in args.keywords.split(",") if k.strip()]
+        if kws:
+            return kws
+    if args.source_type in ("news", "blog") and isinstance(subjects, list):
+        return [s for s in subjects if s]
+    raise SystemExit(
+        f"--keywords 가 필요합니다 (source_type={args.source_type}).\n"
+        f"  데이터셋의 주제를 쉼표로 구분해 주세요. 예) --keywords \"위암,헬스케어,의료\"\n"
+        f"  아이템 태그·카테고리명으로 대신 채우지 않습니다 — 그 값은 데이터셋의\n"
+        f"  주제가 아니라 개별 항목을 설명하는 값이라, 의도가 다른 데이터셋이\n"
+        f"  구별되지 않습니다."
+    )
 
 
 def register_discovery(args) -> str:
@@ -248,8 +314,8 @@ def register_discovery(args) -> str:
             INSERT INTO dcat_dataset (
                 dataset_id, title, description, publisher, source, source_type,
                 subjects, accrual_periodicity, dataset_origin, owner_id, license,
-                external_ids
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                external_ids, keywords, party, landing_page, access_url, rights
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
                 dataset_id, args.title, args.description,
@@ -259,6 +325,9 @@ def register_discovery(args) -> str:
                 args.source_type, json.dumps(subjects), args.periodicity,
                 args.origin, args.owner_id, meta["license"],
                 make_external_ids(args.source_type, subjects),
+                json.dumps(resolve_keywords(args, subjects), ensure_ascii=False),
+                PARTY_THIRD_PARTY,
+                meta["landing_page"], meta["access_url"], meta["rights"],
             ),
         )
         cur.execute(
@@ -295,8 +364,11 @@ def register_declarative(args) -> str:
             INSERT INTO dcat_dataset (
                 dataset_id, title, description, publisher, source, source_type,
                 subjects, accrual_periodicity, item_count,
-                dataset_origin, owner_id, license, temporal_start
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                dataset_origin, owner_id, license, temporal_start,
+                external_ids, keywords, party, landing_page, access_url, rights,
+                temporal_resolution
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                      %s, %s, %s, %s, %s, %s, %s)
             """,
             (
                 dataset_id, args.title, args.description,
@@ -304,6 +376,12 @@ def register_declarative(args) -> str:
                 meta["publisher"], meta["publisher"],
                 args.source_type, json.dumps([cid for cid, _ in categories]), args.periodicity,
                 len(categories), args.origin, args.owner_id, meta["license"], args.temporal_start,
+                make_external_ids(args.source_type, [cid for cid, _ in categories]),
+                json.dumps(resolve_keywords(args, [cid for cid, _ in categories]),
+                           ensure_ascii=False),
+                PARTY_THIRD_PARTY,
+                meta["landing_page"], meta["access_url"], meta["rights"],
+                meta["temporal_resolution"],
             ),
         )
         cur.execute(
@@ -349,6 +427,9 @@ def main():
     parser.add_argument("--description", required=True)
     parser.add_argument("--origin", choices=["admin", "user"], default="admin")
     parser.add_argument("--owner-id", default=None, help="origin=user일 때만 의미 있음")
+    parser.add_argument("--keywords",
+                        help="데이터셋 주제, 쉼표 구분. 예) '위암,헬스케어,의료'. "
+                             "news/blog는 생략 시 검색어로 채움, 그 외는 필수")
     parser.add_argument("--periodicity", default="P1D", help="ISO 8601 duration, 기본 P1D")
     parser.add_argument("--dataset-id", default=None, help="지정 안 하면 title로 자동 채번")
     parser.add_argument(
