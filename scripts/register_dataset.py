@@ -345,6 +345,20 @@ def register_discovery(args) -> str:
         conn.close()
 
 
+def split_category_levels(category_name: str) -> tuple:
+    """'패션의류>남성의류>정장' → ('패션의류', '남성의류', '정장', None).
+
+    네이버 카테고리명은 '>'로 이어진 전체 경로다. cat_level1~4는 그 경로를 단계별로
+    쪼갠 값으로, `idx_shopping_level1` 인덱스가 걸려 있어 대분류 집계·필터의 전제다.
+
+    **등록 경로가 이 값을 채우지 않고 있었다**(2026-10-29 발견). 시드 데이터에만
+    들어 있어 실제 등록으로 만든 행은 cat_level1~4가 전부 NULL이었다.
+    """
+    parts = [p.strip() for p in (category_name or "").split(">")]
+    parts = [p for p in parts if p]
+    return tuple((parts[i] if i < len(parts) else None) for i in range(4))
+
+
 def register_declarative(args) -> str:
     meta = _SOURCE_META[args.source_type]
     categories = []
@@ -397,22 +411,26 @@ def register_declarative(args) -> str:
         # 첫 번째로 고른 카테고리를 자동으로 anchor 지정 (§4.3, shopping만 해당 컬럼 있음)
         table = meta["pg_meta_table"]
         for i, (cat_id, cat_name) in enumerate(categories):
+            lv = split_category_levels(cat_name)
             if table == "meta_shopping_insight":
                 cur.execute(
                     """
                     INSERT INTO meta_shopping_insight
-                        (dataset_id, category_id, category_name, is_anchor)
-                    VALUES (%s, %s, %s, %s)
+                        (dataset_id, category_id, category_name, is_anchor,
+                         cat_level1, cat_level2, cat_level3, cat_level4)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """,
-                    (dataset_id, cat_id, cat_name, i == 0),
+                    (dataset_id, cat_id, cat_name, i == 0, *lv),
                 )
             else:  # meta_persona_insight — anchor 개념 없음
                 cur.execute(
                     """
-                    INSERT INTO meta_persona_insight (dataset_id, category_id, category_name)
-                    VALUES (%s, %s, %s)
+                    INSERT INTO meta_persona_insight
+                        (dataset_id, category_id, category_name,
+                         cat_level1, cat_level2, cat_level3, cat_level4)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """,
-                    (dataset_id, cat_id, cat_name),
+                    (dataset_id, cat_id, cat_name, *lv),
                 )
         conn.commit()
         return dataset_id

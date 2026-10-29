@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from src.common import config
 from src.collectors import youtube_collector, youtube_transcript_collector
-from src.database import dcat
+from src.database import dcat, theme
 from src.database import meta_video
 from src.database.db import get_conn
 from src.embedding import sync as embedding_sync
@@ -258,6 +258,16 @@ def run(dataset_id: str, triggered_by: str) -> None:
             dcat.update_data_registry(dataset_id, s3_raw_prefix=s3_raw_prefix, s3_jsonld_prefix=s3_jsonld_prefix)
         except Exception as e:
             logger.warning(f"S3 export 실패, 수집 자체는 성공 처리: {e}")
+
+        # theme(원천 분류 원문) 집계 — 수집 결과에서 다시 계산한다.
+        # video는 YouTube 카테고리+위키 주제, 선언형은 쇼핑 카테고리 대분류.
+        # news/blog는 원천이 분류를 주지 않아 이 단계가 없다(src/database/theme.py).
+        try:
+            themes = theme.sync_theme(dataset_id, "video")
+            if themes:
+                logger.info("theme %d종 반영: %s", len(themes), ", ".join(themes[:4]))
+        except Exception as e:
+            logger.warning(f"theme 집계 실패, 수집 자체는 성공 처리: {e}")
 
         # 임베딩 동기화 — 바뀐 항목만 다시 만든다(src/embedding/sync.py).
         # 2026-10-28 편입. 그 전에는 scripts/embed_*.py 수동 실행이었고 실데이터에
