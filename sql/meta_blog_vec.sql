@@ -33,7 +33,7 @@ CREATE TABLE meta_blog_vec (
     -- 0부터. 원문에서의 순서. 재생성 시 같은 입력이면 같은 번호가 나와야 한다
 
     embedding   vector(768) NOT NULL,
-    -- paraphrase-multilingual-mpnet-base-v2 기준 768차원
+    -- multilingual-e5-base 기준 768차원 (2026-10-29 전환, 차원 동일)
     -- 모델을 바꾸면 차원이 달라지므로 이 테이블을 재생성해야 한다
 
     embed_text  TEXT NOT NULL,
@@ -41,7 +41,7 @@ CREATE TABLE meta_blog_vec (
     -- 원문 형식: "{title}. {description}. {content 앞 500자}"
 
     model_name  TEXT NOT NULL
-                DEFAULT 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2',
+                DEFAULT 'intfloat/multilingual-e5-base',
 
     embedded_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 

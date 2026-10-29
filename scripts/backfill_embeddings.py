@@ -25,16 +25,20 @@ SPECS = ["dcat_dataset", "meta_video", "meta_news", "meta_blog"]
 
 
 def pending_count(spec: str) -> tuple:
-    """(전체, 임베딩 있음) — 모델을 올리지 않고 DB만으로 센다."""
-    base, vec, key, cols, _ = sync._SPECS[spec]
-    src_key = cols.split(",")[0].strip()
+    """(원본 전체, 임베딩 있는 원본, 청크 수) — 모델을 올리지 않고 DB만으로 센다."""
+    base, vec, vkey, skey, _cols, _build = sync._SPECS[spec]
     conn = get_conn()
     try:
         cur = conn.cursor()
         cur.execute(f"SELECT count(*) FROM {base}")
         total = cur.fetchone()[0]
-        cur.execute(f"SELECT count(*) FROM {base} b JOIN {vec} v ON v.{key} = b.{src_key}")
-        return total, cur.fetchone()[0]
+        cur.execute(
+            f"SELECT count(DISTINCT b.{skey}), "
+            f"       (SELECT count(*) FROM {vec}) "
+            f"  FROM {base} b JOIN {vec} v ON v.{vkey} = b.{skey}"
+        )
+        done, chunks = cur.fetchone()
+        return total, done, chunks
     finally:
         conn.close()
 
@@ -50,9 +54,9 @@ def main() -> int:
     targets = [args.spec] if args.spec else SPECS
     print("=== 현황 ===")
     for s in targets:
-        total, has = pending_count(s)
-        print(f"  {s:<16} {total:>7,}행 중 임베딩 {has:>7,}건 "
-              f"(커버리지 {has * 100 // max(total, 1):>3}%)")
+        total, done, chunks = pending_count(s)
+        print(f"  {s:<16} 원본 {total:>7,}건 중 {done:>7,}건 임베딩 "
+              f"(커버리지 {done * 100 // max(total, 1):>3}%, 청크 {chunks:,}개)")
     if args.dry_run:
         return 0
 
@@ -62,17 +66,18 @@ def main() -> int:
         t0 = time.time()
         r = sync.sync(s, limit=args.limit)
         el = time.time() - t0
-        rate = f"{r['embedded'] / el:.0f}건/초" if el > 0 and r["embedded"] else "-"
-        print(f"  {s:<16} 생성 {r['embedded']:>7,} / 검사 {r['checked']:>7,} "
+        rate = f"{r['chunks'] / el:.0f}청크/초" if el > 0 and r["chunks"] else "-"
+        print(f"  {s:<16} 원본 {r['items']:>7,}건 → 청크 {r['chunks']:>8,}개 "
               f"({el:>6.1f}초, {rate})")
-        grand += r["embedded"]
+        grand += r["chunks"]
 
     print("\n=== 결과 ===")
     for s in targets:
-        total, has = pending_count(s)
-        flag = "" if has == total else f"  ← {total - has:,}건 남음"
-        print(f"  {s:<16} {has:>7,}/{total:>7,}  커버리지 {has * 100 // max(total, 1):>3}%{flag}")
-    print(f"\n  총 {grand:,}건 생성")
+        total, done, chunks = pending_count(s)
+        flag = "" if done == total else f"  ← {total - done:,}건 남음"
+        print(f"  {s:<16} {done:>7,}/{total:>7,}  커버리지 {done * 100 // max(total, 1):>3}%"
+              f"  청크 {chunks:>8,}개{flag}")
+    print(f"\n  총 {grand:,}청크 생성")
     return 0
 
 
