@@ -18,6 +18,7 @@ collectors(순수 API 호출)와 database(순수 DB IO) 모듈을 조합해 다�
 
 import json
 import logging
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -113,20 +114,23 @@ def _fetch_remote_videos(service, channel_ids: list, video_ids: list) -> list:
     return videos
 
 
-# ⚠️ **신규 영상마다 STT를 돌리지 않는다 (기본값).**
+# ── 자막(STT) 처리 예산 ──────────────────────────────────────────────────
 #
-# fetch_transcript()는 오디오를 내려받아 faster-whisper(small, CPU int8)로 전사한다.
-# 2026-10-29 실측: 영상 1건당 약 1.4분. 채널 하나만 해도 수십~수백 건이라
-# 수집이 끝나지 않는다 — 시나리오 점검에서 영상 4개 데이터셋(약 1,500건)의
-# 예상 소요가 35시간으로 나와 중단했다.
+# 자막은 B1(키워드 추출)·A2(AI 메타데이터)의 입력이라 **수집 파이프라인 안에서
+# 자동으로 만들어져야 한다.** 다만 영상마다 전부 돌리면 수집이 끝나지 않는다 —
+# 2026-10-29 실측으로 영상 1건당 약 1.4분, 채널 4개(약 1,500건)에 35시간이 나왔다.
+# 등록 화면이 "수집 중"에서 영영 안 빠진다.
 #
-# 자막은 `scripts/backfill_youtube_transcripts.py`가 --limit으로 속도를 통제하며
-# 따로 처리한다(has_transcript=FALSE 대상, 멱등). 같은 일을 수집 경로에서도 하면
-# 중복이고, 수집이 자막에 묶여 끝나지 않는다.
+# 그래서 **켜고 끄는 대신 한 회차에 쓸 시간을 제한한다.** 수집 본체가 끝난 뒤
+# 남은 예산만큼 자막을 만들고, 못 한 분량은 다음 수집 회차가 이어서 처리한다
+# (has_transcript=FALSE가 대상이라 자연히 이어진다).
 #
-# 자막을 수집과 함께 돌려야 하는 상황(소량 데이터셋, 자막이 즉시 필요)에서는
-# YOUTUBE_INLINE_TRANSCRIPT=true로 켠다.
-INLINE_TRANSCRIPT = config.get_env("YOUTUBE_INLINE_TRANSCRIPT", "false").lower() == "true"
+#   수집 주기 P7D, 예산 10분 → 회차당 약 7건 → 72건 채널이면 약 10주
+#   백로그를 빨리 줄이려면 scripts/backfill_youtube_transcripts.py를 따로 돌린다
+#
+# 0으로 두면 자막 단계를 건너뛴다(개발·점검용).
+TRANSCRIPT_BUDGET_SEC = int(config.get_env("YOUTUBE_TRANSCRIPT_BUDGET_SEC", "600"))
+
 
 
 def _normalize_subjects(subjects: Any) -> Tuple[List[str], List[str]]:
@@ -180,6 +184,39 @@ def _current_temporal_start(dataset_id: str) -> Optional[str]:
         conn.close()
 
 
+def _transcribe_within_budget(dataset_id: str) -> int:
+    """자막이 없는 영상을 예산(초) 안에서 처리한다. 반환: 생성한 건수.
+
+    한 건이 실패해도 다음 건으로 넘어간다 — 특정 영상의 오디오를 못 받는 경우가
+    흔하고(비공개 전환, 지역 제한), 그것 때문에 나머지를 포기할 이유가 없다.
+    """
+    if TRANSCRIPT_BUDGET_SEC <= 0:
+        return 0
+    deadline = time.monotonic() + TRANSCRIPT_BUDGET_SEC
+    done = 0
+    # 예산을 넘지 않는 선에서 넉넉히 가져온다 — 실제 중단은 deadline이 결정한다
+    for row in meta_video.get_untranscribed(dataset_id=dataset_id, limit=500):
+        if time.monotonic() >= deadline:
+            break
+        try:
+            transcript = youtube_transcript_collector.fetch_transcript(row["video_id"])
+            if transcript is None:
+                continue
+            segments, full_text, language = transcript
+            raw_export.write_video_transcript(
+                dataset_id, row["video_id"], segments, full_text, language
+            )
+            meta_video.mark_transcribed(
+                row["id"], transcribed_at=datetime.now(timezone.utc))
+            done += 1
+        except Exception as e:
+            logger.warning(
+                "자막 처리 실패 (video_id=%s): %s — 다음 영상으로 진행",
+                row["video_id"], e,
+            )
+    return done
+
+
 def run(dataset_id: str, triggered_by: str) -> None:
     dataset = dcat.fetch_dcat_dataset(dataset_id)
     was_pending = _get_registry_status(dataset_id) == "pending"
@@ -198,19 +235,6 @@ def run(dataset_id: str, triggered_by: str) -> None:
             if video["video_id"] not in existing:
                 meta_id = meta_video.insert_meta_video(dataset_id, video)
                 meta_video.insert_active_meta_video(meta_id, video)
-                if INLINE_TRANSCRIPT:
-                    try:
-                        transcript = youtube_transcript_collector.fetch_transcript(video["video_id"])
-                        if transcript is not None:
-                            segments, full_text, language = transcript
-                            raw_export.write_video_transcript(
-                                dataset_id, video["video_id"], segments, full_text, language
-                            )
-                            meta_video.mark_transcribed(
-                                meta_id, transcribed_at=datetime.now(timezone.utc))
-                    except Exception as e:
-                        logger.warning(
-                            f"트랜스크립트 처리 실패 (video_id={video['video_id']}): {e}")
                 new_count += 1
             else:
                 meta_id = existing[video["video_id"]]
@@ -258,6 +282,14 @@ def run(dataset_id: str, triggered_by: str) -> None:
             dcat.update_data_registry(dataset_id, s3_raw_prefix=s3_raw_prefix, s3_jsonld_prefix=s3_jsonld_prefix)
         except Exception as e:
             logger.warning(f"S3 export 실패, 수집 자체는 성공 처리: {e}")
+
+        # 자막(STT) — 예산 안에서만. 남은 분량은 다음 회차가 이어서 한다.
+        try:
+            n = _transcribe_within_budget(dataset_id)
+            if n:
+                logger.info("자막 %d건 생성", n)
+        except Exception as e:
+            logger.warning(f"자막 처리 실패, 수집 자체는 성공 처리: {e}")
 
         # theme(원천 분류 원문) 집계 — 수집 결과에서 다시 계산한다.
         # video는 YouTube 카테고리+위키 주제, 선언형은 쇼핑 카테고리 대분류.

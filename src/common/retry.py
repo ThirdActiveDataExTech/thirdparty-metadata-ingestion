@@ -7,6 +7,8 @@
 """
 
 import time
+
+import requests
 from typing import Callable, TypeVar
 
 T = TypeVar("T")
@@ -14,6 +16,19 @@ T = TypeVar("T")
 
 class RetryableError(Exception):
     """일시적 오류 — 재시도 대상."""
+
+
+# 네트워크가 잠깐 흔들려서 나는 예외들. 재시도하면 대개 성공한다.
+#
+# 2026-10-29: blog.like.naver.com(반응 수 API) ReadTimeout이 재시도되지 않고
+# 그대로 전파돼 **데이터셋 수집 전체가 실패**했다. RetryableError만 잡고 있어서
+# requests의 타임아웃·연결오류는 "재시도 무의미"로 분류되고 있었는데, 이 둘은
+# 전형적인 일시 오류다.
+_RETRYABLE = (
+    RetryableError,
+    requests.exceptions.Timeout,
+    requests.exceptions.ConnectionError,
+)
 
 
 def with_retry(
@@ -29,7 +44,7 @@ def with_retry(
     for attempt in range(max_attempts):
         try:
             return fn()
-        except RetryableError as e:
+        except _RETRYABLE as e:
             last_error = e
             if attempt < max_attempts - 1:
                 delay = base_delay * (2**attempt)

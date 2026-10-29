@@ -65,9 +65,26 @@ def _current_row_count(dataset_id: str) -> int:
 
 
 def _collect_reaction_stats(meta_id: int, post: Dict[str, Any], prev: Optional[Dict[str, Any]]) -> None:
+    """반응 수(좋아요 등)를 모아 active_meta_blog에 넣는다.
+
+    **실패해도 예외를 올리지 않는다.** 반응 수는 부가 지표이고 게시물 본문은 이미
+    meta_blog에 들어간 상태다. 2026-10-29 점검에서 blog.like.naver.com 타임아웃
+    하나가 데이터셋 수집 전체를 실패시키는 것을 확인했다 — 게시물 수백 건을 다 모아
+    놓고 마지막에 전부 버리는 꼴이었다.
+
+    재시도는 with_retry가 한다(src/common/retry.py). 그걸 넘어서도 실패하면 이번
+    회차의 그 게시물만 반응 수가 없고, 다음 수집에서 다시 시도된다.
+    """
     if post["platform"] != "naver" or not post["blog_id"] or not post["log_no"]:
         return
-    stats = naver_blog_collector.fetch_reaction_stats(post["blog_id"], post["log_no"])
+    try:
+        stats = naver_blog_collector.fetch_reaction_stats(post["blog_id"], post["log_no"])
+    except Exception as e:
+        logger.warning(
+            "반응 수 수집 실패 (blog_id=%s, log_no=%s): %s — 게시물 자체는 유지",
+            post["blog_id"], post["log_no"], e,
+        )
+        return
     if stats is None:
         return
     delta = None
