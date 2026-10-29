@@ -33,6 +33,7 @@ URN_RE = re.compile(r"^urn:[a-z0-9]+:[a-z0-9_]+$")
 EXT_RE = re.compile(r"^[a-z0-9_-]+:.+$")
 
 _fail: list = []
+_legacy_seen: list = []
 _warn: list = []
 
 
@@ -103,17 +104,28 @@ def main() -> int:
         for e in ext:
             if not isinstance(e, str) or not EXT_RE.match(e):
                 fail("B-1", f"{did} — 원소 {e!r}가 '네임스페이스:값' 형식이 아님")
-        if not any(e.startswith("legacy:") for e in ext):
-            fail("B-2", f"{did} — legacy slug 없음")
+        # legacy:는 URN 전환(2026-10-28) **이전에 있던** 데이터셋에만 있다.
+        # 그 뒤에 등록된 것에는 없는 게 정상이므로 실패가 아니라 집계만 한다.
+        if any(e.startswith("legacy:") for e in ext):
+            _legacy_seen.append(did)
 
         if st == "video":
             chans = subj.get("channels", []) if isinstance(subj, dict) else (subj or [])
+            vids = subj.get("videos", []) if isinstance(subj, dict) else []
             want = {f"youtube:{c}" for c in chans if c}
-            got = {e for e in ext if e.startswith("youtube:")}
+            got = {e for e in ext if e.startswith("youtube:") and ":videoset:" not in e}
             if want != got:
                 fail("B-3", f"{did} — 채널키 불일치 기대={sorted(want)} 실제={sorted(got)}")
-            if any("sha256-" in e for e in ext):
-                fail("B-4", f"{did} — video에 집합 해시가 붙어 있음(채널 ID는 원천 발급 키다)")
+            # 큐레이션한 개별 영상이 있으면 집합 해시가 있어야 한다.
+            # 채널 ID는 원천 발급 키라 해시를 붙이지 않지만, "이 영상들을 골랐다"는
+            # 선택은 우리가 정한 수집 조건이라 집합 해시로 넣는다.
+            vset = [e for e in ext if ":videoset:" in e]
+            if vids and not vset:
+                fail("B-4", f"{did} — 개별 영상 {len(vids)}건이 있는데 집합 해시가 없음")
+            if not vids and vset:
+                fail("B-4", f"{did} — 개별 영상이 없는데 집합 해시가 있음: {vset}")
+            if vset and not all("sha256-" in v for v in vset):
+                fail("B-4", f"{did} — videoset 해시에 sha256- 접두 없음: {vset}")
         else:
             terms = subj if isinstance(subj, list) else []
             hashes = [e for e in ext if e.startswith(f"{src.lower()}:{st}:")]
@@ -127,11 +139,14 @@ def main() -> int:
                             f" (정규화={normalize_subject_key(terms)[:50]})")
             if not all("sha256-" in h for h in hashes):
                 fail("B-6", f"{did} — 해시에 sha256- 접두 없음: {hashes}")
-    for code, label in [("B-1", "형식 '네임스페이스:값'"), ("B-2", "legacy slug 보존"),
-                        ("B-3", "video 채널키 ↔ subjects"), ("B-4", "video에 해시 없음"),
+    for code, label in [("B-1", "형식 '네임스페이스:값'"),
+                        ("B-3", "video 채널키 ↔ subjects"),
+                        ("B-4", "video 집합 해시 ↔ 개별영상"),
                         ("B-5", "집합 해시 ↔ subjects"), ("B-6", "sha256- 접두")]:
         n = sum(1 for f in _fail if f.startswith(code))
         (ok if n == 0 else bad)(f"{label}: 위반 {n}건")
+    print(f"     legacy slug 보유 {len(_legacy_seen)}건 "
+          f"(URN 전환 이전 데이터셋만 — 신규 등록분에는 없는 것이 정상)")
 
     # 오탐 방지가 실제로 되는지 — 부분 겹침 쌍이 서로 다른 해시인가
     cur.execute(
