@@ -10,6 +10,9 @@
 > 실행 스크립트: [sql/migration_2026_10_28_dataset_id_urn.sql](../../sql/migration_2026_10_28_dataset_id_urn.sql)
 > 이 문서는 전환의 근거와 범위를 남긴 기록이다. 아래 §1·§2는 **전환 전** 상태다.
 >
+> **규칙 자체는 [ADR-017](../adr/017_Unstructured_Dataset_Identifier.md)에 있다** — URN 형식, 채번, `storage_key()` 변환, `external_ids` 집합 해시.
+> 이 문서는 **전환 실행 기록**이다.
+>
 > 와이즈넛 「백엔드 설계 초안」 v2 별첨 테이블정의서는 `dataset_id`를
 > **TEXT 최대 100자 URN**, 케이웨어 `cetus_*.metadata_id`와 **동일 값**으로 규정한다.
 > 현재 우리 값은 slug 형식이라 전환이 필요하다. 착수 전 이 문서로 범위를 확정한다.

@@ -93,6 +93,7 @@ DB 스키마, 테이블 정의. **테이블이 추가되거나 컬럼이 변경�
 | [datagokr Schema](database/datagokr_schema.md) | metadata-ingestion 메인 DB | 완성 (테이블 대부분 생성 완료) |
 | [dataset_id URN 전환](database/dataset_id_urn_migration.md) | 와이즈넛 규약 대응 — 영향 범위·절차·체크리스트 | ✅ 전환 완료 (2026-10-28) |
 | [임베딩 청킹](database/embedding_chunking.md) | 1:1 → 1:N 전환 근거와 실측 | 완성 |
+| [벡터 테이블 형식 통합 제안](database/vec_schema_unification_proposal.md) | 정형·비정형 `*_vec` 통합안 (vec_role) — 와이즈넛 협의용 | 제안 (협의 전) |
 | [컬럼 충족 매트릭스](database/column_fill_matrix.md) | 테이블별 컬럼을 무엇이 어떻게 채우는가 (사용자/API/고정값/AI) | 완성 |
 | [공통 분류(category) 분류표](database/category_taxonomy.md) | 디지털 집현전 주제 분류 7/76, 부여 규칙, 비정형 부여 방법 | 완성 (2026-10-27) |
 | thirdparty Schema | 기존 thirdparty DB | 미작성(예정) |
@@ -119,7 +120,7 @@ DB 스키마, 테이블 정의. **테이블이 추가되거나 컬럼이 변경�
 |---|------|------|
 | ADR-001 | [DCAT을 메타데이터 표준으로 채택](adr/001_DCAT_as_metadata_standard.md) | Accepted |
 | ADR-002 | [Airflow 도입 전 K8s CronJob 사용](adr/002_KubernetesCronJob_before_Airflow.md) | Superseded by ADR-007 |
-| ADR-003 | [Vector DB 전략 — pgvector 시작, Qdrant 전환 경로](adr/003_VectorDB_Strategy.md) | Accepted |
+| ADR-003 | [Vector DB 전략 — pgvector 시작, Qdrant 전환 경로](adr/003_VectorDB_Strategy.md) | Accepted (§임베딩 모델은 ADR-016이 override) |
 | ADR-004 | [Object Storage 전략 — MinIO → SeaweedFS 전환](adr/004_ObjectStorage_Strategy.md) | Accepted |
 | ADR-005 | [Naver 뉴스 수집 가능 지표 결정](adr/005_Naver_News_Metrics_Decision.md) | Accepted |
 | ADR-006 | [Naver 블로그 수집 가능 지표 결정](adr/006_Naver_Blog_Metrics_Decision.md) | Accepted |
@@ -131,6 +132,9 @@ DB 스키마, 테이블 정의. **테이블이 추가되거나 컬럼이 변경�
 | ADR-012 | [관계 그래프 저장 — 와이즈넛 합의 스키마 재사용 + NetworkX](adr/012_Graph_Storage_PostgreSQL.md) | Accepted (2026-10-27 개정) |
 | ADR-013 | [외부 LLM API 미사용 — 로컬 추론 전용](adr/013_No_External_LLM_API.md) | Accepted |
 | ADR-014 | [DB 스키마 정본 소유권 — 모비젠 단일 관리](adr/014_Schema_Ownership_And_Change_Control.md) | Accepted |
+| ADR-015 | [자막 백필 — 수집 스케줄러와 분리된 CronJob](adr/015_Transcript_Backfill_Batch.md) | Accepted |
+| ADR-016 | [임베딩 모델과 적재 규약 — multilingual-e5-base](adr/016_Embedding_Model_And_Conventions.md) | Accepted |
+| ADR-017 | [비정형 데이터셋 식별자 — URN 규칙과 external_ids](adr/017_Unstructured_Dataset_Identifier.md) | Accepted |
 
 ---
 
