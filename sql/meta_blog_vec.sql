@@ -53,4 +53,7 @@ CREATE INDEX idx_meta_blog_vec_meta ON meta_blog_vec (meta_id);
 
 -- 코사인 유사도 검색용 인덱스
 -- 청킹으로 행 수가 원본의 수 배가 되므로 데이터가 쌓이면 필요하다.
+-- ⚠️ 빌드 전 maintenance_work_mem을 올릴 것. 서버 기본 64MB에서는 약 17,700행부터
+--    그래프가 메모리를 넘겨 느린 디스크 경로로 전환된다(실측: 276행/초 → 77행/초).
+--    1GB로 올리면 484행/초. 자세한 측정은 docs/database/vec_schema_unification_proposal.md §7.4
 -- CREATE INDEX ON meta_blog_vec USING hnsw (embedding vector_cosine_ops);

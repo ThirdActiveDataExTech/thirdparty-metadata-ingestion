@@ -45,4 +45,7 @@ CREATE TABLE dcat_dataset_vec (
 CREATE INDEX idx_dcat_dataset_vec_dataset ON dcat_dataset_vec (dataset_id);
 
 -- 코사인 유사도 검색용 인덱스
+-- ⚠️ 빌드 전 maintenance_work_mem을 올릴 것. 서버 기본 64MB에서는 약 17,700행부터
+--    그래프가 메모리를 넘겨 느린 디스크 경로로 전환된다(실측: 276행/초 → 77행/초).
+--    1GB로 올리면 484행/초. docs/database/vec_schema_unification_proposal.md §7.4
 -- CREATE INDEX ON dcat_dataset_vec USING hnsw (embedding vector_cosine_ops);

@@ -3,6 +3,7 @@
 > **Last Updated:** 2026-10-29
 > **상태:** ✅ 적용 완료
 > **적용:** [sql/migration_2026_10_29_vec_chunking.sql](../../sql/migration_2026_10_29_vec_chunking.sql)
+> **결정 문서:** [ADR-016](../adr/016_Embedding_Model_And_Conventions.md) — 모델·프리픽스·집계 규약. 이 문서는 그 **근거 실측**을 담는다
 
 ---
 
