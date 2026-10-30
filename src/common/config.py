@@ -1,6 +1,7 @@
 """환경변수 로딩 — scripts/embed_*.py의 load_dotenv 패턴을 공유 모듈로 옮긴 것."""
 
 import os
+import re
 from typing import Optional
 from dotenv import load_dotenv
 
@@ -16,6 +17,30 @@ def require_env(name: str) -> str:
     if not value:
         raise RuntimeError(f"필수 환경변수 {name}가 설정되지 않았습니다 (.env 확인)")
     return value
+
+
+def mask_secrets(text: str) -> str:
+    """로그·예외 메시지에 섞여 나온 자격증명을 가린다.
+
+    googleapiclient는 API 키를 `?key=...` 쿼리 파라미터로 보내고, HttpError의
+    문자열에는 요청 URI가 그대로 들어간다. 즉 쿼터 초과 같은 흔한 오류 하나로
+    **터미널과 스크린샷에 실제 키가 찍힌다.** 로그 레벨과 무관하게 발생한다.
+
+    데모 녹화·이슈 첨부처럼 화면이 외부로 나갈 때를 전제로, 키가 오류 경로로
+    새는 것을 코드에서 막는다.
+    """
+    masked = text
+    for value in _all_secret_values():
+        if value and len(value) >= 8:
+            masked = masked.replace(value, value[:4] + "***")
+    return re.sub(r"([?&](?:key|api_key|access_token)=)[^&\s\"']+", r"\1***", masked)
+
+
+def _all_secret_values() -> list:
+    names = ("YOUTUBE_API_KEY", "YOUTUBE_API_KEY_BACKUP", "YOUTUBE_API_KEY_BACKUP2",
+             "NAVER_CLIENT_SECRET", "NAVER_CLIENT_ID", "S3_SECRET_KEY",
+             "S3_ACCESS_KEY", "DB_PASSWORD", "ENCRYPTION_KEY")
+    return [v for v in (os.getenv(n) for n in names) if v]
 
 
 def get_youtube_api_keys() -> list:

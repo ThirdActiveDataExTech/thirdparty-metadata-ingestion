@@ -13,6 +13,8 @@ from typing import Any, Dict, List
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+from src.common import config
+
 from src.common.retry import RetryableError, with_retry
 
 SHORTS_MAX_SECONDS = 60
@@ -47,9 +49,12 @@ def _call_with_retry(request):
         try:
             return request.execute()
         except HttpError as e:
+            # HttpError 문자열에는 요청 URI가 들어가고, 거기에 `?key=<실제 키>`가
+            # 그대로 있다. 마스킹하지 않으면 쿼터 초과 한 번에 키가 화면에 찍힌다.
+            message = config.mask_secrets(str(e))
             if e.resp is not None and e.resp.status >= 500:
-                raise RetryableError(str(e))
-            raise  # 4xx(쿼터 초과 등)는 재시도해도 소용없음 — 즉시 전파
+                raise RetryableError(message)
+            raise RuntimeError(message) from None  # 4xx는 재시도해도 소용없음
 
     return with_retry(_execute)
 

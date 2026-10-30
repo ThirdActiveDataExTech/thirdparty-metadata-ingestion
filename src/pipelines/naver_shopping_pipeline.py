@@ -37,7 +37,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.collectors import naver_datalab_scale, naver_shopping_collector
-from src.database import dcat, meta_shopping_insight
+from src.database import category, dcat, meta_shopping_insight, theme
 from src.database.db import get_conn
 from src.embedding import sync as embedding_sync
 from src.storage import jsonld_export
