@@ -63,4 +63,7 @@
 
 ## 참고
 
+- [ADR-018 검색 적합성 판정](018_Search_Relevance_Judgment.md) — 이 ADR의 전제가 실측으로 재확인됐다.
+  조사가 붙은 어절을 그대로 쓰면 문서빈도가 **65배** 왜곡된다(`대역폭을` 0.23% vs `대역폭` 15.04%).
+  또한 "결과 없음" 판정은 **벡터 점수로 불가능**하므로, 여기서 만드는 키워드 채널이 그 판정의 근거가 된다.
 - [development/04_Implementation_Methods.md](../development/04_Implementation_Methods.md) §3 C1, §4.5

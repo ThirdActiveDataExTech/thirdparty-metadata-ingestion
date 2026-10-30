@@ -93,6 +93,7 @@ DB 스키마, 테이블 정의. **테이블이 추가되거나 컬럼이 변경�
 | [datagokr Schema](database/datagokr_schema.md) | metadata-ingestion 메인 DB | 완성 (테이블 대부분 생성 완료) |
 | [dataset_id URN 전환](database/dataset_id_urn_migration.md) | 와이즈넛 규약 대응 — 영향 범위·절차·체크리스트 | ✅ 전환 완료 (2026-10-28) |
 | [임베딩 청킹](database/embedding_chunking.md) | 1:1 → 1:N 전환 근거와 실측 | 완성 |
+| [검색 임계값·하이브리드 측정](database/search_threshold_probe.md) | 질의 19건 실측 — 고정 임계값 불가, 최희귀어 규칙 (ADR-018 근거) | 완성 (2026-10-30) |
 | [벡터 테이블 형식 통합 제안](database/vec_schema_unification_proposal.md) | 정형·비정형 `*_vec` 통합안 (vec_role) — 와이즈넛 협의용 | 제안 (협의 전) |
 | [컬럼 충족 매트릭스](database/column_fill_matrix.md) | 테이블별 컬럼을 무엇이 어떻게 채우는가 (사용자/API/고정값/AI) | 완성 |
 | [공통 분류(category) 분류표](database/category_taxonomy.md) | 디지털 집현전 주제 분류 7/76, 부여 규칙, 비정형 부여 방법 | 완성 (2026-10-27) |
@@ -135,6 +136,7 @@ DB 스키마, 테이블 정의. **테이블이 추가되거나 컬럼이 변경�
 | ADR-015 | [자막 백필 — 수집 스케줄러와 분리된 CronJob](adr/015_Transcript_Backfill_Batch.md) | Accepted |
 | ADR-016 | [임베딩 모델과 적재 규약 — multilingual-e5-base](adr/016_Embedding_Model_And_Conventions.md) | Accepted |
 | ADR-017 | [비정형 데이터셋 식별자 — URN 규칙과 external_ids](adr/017_Unstructured_Dataset_Identifier.md) | Accepted |
+| ADR-018 | [검색 적합성 판정 — 고정 유사도 임계값 금지](adr/018_Search_Relevance_Judgment.md) | Accepted |
 
 ---
 
