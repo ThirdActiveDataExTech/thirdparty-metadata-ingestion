@@ -17,6 +17,7 @@ dependencies = [
     # 한국어 형태소 분석 — 키워드 검색 채널의 토큰화 (ADR-010)
     # ⚠️ 0.24.0부터 Apache-2.0, 0.23.2 이하는 LGPL. 하한을 내리지 말 것.
     "kiwipiepy>=0.24.0",
+    "PyYAML",                   # 수집 어댑터 소스 스펙(configs/sources/*.yaml) — A1
 ]
 
 [project.optional-dependencies]

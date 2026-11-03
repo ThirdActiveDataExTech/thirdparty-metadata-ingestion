@@ -558,9 +558,21 @@
 
 ### A. 메타데이터 생성·처리
 
-#### A1. 수집 어댑터화 〔3차 · 모비젠 단독〕
+#### A1. 수집 어댑터화 〔3차 · 모비젠 단독〕 — 🟩 **최소선 완료 (2026-11-03)**
 - **현재**: `src/collectors/*.py` 5종 독립 구현 → 신규 소스마다 수집기·파이프라인·DB헬퍼 신규 작성.
-- 🟩 **최소선**: 공통 `BaseCollector` + **범용 REST/JSON 어댑터 1종** + 소스 스펙(YAML)으로 **신규 소스 1종** 수집 성공. 기존 5종은 그대로 둔다(이관 안 해도 됨).
+- 🟩 **최소선**: 공통 `BaseCollector` + **범용 REST/JSON 어댑터 1종** + 소스 스펙(YAML)으로 **신규 소스 1종** 수집 성공 ✅
+  - `src/collectors/base.py`(계약), `src/collectors/adapters/rest_json.py`(어댑터),
+    `configs/sources/{naver_news,youtube_search}.yaml`. 테스트 26건
+  - **검증은 기존 수집기와 대조로 했다** — 같은 질의로 네이버 뉴스 **300건 완전 일치**
+    (겹침 300 / 어댑터만 0 / 기존만 0). 상상한 추상화가 아니라 실물에 맞춘 추상화다
+  - **완료 기준 충족**: `youtube_search.yaml`을 추가하자 **코드 수정 없이** cursor 페이징
+    150건이 수집됐다. 네이버는 offset(`start=1,101,201`), 유튜브는 cursor(`pageToken`)로
+    방식이 다르다
+  - ⚠️ **`detect_removed` 기본값이 "판정 불가"다.** 2026-07-28 뉴스 사고(부재 146건 중
+    91건이 생존)를 새 어댑터가 반복하지 않도록, 삭제 감지는 스펙에 명시해야 켜진다.
+    검색형 원천은 `verify_each`가 강제된다
+  - 자격증명은 **환경변수 이름만** 스펙에 적는다. 평문이 들어가면 테스트가 파일·위치를
+    짚어 잡는다
 - 🟦 **목표선**: 기존 5종 전부 어댑터 이관 + CSV/엑셀 어댑터 추가 + 증분 커서 공통화.
 - **구현**
   - `src/collectors/base.py` — `fetch(cursor) -> list[raw]`, `normalize(raw) -> dict`, `detect_removed(ids) -> list`

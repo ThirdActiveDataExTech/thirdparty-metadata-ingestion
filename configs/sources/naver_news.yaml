@@ -1,0 +1,48 @@
+# 네이버 뉴스 검색 API — REST/JSON 어댑터 스펙 (A1)
+#
+# 이 스펙은 `src/collectors/naver_news_collector.py`(손으로 쓴 수집기)와
+# **같은 결과를 내는지**로 검증한다. 상상한 추상화가 아니라 실물에 맞춘
+# 추상화여야 하기 때문이다. tests/test_rest_json_adapter.py 참조.
+#
+# ⚠️ 자격증명은 **이름만** 적는다. 값을 적으면 커밋되는 순간 평문으로 남는다.
+
+source: naver_news
+endpoint: https://openapi.naver.com/v1/search/news.json
+
+auth:
+  headers:
+    X-Naver-Client-Id: {env: NAVER_CLIENT_ID}
+    X-Naver-Client-Secret: {env: NAVER_CLIENT_SECRET}
+
+params:
+  sort: date          # 최신순. 아래 removal_policy 주석과 직결된다
+
+paging:
+  mode: offset
+  page_param: start   # 1, 101, 201 …
+  size_param: display
+  size: 100
+  start_at: 1
+  max_pages: 3
+  max_offset: 1000    # 네이버 API 제약 — 넘기면 오류가 아니라 빈 결과가 온다
+
+items_path: items
+
+# 응답 필드 → meta_news 컬럼
+fields:
+  id: link            # 기사 URL이 고유 식별자다
+  article_url: link
+  title: title
+  description: description
+  naver_url: originallink
+  published_at: pubDate
+
+id_field: link
+
+rate_limit_sec: 0.2
+
+# ⚠️ **검색 결과 부재만으로 삭제 판정 금지.**
+# sort=date는 슬라이딩 윈도우라 몇 분 만에도 상위 N건 밖으로 밀려난다.
+# 2026-07-28 실측: 기존 기사 146건이 "부재"였는데 91건(62%)이 살아 있었다.
+# URL을 직접 재확인해 404/410이 확정될 때만 삭제한다.
+removal_policy: verify_each

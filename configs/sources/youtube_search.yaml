@@ -1,0 +1,43 @@
+# YouTube Data API v3 검색 — REST/JSON 어댑터 스펙 (A1)
+#
+# **코드를 한 줄도 고치지 않고 이 파일만 추가해 동작한다.**
+# 네이버 뉴스(configs/sources/naver_news.yaml)와 페이징 방식이 다르다 —
+# 그쪽은 offset(start=1,101,201), 이쪽은 cursor(pageToken)다.
+# 어댑터가 두 방식을 스펙에서 읽어 처리한다는 것이 A1 최소선의 증명이다.
+
+source: youtube_search
+endpoint: https://www.googleapis.com/youtube/v3/search
+
+auth:
+  params:
+    key: {env: YOUTUBE_API_KEY}   # ⚠️ 이름만. 값은 런타임에 읽는다
+
+params:
+  part: snippet
+  type: video
+
+paging:
+  mode: cursor
+  token_param: pageToken        # 다음 요청에 넣을 파라미터
+  token_path: nextPageToken     # 응답에서 토큰을 꺼낼 경로
+  size_param: maxResults
+  size: 50                      # API 상한
+  max_pages: 3
+
+items_path: items
+
+# 응답은 중첩이 깊다 — dig()가 `a.b.c`로 따라간다
+fields:
+  id: id.videoId
+  title: snippet.title
+  description: snippet.description
+  channel_title: snippet.channelTitle
+  published_at: snippet.publishedAt
+
+id_field: id.videoId
+
+rate_limit_sec: 0.2
+
+# search.list는 질의에 맞는 영상만 돌려준다 — 전수 목록이 아니다.
+# 부재를 삭제로 읽으면 안 된다(base.py 머리말의 2026-07-28 사고와 같은 모양).
+removal_policy: unsupported
