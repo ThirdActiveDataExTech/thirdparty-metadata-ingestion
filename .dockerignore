@@ -1,0 +1,14 @@
+# 빌드 컨텍스트에서 제외 — 이미지 크기와 빌드 시간에 직접 영향을 준다
+.venv/
+.git/
+.pytest_cache/
+**/__pycache__/
+*.pyc
+docs/
+tests/
+perf_eval/
+research/
+k8s/
+yolov8x.pt
+.env
+.env.example

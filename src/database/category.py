@@ -1,4 +1,9 @@
-"""dcat_dataset.category — 공통 분류 자동 부여 (임베딩 zero-shot).
+"""dcat_dataset.category — 공통 분류 **추천** (임베딩 zero-shot).
+
+⚠️ **2026-11-02부터 이 모듈은 분류를 확정하지 않는다**
+([ADR-020](../../docs/adr/020_Category_Suggestion_Not_Assignment.md)).
+추천 상위 5개를 `meta_feature(feature_name='suggested_category')`에 쌓고,
+`dcat_dataset.category`는 **사람이 등록 화면에서 고른 값**만 들어간다.
 
 와이즈넛은 정형에 **언어 모델**로 부여하고, 응답이 없거나 표 밖의 값만 나오면
 **데이터셋 요약 임베딩과 가장 가까운 중분류 1개**를 넣는다고 정의했다.
@@ -26,26 +31,29 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 from src.common import config
-from src.common.category_taxonomy import ALL_CATEGORIES, MAX_PER_DATASET, validate
+from src.common.category_taxonomy import ALL_CATEGORIES, MAX_PER_DATASET, is_valid
 from src.database.db import get_conn
 from src.embedding import embedder
 
 logger = logging.getLogger(__name__)
 
-# 이 값 미만이면 분류를 붙이지 않는다.
+# 이 값 미만이면 **추천 목록에서도** 빼낸다.
 #
-# **0.0 = 사실상 항상 부여한다.** 2026-10-29 결정: 틀린 분류가 섞이더라도 일단
-# 채워 두고, 로컬 sLLM(ADR-013 🟦 목표선)이 생기면 그쪽으로 대체한다. 분류가
-# 비어 있으면 포털 전체 필터링이 아예 성립하지 않기 때문이다.
+# **0.0 = 거르지 않는다.** 임계값 방식 자체가 성립하지 않기 때문이다 — e5 계열은
+# 유사도가 0.7~1.0에 몰려 틀린 답에도 0.82~0.85가 나온다(ADR-018과 같은 현상).
+#
+# 2026-10-29에는 "틀린 분류가 섞이더라도 일단 채워 둔다"는 결정이었다. 비워 두면
+# 포털 전체 필터링이 성립하지 않는다는 이유였다. **2026-11-02에 뒤집었다**
+# (ADR-020) — 틀린 분류로 채운 필터는 동작하는 척할 뿐이고, 사람이 등록 화면에서
+# 고르면 필터가 더 정확한 값으로 채워진다. 기존 25건은 지우지 않고
+# `category_source='auto'`로 표시해 잠정값임을 드러낸다.
 #
 # ⚠️ **현재 분류 품질은 신뢰할 수 없다.** 사람이 본 정답과 비교한 실측:
 #      현 모델 Top-1 3/8, e5-base Top-1 3/8 (모델 교체로 해결되지 않는다)
 #      '패션의류 검색 트렌드' → '문화 > 공예', 'HBM 뉴스' → '문화 > 방송·미디어'
-#    76개 라벨은 '의료 > 공중보건' 같은 짧은 명사구인데, 임베딩으로 긴 데이터셋
-#    설명과 맞추는 일 자체가 이 모델들의 학습 목표가 아니다.
-#
-# e5 계열은 유사도가 0.7~1.0에 몰려 임계값으로 거르기도 어렵다 — 틀린 답에도
-# 0.82~0.85가 나온다. 그래서 임계값 방식 자체를 포기하고 0으로 둔다.
+#      '치질 수술 안내' → '의료 > 치의학'  ("치" 한 글자에 끌렸다)
+#    더 근본적으로 분류 76종은 학술·공공 체계라 **소비재 영역이 아예 없다.**
+#    패션·화장품·식품·디지털가전은 무엇을 골라도 틀린다(ADR-020 §남은 과제).
 MIN_SIMILARITY = float(config.get_env("CATEGORY_MIN_SIMILARITY", "0.0"))
 
 _label_vecs: Optional[np.ndarray] = None
@@ -76,8 +84,19 @@ def _dataset_text(row: Dict) -> str:
     return ". ".join(p for p in parts if p)
 
 
+#: 등록 화면에 제시할 추천 개수. 3개가 아니라 5개다 — `HBM 뉴스`의 적합한 분류가
+#: 3위였고 1~5위 점수 차가 0.007에 불과해(잡음 수준) 3개로 자르면 밀려난다(ADR-020).
+SUGGEST_N = 5
+
+
 def classify(text: str, top_n: int = MAX_PER_DATASET) -> List[Tuple[str, float]]:
-    """텍스트에 가장 가까운 분류를 (값, 유사도) 목록으로. 임계값 미만은 제외."""
+    """텍스트에 가장 가까운 분류를 (값, 유사도) 목록으로. 임계값 미만은 제외.
+
+    ⚠️ **이 점수로 분류를 확정하지 않는다.** 2026-11-02 전수 확인에서 상위 5개가
+    0.042 폭에 몰리고 1위와 3위 차이가 0.0055였다 — 순서 차이가 잡음이다.
+    어휘 유사도에도 끌린다(`치질` → `의료 > 치의학`, `화장품` → `의료 > 의약품`).
+    용도는 **사람에게 보여줄 추천 목록**뿐이다([ADR-020](../../docs/adr/020_Category_Suggestion_Not_Assignment.md)).
+    """
     if not text.strip():
         return []
     labels = _get_label_vectors()
@@ -91,11 +110,20 @@ def classify(text: str, top_n: int = MAX_PER_DATASET) -> List[Tuple[str, float]]
 
 
 def sync_category(dataset_id: str) -> List[str]:
-    """데이터셋의 category를 다시 계산해 반영한다. 반환: 저장한 분류 목록.
+    """분류 **추천**을 다시 계산해 meta_feature에 저장한다. 반환: 추천 목록.
 
-    이미 값이 있어도 덮어쓴다 — 수집이 진행되면 theme과 item 구성이 바뀌어
-    분류가 달라질 수 있다. 사람이 손으로 고친 값을 보존해야 할 필요가 생기면
-    그때 '수동 지정' 플래그를 둔다.
+    **`dcat_dataset.category`를 덮어쓰지 않는다.** 그 컬럼은 사람이 확정한 값이고,
+    자동 분류는 추천까지만 한다([ADR-020](../../docs/adr/020_Category_Suggestion_Not_Assignment.md)).
+
+    이전에는 수집할 때마다 상위 3개를 확정값으로 집어넣었다. 그 결과
+    `HBM 뉴스`에 `문화 > 방송·미디어`·`문화 > 스포츠`가, `화장품`에 `의료 > 의약품`이,
+    `치질`에 `의료 > 치의학`이 붙었다. **틀린 분류는 빈 분류보다 나쁘다** —
+    조용히 틀린 채로 남아 검색·관계·통계를 전부 오염시킨다.
+
+    추천을 `meta_feature`에 두는 이유는 두 가지다.
+    1. "계산된 것"과 "확정된 것"이 테이블 수준에서 갈린다. 재계산이 자유롭다.
+    2. 사람이 추천 몇 위를 골랐는지(또는 아무것도 안 골랐는지) 비교할 수 있다 —
+       그게 분류기 개선의 유일한 근거이고, 검색 평가셋(P0-6)의 씨앗이다.
     """
     conn = get_conn()
     try:
@@ -109,16 +137,26 @@ def sync_category(dataset_id: str) -> List[str]:
         if row is None:
             return []
         names = [d[0] for d in cur.description]
-        scored = classify(_dataset_text(dict(zip(names, row))))
-        cats = validate([c for c, _ in scored])
-        if not cats:
-            logger.info("category 미부여 (텍스트 없음): %s", dataset_id)
+        scored = classify(_dataset_text(dict(zip(names, row))), top_n=SUGGEST_N)
+        valid = [(c, sc) for c, sc in scored if is_valid(c)]
+        if not valid:
+            logger.info("분류 추천 없음 (텍스트 없음): %s", dataset_id)
             return []
+
+        suggestions = [{"category": c, "score": round(sc, 4), "rank": i}
+                       for i, (c, sc) in enumerate(valid, 1)]
         cur.execute(
-            "UPDATE dcat_dataset SET category = %s, updated_at = now() WHERE dataset_id = %s",
-            (json.dumps(cats, ensure_ascii=False), dataset_id),
+            """INSERT INTO meta_feature
+                   (dataset_id, scope, target, feature_name, value, method)
+               VALUES (%s, 'dataset', '', 'suggested_category', %s, %s)
+               ON CONFLICT (dataset_id, scope, target, feature_name) DO UPDATE
+               SET value = EXCLUDED.value, method = EXCLUDED.method, computed_at = now()""",
+            (dataset_id, json.dumps(suggestions, ensure_ascii=False),
+             f"cosine/{embedder.MODEL_NAME}"),
         )
         conn.commit()
+        cats = [c for c, _ in valid]
+        logger.info("분류 추천 %d건: %s", len(cats), ", ".join(cats[:3]))
         return cats
     finally:
         conn.close()

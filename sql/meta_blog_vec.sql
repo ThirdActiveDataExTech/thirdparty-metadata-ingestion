@@ -45,6 +45,27 @@ CREATE TABLE meta_blog_vec (
 
     embedded_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
+    -- ── 키워드 검색 채널 (ADR-010, 2026-10-30 추가) ──────────────────
+    -- 벡터 점수만으로는 "결과 없음"을 판정할 수 없다(ADR-018). 키워드 채널을
+    -- 같은 청크 단위로 두고 RRF로 결합한다. 원본 테이블이 아니라 여기 붙는
+    -- 이유는 embed_text가 chunker의 정제(저작권 고지 제거 등)를 거친
+    -- 텍스트이고, 두 채널이 같은 단위로 랭크돼야 결합이 성립하기 때문이다.
+
+    token_text    TEXT,
+    -- Kiwi로 형태소 토큰화한 결과를 공백으로 이은 것. tsv의 원천이자 디버깅용.
+    -- 어절 그대로 색인하면 조사 때문에 문서빈도가 65배까지 틀어진다
+    -- (`대역폭을` 0.23% vs `대역폭` 15.04%)
+
+    tokenizer_ver TEXT,
+    -- 어느 토크나이저로 만든 토큰인지. 질의 쪽과 다르면 **오류 없이 리콜이
+    -- 0이 되므로** 검색 진입점에서 대조하고 불일치 시 중단시킨다
+
+    tsv           tsvector
+                  GENERATED ALWAYS AS (to_tsvector('simple', coalesce(token_text, ''))) STORED,
+    -- token_text에서 자동 파생 — 둘이 어긋날 수 없다.
+    -- ⚠️ array_to_tsvector()를 쓰면 위치 정보가 없어 ts_rank_cd를 못 쓴다
+
+
     PRIMARY KEY (meta_id, chunk_index)
 );
 
@@ -57,3 +78,6 @@ CREATE INDEX idx_meta_blog_vec_meta ON meta_blog_vec (meta_id);
 --    그래프가 메모리를 넘겨 느린 디스크 경로로 전환된다(실측: 276행/초 → 77행/초).
 --    1GB로 올리면 484행/초. 자세한 측정은 docs/database/vec_schema_unification_proposal.md §7.4
 -- CREATE INDEX ON meta_blog_vec USING hnsw (embedding vector_cosine_ops);
+
+-- 키워드 채널 색인. 벡터 쪽 HNSW와 달리 이 규모에서 비용이 작아 바로 건다.
+CREATE INDEX idx_meta_blog_vec_tsv ON meta_blog_vec USING gin (tsv);

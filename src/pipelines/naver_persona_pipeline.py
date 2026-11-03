@@ -152,15 +152,16 @@ def run(dataset_id: str, triggered_by: str) -> None:
 
         # category(공통 분류) 부여 — theme 집계 뒤에 해야 theme을 근거로 쓸 수 있다.
         # 공통 분류표(대분류 7 / 중분류 76) 안에서 임베딩 최근접으로 고른다.
-        # ⚠️ 품질이 낮다(Top-1 3/8). 비워 두면 포털 전체 필터링이 성립하지 않아
-        #    틀리더라도 일단 부여하고, 로컬 sLLM이 생기면 대체한다.
-        #    docs/database/column_fill_matrix.md §9
+        # 분류 **추천**만 갱신한다. `dcat_dataset.category`는 건드리지 않는다 —
+        # 사람이 등록 화면에서 고른 값이기 때문이다(ADR-020).
+        # 품질이 낮아(Top-1 3/8) 자동 확정의 근거가 없고, 분류 체계에 소비재
+        # 영역이 없어 일부 데이터셋은 무엇을 골라도 틀린다.
         try:
             cats = category.sync_category(dataset_id)
             if cats:
-                logger.info("category 부여: %s", ", ".join(cats))
+                logger.info("분류 추천 갱신: %s", ", ".join(cats[:3]))
         except Exception as e:
-            logger.warning(f"category 부여 실패, 수집 자체는 성공 처리: {e}")
+            logger.warning(f"분류 추천 실패, 수집 자체는 성공 처리: {e}")
 
         # 임베딩 동기화 — 바뀐 항목만 다시 만든다(src/embedding/sync.py).
         # 2026-10-28 편입. 그 전에는 scripts/embed_*.py 수동 실행이었고 실데이터에

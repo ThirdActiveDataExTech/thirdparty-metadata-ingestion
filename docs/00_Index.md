@@ -94,6 +94,8 @@ DB 스키마, 테이블 정의. **테이블이 추가되거나 컬럼이 변경�
 | [dataset_id URN 전환](database/dataset_id_urn_migration.md) | 와이즈넛 규약 대응 — 영향 범위·절차·체크리스트 | ✅ 전환 완료 (2026-10-28) |
 | [임베딩 청킹](database/embedding_chunking.md) | 1:1 → 1:N 전환 근거와 실측 | 완성 |
 | [검색 임계값·하이브리드 측정](database/search_threshold_probe.md) | 질의 19건 실측 — 고정 임계값 불가, 최희귀어 규칙 (ADR-018 근거) | 완성 (2026-10-30) |
+| [하이브리드 검색 운영](database/hybrid_search.md) | 두 채널·RRF 구성, 배포 순서, 토크나이저 버전 관리, 결과 읽는 법 | 완성 (2026-10-30) |
+| [메타데이터 품질 실측](database/metadata_quality_probe.md) | P0-5 — 키워드 엣지 밀도 7.3%, 발견형 시계열 1일, 수집 중단 상태 | 완성 (2026-11-02) |
 | [벡터 테이블 형식 통합 제안](database/vec_schema_unification_proposal.md) | 정형·비정형 `*_vec` 통합안 (vec_role) — 와이즈넛 협의용 | 제안 (협의 전) |
 | [컬럼 충족 매트릭스](database/column_fill_matrix.md) | 테이블별 컬럼을 무엇이 어떻게 채우는가 (사용자/API/고정값/AI) | 완성 |
 | [공통 분류(category) 분류표](database/category_taxonomy.md) | 디지털 집현전 주제 분류 7/76, 부여 규칙, 비정형 부여 방법 | 완성 (2026-10-27) |
@@ -128,7 +130,7 @@ DB 스키마, 테이블 정의. **테이블이 추가되거나 컬럼이 변경�
 | ADR-007 | [Airflow 도입 확정](adr/007_Airflow_Adoption.md) | Superseded by ADR-008 |
 | ADR-008 | [경량 자체 스케줄러 채택](adr/008_Lightweight_Scheduler.md) | Accepted |
 | ADR-009 | [AI 생성 메타데이터 공통 단일 테이블](adr/009_AI_Metadata_Single_Table.md) | Accepted |
-| ADR-010 | [한국어 전문검색 — 앱단 토큰화 + tsvector](adr/010_Korean_Fulltext_Search.md) | Accepted |
+| ADR-010 | [한국어 전문검색 — 앱단 토큰화 + tsvector](adr/010_Korean_Fulltext_Search.md) | Accepted · **구현 완료 (2026-10-30)** |
 | ADR-011 | [데이터 패키징 표준 — RO-Crate](adr/011_Packaging_ROCrate.md) | Accepted |
 | ADR-012 | [관계 그래프 저장 — 와이즈넛 합의 스키마 재사용 + NetworkX](adr/012_Graph_Storage_PostgreSQL.md) | Accepted (2026-10-27 개정) |
 | ADR-013 | [외부 LLM API 미사용 — 로컬 추론 전용](adr/013_No_External_LLM_API.md) | Accepted |
@@ -137,6 +139,8 @@ DB 스키마, 테이블 정의. **테이블이 추가되거나 컬럼이 변경�
 | ADR-016 | [임베딩 모델과 적재 규약 — multilingual-e5-base](adr/016_Embedding_Model_And_Conventions.md) | Accepted |
 | ADR-017 | [비정형 데이터셋 식별자 — URN 규칙과 external_ids](adr/017_Unstructured_Dataset_Identifier.md) | Accepted |
 | ADR-018 | [검색 적합성 판정 — 고정 유사도 임계값 금지](adr/018_Search_Relevance_Judgment.md) | Accepted |
+| ADR-019 | [데이터셋 관계용 벡터 — vec_role 확장](adr/019_Dataset_Profile_Vectors.md) | **Proposed** (와이즈넛 협의 필요) |
+| ADR-020 | [공통 분류는 자동 확정하지 않고 추천만 한다](adr/020_Category_Suggestion_Not_Assignment.md) | Accepted |
 
 ---
 
@@ -145,7 +149,10 @@ DB 스키마, 테이블 정의. **테이블이 추가되거나 컬럼이 변경�
 이 플랫폼의 데이터·인프라를 활용한 논문 주제 기획 및 초안. 프로젝트 개발 문서와는
 별도 트랙이며, 인프라/스키마가 바뀌어도 자동 동기화되지 않으니 참고 시 주의.
 
-> ⚠️ `research/`는 **로컬 전용(git 미추적, `.gitignore`)**이라 아래 파일은 클론 환경에 없을 수 있다.
+> ⚠️ `research/`·`correspondence/`와 `database/vec_schema_unification_proposal.md`는
+> **로컬 전용(git 미추적, `.gitignore`)**이라
+> 아래 파일은 클론 환경에 없을 수 있다. `correspondence/`는 협력사 송수신 문서·메일
+> 초안(협의 전 입장 포함)이라 저장소에 올리지 않는다.
 
 | 문서(로컬) | 설명 |
 |------|------|

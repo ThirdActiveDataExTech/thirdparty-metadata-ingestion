@@ -6,6 +6,11 @@
 
 청킹 이유는 src/embedding/chunker.py 참조. 요약하면 모델이 짧은 질의 ↔ 긴 문서
 비대칭 비교에서 무너지기 때문이고, 검색은 **청크 최대 유사도**로 집계한다.
+
+청크를 넣을 때 **키워드 채널의 토큰도 같이 만든다**(ADR-010). 두 채널을 한
+자리에서 쓰는 이유는 따로 돌면 색인이 조용히 어긋나기 때문이다 — 벡터는 새
+텍스트인데 토큰은 옛 텍스트인 상태가 오류 없이 성립한다. 같은 `embed_text`에서
+같은 트랜잭션에 만들면 그 상태가 생기지 않는다.
 """
 
 import json
@@ -14,6 +19,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from src.database.db import get_conn
 from src.embedding import chunker, embedder
+from src.search import tokenize
 
 logger = logging.getLogger(__name__)
 
@@ -134,15 +140,19 @@ def sync(spec_name: str, dataset_id: Optional[str] = None,
                     spec_name, pending, len(todo), len(flat))
 
         vectors = embedder.encode(flat)
+        tok_ver = tokenize.version()
+        toks = [tokenize.token_text(t) for t in flat]
 
         for pk, lo, hi in spans:
             # 청크 수가 줄어들 수 있으므로 지우고 다시 넣는다
             cur.execute(f"DELETE FROM {vec} WHERE {vkey} = %s", (pk,))
             for idx, i in enumerate(range(lo, hi)):
                 cur.execute(
-                    f"INSERT INTO {vec} ({vkey}, chunk_index, embedding, embed_text, model_name) "
-                    f"VALUES (%s, %s, %s::vector, %s, %s)",
-                    (pk, idx, str(vectors[i]), flat[i], embedder.MODEL_NAME),
+                    f"INSERT INTO {vec} ({vkey}, chunk_index, embedding, embed_text, "
+                    f"                   model_name, token_text, tokenizer_ver) "
+                    f"VALUES (%s, %s, %s::vector, %s, %s, %s, %s)",
+                    (pk, idx, str(vectors[i]), flat[i], embedder.MODEL_NAME,
+                     toks[i], tok_ver),
                 )
         conn.commit()
         return {"checked": checked, "items": len(todo),

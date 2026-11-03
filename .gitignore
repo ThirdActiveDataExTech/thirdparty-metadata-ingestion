@@ -50,3 +50,9 @@ perf_eval/video_metadata_extraction/data/obj/_oi_cache/
 
 # 연구개발계획서 등 대외비 원문 PDF(대용량) — 로컬 전용, git 추적 금지(실수 커밋 방지)
 /docs/*.pdf
+# docs/correspondence — 협력사 송수신 문서·메일 초안(협의 전 입장 포함). git 추적 제외.
+/docs/correspondence/
+
+# 협력사 제안서 — 협의 전 우리 쪽 입장이 담긴다. correspondence/ 와 같은 이유로 제외.
+# ⚠️ 자리를 옮기지 않는다 — sql/*_vec.sql 4종과 ADR 2건이 이 경로를 참조한다.
+/docs/database/vec_schema_unification_proposal.md
