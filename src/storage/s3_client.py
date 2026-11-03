@@ -6,12 +6,15 @@ architecture/05_Object_Storage_Export.md §5 결정에 따라, 이 모듈의 업
 """
 
 import json
-from typing import Any, Dict
+import logging
+from typing import Any, Dict, Optional
 
 import boto3
 from botocore.config import Config
 
 from src.common import config
+
+logger = logging.getLogger(__name__)
 
 _client = None
 
@@ -41,6 +44,23 @@ def upload_json(key: str, obj: Dict[str, Any]) -> None:
     get_s3_client().put_object(
         Bucket=config.S3_BUCKET, Key=key, Body=body.encode("utf-8"), ContentType="application/json; charset=utf-8"
     )
+
+
+def read_json(key: str) -> Optional[Dict[str, Any]]:
+    """오브젝트를 JSON으로 읽는다. 없으면 None.
+
+    **없는 것은 정상이다.** 자막은 STT가 끝난 영상에만 있고(2026-11-03 기준
+    1,554건 중 14건), 백필은 주 1회 저빈도로 돈다(ADR-015). 호출부가 없는 키를
+    예외로 받으면 수집 전체가 멈추므로 여기서 None으로 바꾼다.
+    """
+    try:
+        obj = get_s3_client().get_object(Bucket=config.S3_BUCKET, Key=key)
+        return json.loads(obj["Body"].read().decode("utf-8"))
+    except Exception as e:                       # noqa: BLE001
+        # botocore의 NoSuchKey/404는 클라이언트 설정에 따라 예외 타입이 달라
+        # 타입으로 잡지 않는다. 읽기 실패는 전부 "없음"으로 수렴시킨다.
+        logger.debug("S3 읽기 실패(없음으로 처리): %s — %s", key, e)
+        return None
 
 
 def storage_key(dataset_id: str) -> str:

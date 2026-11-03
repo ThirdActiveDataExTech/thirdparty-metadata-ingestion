@@ -37,7 +37,16 @@ def _text_dataset(row: Dict[str, Any]) -> str:
 
 
 def _text_video(row: Dict[str, Any]) -> str:
-    """meta_video: 제목 + 설명 + 태그."""
+    """meta_video: 제목 + 설명 + 태그 (+ 자막 앞 2000자).
+
+    **자막을 넣는 이유.** 영상은 제목·설명·태그가 전부 합쳐 몇백 자뿐이라
+    검색에 걸릴 구석이 거의 없었다. 정작 가장 긴 비정형 자산인 자막은
+    S3에만 있고 DB에는 `has_transcript` 플래그만 있어 **아무도 쓰지 않았다**
+    (P0-2, development/04_Implementation_Methods.md §1.2).
+
+    2000자는 뉴스·블로그 본문과 같은 상한이다. 청크 25개 안팎이 된다.
+    자막이 없으면(`transcript` 미주입) 예전과 똑같이 동작한다.
+    """
     tags = row.get("tags") or []
     if isinstance(tags, str):
         tags = json.loads(tags)
@@ -45,6 +54,8 @@ def _text_video(row: Dict[str, Any]) -> str:
     parts = [row.get("title") or "", row.get("description") or ""]
     if tag:
         parts.append(f"태그: {tag}")
+    if row.get("transcript"):
+        parts.append(row["transcript"][:2000])
     return ". ".join(p for p in parts if p)
 
 
@@ -68,12 +79,43 @@ _SPECS: Dict[str, Tuple[str, str, str, str, str, Callable]] = {
     "dcat_dataset": ("dcat_dataset", "dcat_dataset_vec", "dataset_id", "dataset_id",
                      "dataset_id, title, description, keywords", _text_dataset),
     "meta_video":   ("meta_video", "meta_video_vec", "meta_id", "id",
-                     "id, title, description, tags", _text_video),
+                     "id, title, description, tags, video_id, has_transcript, dataset_id",
+                     _text_video),
     "meta_news":    ("meta_news", "meta_news_vec", "meta_id", "id",
                      "id, title, description, content, has_content", _text_article),
     "meta_blog":    ("meta_blog", "meta_blog_vec", "meta_id", "id",
                      "id, title, description, content, has_content", _text_article),
 }
+
+
+def _attach_transcripts(rows: List[Dict[str, Any]]) -> int:
+    """자막이 있는 영상 행에 `transcript`를 채워 넣는다. 반환: 읽어온 건수.
+
+    자막은 S3(`raw/video/{dataset_id}/{video_id}.json`)에만 있고 DB에는 플래그뿐이라,
+    임베딩 텍스트를 만들기 전에 여기서 끌어온다.
+
+    **플래그가 켜진 행만 읽는다.** 2026-11-03 기준 1,554건 중 14건이고, 나머지는
+    STT 백로그다(ADR-015 저빈도 백필). 전부 읽으면 1,540번의 헛된 왕복이 된다.
+
+    읽기에 실패한 자막은 조용히 건너뛴다 — 자막이 없는 영상과 같은 상태가 될 뿐이고,
+    임베딩 전체를 멈출 이유가 없다.
+    """
+    targets = [r for r in rows if r.get("has_transcript") and r.get("video_id")]
+    if not targets:
+        return 0
+
+    from src.storage import s3_client
+
+    got = 0
+    for r in targets:
+        key = f"raw/video/{s3_client.storage_key(r['dataset_id'])}/{r['video_id']}.json"
+        doc = s3_client.read_json(key)
+        if doc and doc.get("full_text"):
+            r["transcript"] = doc["full_text"]
+            got += 1
+    if got:
+        logger.info("자막 %d건 반영 (대상 %d건)", got, len(targets))
+    return got
 
 
 def sync(spec_name: str, dataset_id: Optional[str] = None,
@@ -108,6 +150,7 @@ def sync(spec_name: str, dataset_id: Optional[str] = None,
         )
         names = [d[0] for d in cur.description]
         rows = [dict(zip(names, r)) for r in cur.fetchall()]
+        _attach_transcripts(rows)
 
         todo: List[Tuple[Any, List[str]]] = []
         skipped = 0

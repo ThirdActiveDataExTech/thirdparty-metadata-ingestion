@@ -37,6 +37,7 @@ def test_base_jsonld_formats_dates_and_defaults():
         "license": "lic",
         "accrual_periodicity": "P1D",
         "keywords": None,
+        "external_ids": ["youtube:UCabc", "naver:news"],
         "temporal_start": date(2026, 1, 1),
         "temporal_end": None,
         "status": "active",
@@ -46,8 +47,12 @@ def test_base_jsonld_formats_dates_and_defaults():
         "next_collect_at": None,
     }
     doc = jsonld_export._base_jsonld(ctx)
-    assert doc["@id"] == "mi:dataset/ds1"
+    # dataset_id 자체가 URN이라 그대로 @id가 된다(2026-10-28 전환).
+    # 이전 형식은 mi:dataset/{slug} CURIE였다.
+    assert doc["@id"] == "ds1"
+    assert doc["dct:identifier"] == "ds1"
     assert doc["dcat:keyword"] == []
+    assert doc["adms:identifier"] == ["youtube:UCabc", "naver:news"]
     assert doc["mi:temporalStart"] == "2026-01-01"
     assert doc["mi:temporalEnd"] is None
     assert doc["mi:activeMetadata"]["itemCount"] == 3
@@ -78,6 +83,7 @@ def test_build_shopping_latest_snapshot_only_includes_max_period(monkeypatch):
         "license": "lic",
         "accrual_periodicity": "P1D",
         "keywords": None,
+        "external_ids": None,
         "temporal_start": None,
         "temporal_end": None,
         "status": "active",
@@ -99,3 +105,47 @@ def test_build_shopping_latest_snapshot_only_includes_max_period(monkeypatch):
     assert len(item["mi:latestSnapshot"]) == 2
     assert all(r["period"] == "2026-01-02" for r in item["mi:latestSnapshot"])
     assert len(captured_csv["rows"]) == 4
+
+
+class TestContextContract:
+    """`_fetch_dataset_context`가 넘기는 키와 `_base_jsonld`가 읽는 키를 맞춰 둔다.
+
+    2026-10-28 와이즈넛 정렬에서 `external_ids` 컬럼이 늘었을 때, 쿼리와
+    `_base_jsonld`는 고쳐졌으나 이 파일의 픽스처가 따라가지 못해 두 테스트가
+    `KeyError`로 죽은 채 커밋됐다. 눈으로는 둘이 떨어져 있어 안 보인다.
+
+    여기서는 **컬럼이 늘거나 줄면 바로 드러나게** 양쪽을 직접 대조한다.
+    """
+
+    @staticmethod
+    def _query_keys():
+        """SELECT 절에서 돌려주는 컬럼 이름 — 코드에서 직접 읽는다."""
+        import inspect
+        import re
+
+        src = inspect.getsource(jsonld_export._fetch_dataset_context)
+        select = re.search(r"SELECT(.*?)FROM", src, re.S).group(1)
+        return {c.strip().split(".")[-1] for c in select.split(",") if c.strip()}
+
+    @staticmethod
+    def _consumed_keys():
+        """`_base_jsonld`가 ctx[...]로 꺼내 쓰는 키."""
+        import inspect
+        import re
+
+        src = inspect.getsource(jsonld_export._base_jsonld)
+        return set(re.findall(r'ctx\["([a-z_]+)"\]', src))
+
+    def test_읽는_키는_전부_쿼리가_넘긴다(self):
+        missing = self._consumed_keys() - self._query_keys()
+        assert not missing, f"쿼리가 안 넘기는 키를 읽는다: {sorted(missing)}"
+
+    def test_픽스처가_쿼리_컬럼을_전부_담는다(self):
+        # 픽스처가 뒤처지면 이 테스트가 먼저 알려준다 — KeyError로 죽기 전에
+        import inspect
+        import re
+
+        src = inspect.getsource(test_base_jsonld_formats_dates_and_defaults)
+        fixture = set(re.findall(r'"([a-z_]+)":', src))
+        missing = self._consumed_keys() - fixture
+        assert not missing, f"픽스처에 빠진 키: {sorted(missing)}"
