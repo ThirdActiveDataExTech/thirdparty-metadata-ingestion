@@ -33,14 +33,17 @@ def _fetch_dataset_context(dataset_id: str) -> Dict[str, Any]:
                    d.accrual_periodicity, d.temporal_start, d.temporal_end,
                    r.status, r.item_count, r.row_count, r.last_collected_at, r.next_collect_at
             FROM dcat_dataset d
-            JOIN data_registry r ON r.dataset_id = d.dataset_id
+            -- LEFT JOIN: 외부 포털 연합분(external_catalog)은 수집하지 않으므로
+            -- data_registry 행이 없다. INNER JOIN이면 카탈로그에 있는 데이터셋인데도
+            -- "없음"이 된다(2026-11-04). 수집 상태 칸만 비는 것이 사실 그대로다.
+            LEFT JOIN data_registry r ON r.dataset_id = d.dataset_id
             WHERE d.dataset_id = %s
             """,
             (dataset_id,),
         )
         row = cur.fetchone()
         if row is None:
-            raise ValueError(f"dcat_dataset/data_registry에 dataset_id={dataset_id!r} 없음")
+            raise ValueError(f"dcat_dataset에 dataset_id={dataset_id!r} 없음")
         columns = [c[0] for c in cur.description]
         return dict(zip(columns, row))
     finally:
@@ -458,6 +461,23 @@ _BUILDERS = {
     "shopping_insight": _build_shopping,
     "persona_insight": _build_persona,
 }
+
+
+def build_dataset_jsonld(dataset_id: str) -> Dict[str, Any]:
+    """업로드 없이 JSON-LD 문서만 만든다 — 카탈로그 API가 GET으로 부른다.
+
+    `export_dataset`은 만들고 **올린다.** GET 요청이 오브젝트 스토리지를 고치면 안 되므로
+    따로 둔다. 빌더(`_build_*`)는 전부 DB만 읽는 순수 함수다.
+
+    빌더가 없는 종류(외부 포털 연합분 `external_catalog`)는 카탈로그 기본 정보만 담는다 —
+    메타데이터만 받아 왔고 아이템이 없으니 그 이상을 적을 것이 없다.
+
+    ⚠️ 2026-11-04 전까지 API는 존재하지 않는 이 함수를 부르고 있었고, `AttributeError`를
+    "아직 없다(501)"로 바꿔 덮어 모든 데이터셋에서 실패하는 것이 드러나지 않았다.
+    """
+    ctx = _fetch_dataset_context(dataset_id)
+    builder = _BUILDERS.get(ctx["source_type"])
+    return builder(dataset_id, ctx) if builder else _base_jsonld(ctx)
 
 
 def export_dataset(dataset_id: str) -> Tuple[str, str]:

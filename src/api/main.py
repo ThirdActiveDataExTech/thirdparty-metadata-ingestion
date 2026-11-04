@@ -162,6 +162,29 @@ def list_datasets(
                         items=[_summary(r) for r in _rows(cur)])
 
 
+# ⚠️ **이 라우트는 상세(`{dataset_id:path}`)보다 먼저 선언해야 한다.** `:path`는
+# 슬래시까지 삼키므로, 상세가 먼저 있으면 `…/jsonld`를 식별자의 일부로 읽어 404를 낸다.
+# 2026-11-04 포털을 붙이다 발견했다 — 그 전까지 이 엔드포인트는 한 번도 닿은 적이 없고,
+# 상세 응답의 `downloads.jsonld`는 죽은 링크였다.
+@app.get("/v1/datasets/{dataset_id:path}/jsonld", tags=["카탈로그"])
+def get_jsonld(dataset_id: str):
+    """DCAT JSON-LD. 오브젝트 스토리지에 내보낸 것과 같은 형식이다."""
+    cur = get_conn().cursor()
+    cur.execute("SELECT 1 FROM dcat_dataset WHERE dataset_id = %s AND visibility = ANY(%s)",
+                (dataset_id, list(DEFAULT_VISIBILITY)))
+    if not cur.fetchone():
+        raise HTTPException(404, f"없는 데이터셋: {dataset_id}")
+    # `except AttributeError`로 501을 내던 분기를 걷어냈다. 그게 존재하지 않는 함수를
+    # 부르는 프로그래밍 오류를 "미지원"으로 보이게 해, 모든 요청이 실패하는데도 몰랐다.
+    try:
+        from src.storage import jsonld_export
+        doc = jsonld_export.build_dataset_jsonld(dataset_id)
+    except Exception as e:                        # noqa: BLE001
+        logger.warning("JSON-LD 생성 실패 %s: %s", dataset_id, e)
+        raise HTTPException(500, "JSON-LD를 만들지 못했다")
+    return JSONResponse(doc, media_type="application/ld+json")
+
+
 @app.get("/v1/datasets/{dataset_id:path}", response_model=schemas.DatasetDetail,
          tags=["카탈로그"])
 def get_dataset(dataset_id: str):
@@ -202,25 +225,6 @@ def get_dataset(dataset_id: str):
         downloads={"jsonld": f"/v1/datasets/{dataset_id}/jsonld"},
     )
     return detail
-
-
-@app.get("/v1/datasets/{dataset_id:path}/jsonld", tags=["카탈로그"])
-def get_jsonld(dataset_id: str):
-    """DCAT JSON-LD. 오브젝트 스토리지에 내보낸 것과 같은 형식이다."""
-    cur = get_conn().cursor()
-    cur.execute("SELECT 1 FROM dcat_dataset WHERE dataset_id = %s AND visibility = ANY(%s)",
-                (dataset_id, list(DEFAULT_VISIBILITY)))
-    if not cur.fetchone():
-        raise HTTPException(404, f"없는 데이터셋: {dataset_id}")
-    try:
-        from src.storage import jsonld_export
-        doc = jsonld_export.build_dataset_jsonld(dataset_id)
-    except AttributeError:
-        raise HTTPException(501, "이 데이터셋 종류는 JSON-LD 내보내기가 아직 없다")
-    except Exception as e:                        # noqa: BLE001
-        logger.warning("JSON-LD 생성 실패 %s: %s", dataset_id, e)
-        raise HTTPException(500, "JSON-LD를 만들지 못했다")
-    return JSONResponse(doc, media_type="application/ld+json")
 
 
 @app.get("/v1/discover", response_model=schemas.DiscoverResponse, tags=["검색"])

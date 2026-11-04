@@ -348,3 +348,235 @@ def save_label(payload: Dict[str, Any] = Body(...)):
                 return {"query_id": query_id, "doc_id": doc_id, "grade": grade,
                         "progress": _label_progress()}
     raise HTTPException(404, "그런 질의·문서 조합이 없다")
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 포털 화면용 — 카탈로그·검색·통계 (2026-11-04, portal-mockup을 실데이터에 붙이며 추가)
+#
+# 공개 `/v1/datasets`는 응답을 일부러 좁게 둔다(외부 노출 전제). 포털 화면은
+# 21개 메타데이터 전부와 공개 범위까지 보여줘야 하므로 여기 따로 둔다.
+# 이 영역도 콘솔과 같이 **권한을 보지 않는다**(총괄 관리자 시점).
+# ════════════════════════════════════════════════════════════════════════════
+
+#: 포털이 보여주는 카탈로그 컬럼. `owner_id`는 계정 식별자라 화면에 내지 않는다.
+_CATALOG_COLS = (
+    "dataset_id, title, description, publisher, source_type, source, landing_page, "
+    "access_url, subjects, language, spatial, temporal_start, temporal_end, "
+    "temporal_resolution, accrual_periodicity, keywords, license, rights, "
+    "dataset_origin, version, created_at, updated_at, item_count, category, theme, "
+    "external_ids, party, visibility"
+)
+_JSONB_COLS = ("subjects", "keywords", "category", "theme", "external_ids")
+
+#: 정렬 허용 목록. 사용자 입력을 SQL에 그대로 넣지 않는다.
+_SORTS = {
+    "created_at": "created_at DESC NULLS LAST",
+    "updated_at": "updated_at DESC NULLS LAST",
+    "title": "title ASC",
+    "item_count": "item_count DESC NULLS LAST",
+}
+
+
+def _catalog_row(r: Dict[str, Any]) -> Dict[str, Any]:
+    for c in _JSONB_COLS:
+        v = _jsonb(r.get(c))
+        r[c] = v if isinstance(v, list) else ([] if v is None else [v])
+    for c in ("temporal_start", "temporal_end"):
+        if r.get(c) is not None:
+            r[c] = r[c].isoformat()
+    return r
+
+
+@router.get("/datasets")
+def catalog(q: Optional[str] = None, source_type: Optional[str] = None,
+            publisher: Optional[str] = None, category: Optional[str] = None,
+            origin: Optional[str] = None, date_from: Optional[str] = None,
+            date_to: Optional[str] = None, ids: Optional[str] = None,
+            sort: str = Query("updated_at"), limit: int = Query(20, ge=1, le=200),
+            offset: int = Query(0, ge=0)):
+    """포털 카탈로그 — 조건 검색(키워드검색 탭)과 목록·신규데이터가 함께 쓴다.
+
+    `category`는 **대분류 접두**로 거른다(`기술` → `기술 > 전기·전자` 등). 분류표가
+    `대분류 > 중분류` 문자열이라 대분류만 고르는 화면에서 정확 일치로는 안 걸린다.
+    `ids`는 문장검색 결과를 카탈로그 정보로 채울 때 쓴다(쉼표 구분).
+    """
+    if sort not in _SORTS:
+        raise HTTPException(400, f"sort는 {sorted(_SORTS)} 중 하나다")
+    where, params = ["TRUE"], {"limit": limit, "offset": offset}
+    if q:
+        where.append("(title ILIKE %(q)s OR description ILIKE %(q)s "
+                     "OR keywords::text ILIKE %(q)s)")
+        params["q"] = f"%{q}%"
+    if source_type:
+        where.append("source_type = %(st)s"); params["st"] = source_type
+    if publisher:
+        where.append("publisher = %(pub)s"); params["pub"] = publisher
+    if origin:
+        where.append("dataset_origin = %(origin)s"); params["origin"] = origin
+    if category:
+        where.append("EXISTS (SELECT 1 FROM jsonb_array_elements_text(category) c "
+                     "WHERE c = %(cat)s OR c LIKE %(catp)s)")
+        params["cat"], params["catp"] = category, f"{category} >%"
+    if date_from:
+        where.append("created_at >= %(df)s::date"); params["df"] = date_from
+    if date_to:
+        where.append("created_at < (%(dt)s::date + 1)"); params["dt"] = date_to
+    if ids:
+        where.append("dataset_id = ANY(%(ids)s)")
+        params["ids"] = [i for i in ids.split(",") if i]
+    cond = " AND ".join(where)
+    cur = get_conn().cursor()
+    cur.execute(f"SELECT count(*) FROM dcat_dataset WHERE {cond}", params)
+    total = cur.fetchone()[0]
+    cur.execute(f"SELECT {_CATALOG_COLS} FROM dcat_dataset WHERE {cond} "
+                f"ORDER BY {_SORTS[sort]}, dataset_id LIMIT %(limit)s OFFSET %(offset)s",
+                params)
+    return {"total": total, "limit": limit, "offset": offset,
+            "items": [_catalog_row(r) for r in _rows(cur)]}
+
+
+@router.get("/facets")
+def facets():
+    """필터 선택지와 건수. 화면이 선택지를 하드코딩하면 데이터와 어긋난다 —
+    목업의 10개 분류가 실제 분류표(대분류 7)와 달랐던 것처럼."""
+    cur = get_conn().cursor()
+    out: Dict[str, Any] = {}
+    for key, col in (("source_types", "source_type"), ("publishers", "publisher"),
+                     ("sources", "source"), ("origins", "dataset_origin")):
+        cur.execute(f"SELECT {col} AS value, count(*) AS count FROM dcat_dataset "
+                    f"WHERE {col} IS NOT NULL GROUP BY 1 ORDER BY 2 DESC, 1")
+        out[key] = _rows(cur)
+    cur.execute("""SELECT split_part(c, ' > ', 1) AS value, count(DISTINCT dataset_id) AS count
+                   FROM dcat_dataset, jsonb_array_elements_text(category) c
+                   GROUP BY 1 ORDER BY 2 DESC, 1""")
+    out["categories"] = _rows(cur)
+    return out
+
+
+@router.get("/stats")
+def stats():
+    """현황 화면·메인 통계. 전부 실측이다."""
+    cur = get_conn().cursor()
+    cur.execute("""SELECT count(*) AS datasets, coalesce(sum(item_count),0) AS items,
+                          count(DISTINCT source) AS platforms
+                   FROM dcat_dataset""")
+    totals = _rows(cur)[0]
+    cur.execute("SELECT count(*) FROM dcat_dataset_relation WHERE status <> 'REJECTED'")
+    totals["relations"] = cur.fetchone()[0]
+    cur.execute("""SELECT split_part(c, ' > ', 1) AS category,
+                          count(DISTINCT d.dataset_id) AS datasets,
+                          coalesce(sum(d.item_count),0) AS items
+                   FROM dcat_dataset d, jsonb_array_elements_text(d.category) c
+                   GROUP BY 1 ORDER BY 3 DESC""")
+    by_category = _rows(cur)
+    cur.execute("""SELECT source AS platform, count(*) AS datasets,
+                          coalesce(sum(item_count),0) AS items
+                   FROM dcat_dataset GROUP BY 1 ORDER BY 3 DESC""")
+    by_platform = _rows(cur)
+    # 조회수를 기록하지 않는다 — '인기'를 만들어 낼 수 없다. 아이템이 많은 순으로
+    # 대신하고, 화면에 그렇게 적는다(없는 지표를 있는 척하지 않는다).
+    cur.execute("""SELECT dataset_id, title, source_type, item_count, created_at
+                   FROM dcat_dataset ORDER BY item_count DESC NULLS LAST LIMIT 10""")
+    top = _rows(cur)
+    return {"totals": totals, "by_category": by_category, "by_platform": by_platform,
+            "top_by_items": top, "view_tracking": False}
+
+
+#: 아이템 검색 결과를 화면에 쓸 모양으로 채운다. hybrid.py의 SQL은 평가로 튜닝한 것이라
+#: 손대지 않고, 결과 id로 원본 테이블을 한 번 더 읽는다.
+_ITEM_HYDRATE = {
+    "video": ("meta_video", "dataset_id, title, description, published_at, channel_title AS byline, "
+                            "'https://www.youtube.com/watch?v=' || video_id AS url, thumbnail_url"),
+    "news":  ("meta_news",  "dataset_id, title, description, published_at, publisher AS byline, "
+                            "article_url AS url, NULL AS thumbnail_url"),
+    "blog":  ("meta_blog",  "dataset_id, title, description, published_at, blogger_name AS byline, "
+                            "post_url AS url, NULL AS thumbnail_url"),
+}
+
+
+@router.get("/search/items")
+def search_items(q: str = Query(..., min_length=1), source: str = Query("video"),
+                 limit: int = Query(20, ge=1, le=50)):
+    """콘텐츠(아이템) 검색 — 영상·기사·글 단위. **C1이 실제로 만든 검색은 이쪽이다.**
+
+    목업은 데이터셋만 찾았다. 하이브리드 검색과 평가셋은 아이템 단위로 만들어졌고,
+    사용자가 실제로 찾는 것도 대개 "그 내용이 담긴 영상"이다.
+    """
+    if source not in _ITEM_HYDRATE:
+        raise HTTPException(400, f"source는 {sorted(_ITEM_HYDRATE)} 중 하나다")
+    from src.search import hybrid
+    hits = hybrid.search(q, source, top_k=limit)
+    table, cols = _ITEM_HYDRATE[source]
+    cur = get_conn().cursor()
+    extra: Dict[Any, Dict[str, Any]] = {}
+    if hits:
+        cur.execute(f"SELECT id, {cols} FROM {table} WHERE id = ANY(%s)",
+                    ([h["id"] for h in hits],))
+        extra = {r["id"]: r for r in _rows(cur)}
+        ds_ids = sorted({r["dataset_id"] for r in extra.values()})
+        cur.execute("SELECT dataset_id, title FROM dcat_dataset WHERE dataset_id = ANY(%s)",
+                    (ds_ids,))
+        titles = dict(cur.fetchall())
+    else:
+        titles = {}
+    ai: Dict[Any, Dict[str, Any]] = {}
+    if source == "video" and hits:
+        cur.execute("SELECT meta_id, ai_summary, ai_keywords FROM meta_video_ai "
+                    "WHERE meta_id = ANY(%s) AND status='ok'", ([h["id"] for h in hits],))
+        ai = {r["meta_id"]: r for r in _rows(cur)}
+    out = []
+    for h in hits:
+        e = extra.get(h["id"], {})
+        a = ai.get(h["id"], {})
+        out.append({
+            "id": h["id"], "title": h["title"], "byline": e.get("byline"),
+            "description": e.get("description"), "url": e.get("url"),
+            "thumbnail_url": e.get("thumbnail_url"), "published_at": e.get("published_at"),
+            "dataset_id": e.get("dataset_id"), "dataset_title": titles.get(e.get("dataset_id")),
+            "rrf": float(h["rrf"]) if h.get("rrf") is not None else None,
+            "vec_rank": h.get("vec_rank"), "kw_rank": h.get("kw_rank"),
+            "ai_summary": a.get("ai_summary"), "ai_keywords": _jsonb(a.get("ai_keywords")) or [],
+        })
+    return {"query": q, "source": source, "total": len(out), "items": out,
+            "rarest_token": hybrid.rarest_token_df(q, source)}
+
+
+@router.get("/datasets/{dataset_id:path}/status")
+def dataset_status(dataset_id: str):
+    """한 데이터셋의 수집 운영 상태와 최근 실행 이력 — 상세 화면의 '수집 정보'."""
+    cur = get_conn().cursor()
+    cur.execute("""SELECT status, item_count, row_count, last_collected_at, next_collect_at,
+                          last_error, pg_meta_table, s3_raw_prefix
+                   FROM data_registry WHERE dataset_id=%s""", (dataset_id,))
+    reg = _rows(cur)
+    cur.execute("""SELECT activity_type, triggered_by, started_at, ended_at, status,
+                          rows_affected
+                   FROM dcat_provenance WHERE dataset_id=%s
+                   ORDER BY started_at DESC LIMIT 10""", (dataset_id,))
+    return {"registry": reg[0] if reg else None, "runs": _rows(cur)}
+
+
+# ⚠️ 이 라우트는 **맨 마지막에** 둔다. `{dataset_id:path}`가 슬래시까지 삼키므로
+# 앞에 있으면 `/features`·`/items`·`/graph`·`/status`를 식별자의 일부로 읽는다.
+# main.py의 `/jsonld`가 바로 그렇게 죽어 있었다(2026-11-04).
+@router.get("/datasets/{dataset_id:path}")
+def catalog_detail(dataset_id: str):
+    """포털 상세 — 21개 메타데이터 + 공개 범위 + B1 특징 + 관계 + 수집 상태."""
+    cur = get_conn().cursor()
+    cur.execute(f"SELECT {_CATALOG_COLS} FROM dcat_dataset WHERE dataset_id=%s", (dataset_id,))
+    rows = _rows(cur)
+    if not rows:
+        raise HTTPException(404, f"없는 데이터셋: {dataset_id}")
+    out = _catalog_row(rows[0])
+    cur.execute("SELECT feature_name, value FROM meta_feature "
+                "WHERE dataset_id=%s AND scope='dataset'", (dataset_id,))
+    out["features"] = {n: _jsonb(v) for n, v in cur.fetchall()}
+    cur.execute("""SELECT r.id, r.target_dataset_id AS dataset_id, t.title, t.source_type,
+                          r.relation_type, r.relation_label, r.score, r.status, r.evidence
+                   FROM dcat_dataset_relation r
+                   JOIN dcat_dataset t ON t.dataset_id = r.target_dataset_id
+                   WHERE r.source_dataset_id=%s AND r.status <> 'REJECTED'
+                   ORDER BY r.relation_type, r.score DESC""", (dataset_id,))
+    out["relations"] = [{**r, "score": float(r["score"]), "evidence": _jsonb(r["evidence"])}
+                        for r in _rows(cur)]
+    return out
