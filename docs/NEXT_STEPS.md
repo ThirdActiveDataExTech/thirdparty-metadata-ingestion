@@ -786,8 +786,22 @@
 - **완료 기준**: 타 환경에서 **체크섬·서명 검증 통과**, manifest만으로 출처 추적 가능
 - **의존**: B1(기술통계) — 없어도 최소선 가능
 
-#### C6. 탐색 확장·통합 + OpenAPI 〔3차 · 모비젠〕
-- 🟩 **최소선**: **내부 카탈로그 OpenAPI**(검색·상세·원본/JSON-LD 다운로드) + 외부 포털 **1곳(CKAN)** 메타 수집해 내부 검색에 합류.
+#### C6. 탐색 확장·통합 + OpenAPI 〔3차 · 모비젠〕 — 🟩 **최소선 완료 (2026-11-04)**
+- 🟩 **최소선**: **내부 카탈로그 OpenAPI** + 외부 포털 **1곳(CKAN)** 메타 수집해 내부 검색에 합류 ✅
+  - `src/api/{main,schemas}.py`, `src/federation/ckan.py`,
+    `scripts/harvest_external.py`, [docs/api/02_Catalog_API.md](api/02_Catalog_API.md). 테스트 22건
+  - `GET /v1/datasets` · `/v1/datasets/{id}` · `/v1/datasets/{id}/jsonld` · `/v1/search` · `/healthz`
+  - **API가 B1·B2·A2를 한자리에 모은다** — 상세 응답에 특징·관계·내려받기 경로가,
+    검색 응답에 두 채널 순위와 추출 요약이 실린다
+  - **연합 검색 확인**: 캐나다 공개데이터 포털에서 30건을 들여와 같은 색인에 합쳤다.
+    `"health care system"`은 외부가, `"암 건강 정보"`는 내부가 올라온다
+  - ⚠️ **읽기 전용이다.** 등록·수정은 D1의 일이고 인증이 먼저다
+  - ⚠️ **공개 범위를 아직 못 좁혔다.** 모든 데이터셋이 `ORG`라 `PUBLIC`만
+    내보내면 빈 응답이 된다. **이대로 외부에 열면 조직 내부용 데이터가 나간다** —
+    D1에서 반드시 좁혀야 한다
+  - 실측에서 걸린 것 둘: 포털 **429를 하드 실패로 처리**해 0건이 됐던 것(재시도 대상으로
+    교정), `language`/`spatial` 기본값이 `'ko'`/`'KR'`이라 **캐나다 데이터가 한국어·한국
+    소재로 기록될 뻔한 것**(포털 값 우선 + 소재는 NULL)
 - 🟦 **목표선**: SDMX 등 다중 포털 연합 검색, 인증·쿼터, 사용 통계.
 - **구현**
   - `src/api/main.py` (FastAPI) — `GET /v1/datasets`, `/v1/datasets/{id}`, `/v1/search`, `/v1/datasets/{id}/download`

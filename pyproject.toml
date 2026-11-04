@@ -18,6 +18,8 @@ dependencies = [
     # ⚠️ 0.24.0부터 Apache-2.0, 0.23.2 이하는 LGPL. 하한을 내리지 말 것.
     "kiwipiepy>=0.24.0",
     "PyYAML",                   # 수집 어댑터 소스 스펙(configs/sources/*.yaml) — A1
+    "fastapi",                  # 카탈로그 OpenAPI — C6
+    "uvicorn[standard]",        # ASGI 서버
 ]
 
 [project.optional-dependencies]
