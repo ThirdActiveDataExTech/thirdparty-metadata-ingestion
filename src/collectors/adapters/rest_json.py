@@ -38,7 +38,9 @@ Secret만, 코드·문서 평문 금지").
 `max_pages`, 원천이 정한 상한(`max_offset`). 하나라도 빠지면 무한 루프가 된다.
 """
 
+import html
 import logging
+import re
 import time
 from typing import Any, Dict, Iterator, List, Optional
 
@@ -54,6 +56,19 @@ logger = logging.getLogger(__name__)
 DEFAULT_TIMEOUT = 15
 DEFAULT_PAGE_SIZE = 100
 DEFAULT_MAX_PAGES = 10
+
+
+#: 검색 API는 질의어를 강조해 돌려주는 경우가 많다 — 네이버는 `<b>HBM</b>`,
+#: 엔티티도 섞어 보낸다(`&quot;`). 그대로 저장하면 제목에 태그가 박히고,
+#: 토큰화·임베딩·요약까지 오염된다. 2026-11-04에 실제로 28건이 그렇게 들어갔다.
+_TAG = re.compile(r"<[^>]+>")
+
+
+def clean_text(value: Any) -> Any:
+    """문자열이면 태그를 벗기고 HTML 엔티티를 푼다. 아니면 그대로."""
+    if not isinstance(value, str):
+        return value
+    return html.unescape(_TAG.sub("", value)).strip()
 
 
 def dig(obj: Any, path: str) -> Any:
@@ -112,6 +127,9 @@ class RestJsonCollector(BaseCollector):
         self._id_field: Optional[str] = spec.get("id_field")
         self._items_path: str = spec.get("items_path", "items")
         self._rate_limit: float = float(spec.get("rate_limit_sec", 0.2))
+        # 기본으로 켠다. 검색 API의 강조 태그는 예외가 아니라 기본값에 가깝고,
+        # 꺼야 하는 쪽(마크업이 의미를 갖는 원천)이 스펙에 명시하는 편이 안전하다
+        self._clean_text: bool = bool(spec.get("clean_text", True))
 
     # ── 생성 ────────────────────────────────────────────────────────
     @classmethod
@@ -220,6 +238,8 @@ class RestJsonCollector(BaseCollector):
         if not self._fields:
             return dict(raw)
         out = {target: dig(raw, src) for target, src in self._fields.items()}
+        if self._clean_text:
+            out = {k: clean_text(v) for k, v in out.items()}
         if self._id_field and out.get("id") is None:
             out["id"] = dig(raw, self._id_field)
         return out
