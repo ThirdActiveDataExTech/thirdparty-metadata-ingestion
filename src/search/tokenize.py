@@ -97,20 +97,52 @@ def version() -> str:
     return _ver
 
 
-def tokens(text: str) -> List[str]:
+#: 사람이 읽는 키워드 목록에 쓸 품사 — **명사류만**.
+#:
+#: 검색 색인에는 동사·형용사 어간이 필요하다(`올랐다`↔`오르는`을 잇는다).
+#: 그러나 키워드로 늘어놓으면 `짧`·`보`·`느끼` 같은 어간이 그대로 보여 읽히지 않는다.
+#: 2026-11-04 A2 실측에서 드러났다 — 이 어간들은 **df가 낮아서**(같 6.9%, 느끼 4.2%)
+#: IDF가 오히려 밀어 올린다. 문서빈도 상한으로는 못 잡고 품사로 걸러야 한다.
+NOUNS = frozenset({"NNG", "NNP", "SL", "SH", "SN"})
+
+#: 영어 기능어. Kiwi는 영어를 전부 `SL`(외국어)로 태깅해서 품사로는 안 걸러진다.
+#: 2026-11-04 A2 실측: `SK hynix Showcases Full-Stack AI Memory` → `the at its`가
+#: 상위 키워드에 들었다. 한국어 코퍼스라 영어 기능어의 df가 낮아 IDF가 밀어 올린다.
+#:
+#: **목록을 길게 만들지 않는다.** 의미가 전혀 없는 것만 넣는다 — 내용어를 섞으면
+#: 도메인에 따라 멀쩡한 말이 사라진다(`at`은 빼도 되지만 `ai`는 안 된다).
+#: 한국어 쪽은 품사로 걸러지므로 여기 넣지 않는다.
+STOPWORDS = frozenset({
+    "the", "a", "an", "and", "or", "but", "of", "to", "in", "on", "at", "by",
+    "for", "with", "from", "as", "is", "are", "was", "were", "be", "been",
+    "it", "its", "this", "that", "these", "those", "we", "our", "you", "your",
+    "he", "she", "they", "their", "i", "my", "me", "us", "them",
+})
+
+
+def tokens(text: str, keep=None) -> List[str]:
     """형태소로 끊어 내용어만 돌려준다. 소문자로 맞춘다.
 
     `simple` 설정 tsvector는 스테밍도 소문자화도 하지 않으므로(`array_to_tsvector`를
     쓰지 않는 이유와 같은 맥락), 여기서 직접 낮춰야 `HBM`과 `hbm`이 만난다.
+
+    `keep`으로 품사를 좁힐 수 있다. 기본은 내용어 전부(`_KEEP`)이고,
+    사람이 읽을 키워드에는 `NOUNS`를 준다.
     """
     if not text or not text.strip():
         return []
+    allowed = keep or _KEEP
     kiwi = _init()
     out: List[str] = []
     for t in kiwi.tokenize(text):
-        if t.tag not in _KEEP:
+        if t.tag not in allowed:
             continue
         form = _ALLOWED.sub("", t.form.lower())
+        # 불용어는 **명사류만 뽑을 때**(사람이 읽는 키워드) 거른다.
+        # 검색 색인에서는 거르지 않는다 — 질의에 `the`가 들어와도 문서의
+        # `the`와 만나야 하고, 거기서는 해롭지 않다
+        if keep is not None and form in STOPWORDS:
+            continue
         if form:
             out.append(form)
     return out

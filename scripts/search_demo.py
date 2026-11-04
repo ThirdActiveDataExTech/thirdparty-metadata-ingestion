@@ -59,6 +59,25 @@ def search_vector_only(query: str, source: str, top_k: int):
     return rows
 
 
+def _ai_meta(source: str, ids) -> dict:
+    """검색 결과에 붙일 AI 메타(A2). 없으면 빈 dict — 검색은 그대로 동작한다.
+
+    A2 완료 기준의 "검색 결과에 노출"이 이것이다. 색인에는 넣지 않는다 —
+    생성물을 색인에 넣으면 원문이 아닌 것으로 검색되고, 나중에 생성 방식을
+    바꿀 때 무엇이 원문이고 무엇이 파생인지 구분이 안 된다.
+    """
+    if source != "video" or not ids:
+        return {}
+    try:
+        cur = get_conn().cursor()
+        cur.execute(
+            "SELECT meta_id, ai_summary, ai_keywords FROM meta_video_ai "
+            "WHERE meta_id = ANY(%s) AND status = 'ok'", (list(ids),))
+        return {r[0]: {"summary": r[1], "keywords": r[2] or []} for r in cur.fetchall()}
+    except Exception:                             # noqa: BLE001
+        return {}
+
+
 def _fmt_channel(row) -> str:
     """어느 채널이 이 문서를 올렸는지 한눈에 보이게 한다."""
     v = f"V{row['vec_rank']}" if row.get("vec_rank") else "V-"
@@ -76,6 +95,8 @@ def main():
     ap.add_argument("--rrf-k", type=int, default=hybrid.DEFAULT_RRF_K,
                     help=f"RRF 상수 (기본 {hybrid.DEFAULT_RRF_K}). "
                          "ADR-010이 10/20/30/60 스윕을 평가 항목으로 정해 뒀다")
+    ap.add_argument("--ai", action="store_true",
+                    help="AI 생성 요약·키워드를 같이 보여준다 (A2)")
     ap.add_argument("--why", action="store_true",
                     help="질의 토큰·문서빈도·최희귀어 판정을 같이 보여준다")
     args = ap.parse_args()
@@ -105,10 +126,18 @@ def main():
         print("\n  결과 없음 — 수집·임베딩과 scripts/backfill_tokens.py 실행 여부를 확인하세요.\n")
         return 0
 
+    ai = _ai_meta(args.source, [r["id"] for r in rows]) if args.ai else {}
+
     print(f"\n  {'#':>2}  {'순위(V=벡터 K=키워드)':<14} {'RRF':<9} 제목")
     for i, r in enumerate(rows, 1):
         print(f"  {i:>2}. {_fmt_channel(r):<14} {r['rrf']}  {r['title']}")
         print(f"      {'':<14} {'':<9}  {r['subtitle']}")
+        meta = ai.get(r["id"])
+        if meta:
+            if meta.get("keywords"):
+                print(f"      {'':<14} {'':<9}  🏷  {', '.join(meta['keywords'][:8])}")
+            if meta.get("summary"):
+                print(f"      {'':<14} {'':<9}  📝 {meta['summary'][:110]}")
     print()
     return 0
 
