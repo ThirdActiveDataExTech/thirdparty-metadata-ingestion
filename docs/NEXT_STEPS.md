@@ -516,7 +516,9 @@
 | ~~P0-5~~ | **메타데이터 품질 실측** — 완료 (2026-11-02, [database/metadata_quality_probe.md](database/metadata_quality_probe.md)) | ✅ 측정 끝 | 아래 P0-7 발견 |
 | **P0-7** | **수집이 멈춰 있다.** 18개 데이터셋이 `next_collect_at`을 2~3일 경과. K8s에 CronJob이 없고 Airflow 미도입이라 사람이 직접 쳐야만 돈다. 그 결과 발견형 3종(video/news/blog)의 `active_meta_*` 관측일이 **1일**뿐이라 **B2 시계열 공변동이 정의되지 않는다** | 🟡 도구 작성됨 | B2 · C4 · 모든 시계열 분석 |
 | | → [scripts/scheduler_tick.py](../scripts/scheduler_tick.py) + [k8s/cronjobs/collector-tick-cronjob.yaml](../k8s/cronjobs/collector-tick-cronjob.yaml) 작성 완료. **아직 아무것도 돌리지 않았다** — 마이그레이션 적용이 선행이고(수집이 `token_text`를 쓴다), CronJob은 P0-3 이미지 빌드가 선행이다 | | |
-| **P0-6** | **검색 평가셋이 없다.** 질의–정답문서 쌍이 없어 C1 하이브리드의 개선을 수치로 못 낸다. RRF `k` 스윕·필드 가중치·재순위 모두 이것 없이는 튜닝이 추측이 된다 | 🔴 측정 불가 | C1 완료기준·C2·C6 |
+| **P0-6** | **검색 평가셋** — 하네스·known-item 라벨 완료 (2026-11-04). **topical 라벨은 사람 판정 대기** | 🟡 절반 | C1 완료기준·C2·C6 |
+| | → `src/eval/`, `scripts/eval_search.py`, `eval/search/video/`. 질의 50건(known-item 30 자동 + topical 20 설계). 사람 판정 후보 **393건** 풀링 완료 | | |
+| | → **즉시 성과**: RRF `k` 스윕의 답이 **"k로는 안 된다"**로 나왔다. k를 60→30→20→10으로 낮춰도 `recall@1`이 전부 **0.7333**으로 동일하다. k는 깊이만 바꾸고 1위를 뺏기는 것은 못 막는다 | | |
 
 > P0-4는 2026-10-27 **사용 불가로 결정**되어 ADR-013으로 대체 경로가 확정되었다.
 > P0-1·P0-2는 **새 기능이 아니라 이미 만든 것을 제대로 동작시키는 일**이라 우선순위가 높다.

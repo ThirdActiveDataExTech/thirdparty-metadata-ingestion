@@ -1,0 +1,304 @@
+{
+  "queries": [
+    {
+      "query_id": "ki000",
+      "query": "인공지능이 만능처럼 느껴지는 시대,",
+      "kind": "known_item",
+      "source_doc": "29212"
+    },
+    {
+      "query_id": "ki001",
+      "query": "갑상선암과 결절, 초음파 검사로 알 수 있을까?",
+      "kind": "known_item",
+      "source_doc": "30167"
+    },
+    {
+      "query_id": "ki002",
+      "query": "[하닉어사전 양산기술-P&T편]: 겉멋이 아니라 성능이다",
+      "kind": "known_item",
+      "source_doc": "29377"
+    },
+    {
+      "query_id": "ki003",
+      "query": "암 환자 '신경계 변화' 증상은 어떻게 관리 하죠",
+      "kind": "known_item",
+      "source_doc": "30115"
+    },
+    {
+      "query_id": "ki004",
+      "query": "10:17 변실금의 예방법",
+      "kind": "known_item",
+      "source_doc": "29067"
+    },
+    {
+      "query_id": "ki005",
+      "query": "SK하이닉스가 이끌 반도체의 미래를 만나다",
+      "kind": "known_item",
+      "source_doc": "29536"
+    },
+    {
+      "query_id": "ki006",
+      "query": "국소마취로 항문수술이 가능한가요",
+      "kind": "known_item",
+      "source_doc": "30446"
+    },
+    {
+      "query_id": "ki007",
+      "query": "💊 약물치료로 조절되는 경우도 있지만,",
+      "kind": "known_item",
+      "source_doc": "29053"
+    },
+    {
+      "query_id": "ki008",
+      "query": "DRAM : 방금 한 말도 까먹는 남친",
+      "kind": "known_item",
+      "source_doc": "29138"
+    },
+    {
+      "query_id": "ki009",
+      "query": "“항문경 검사로 직장도 볼 수 있나요?”",
+      "kind": "known_item",
+      "source_doc": "30178"
+    },
+    {
+      "query_id": "ki010",
+      "query": "Wafer Manufacturing",
+      "kind": "known_item",
+      "source_doc": "29331"
+    },
+    {
+      "query_id": "ki011",
+      "query": "폐암 수술 전에 준비하거나 검사해야 할 것이 있을까요",
+      "kind": "known_item",
+      "source_doc": "29797"
+    },
+    {
+      "query_id": "ki012",
+      "query": "[제14회 암 예방의 날 기념식]",
+      "kind": "known_item",
+      "source_doc": "29895"
+    },
+    {
+      "query_id": "ki013",
+      "query": "🔹 변실금 환자의 약 80%가",
+      "kind": "known_item",
+      "source_doc": "29051"
+    },
+    {
+      "query_id": "ki014",
+      "query": "03:26 병원을 찾는 환자분들께 전하고 싶은 말",
+      "kind": "known_item",
+      "source_doc": "30328"
+    },
+    {
+      "query_id": "ki015",
+      "query": "- 본 영상의 음원은 AI로 제작되었습니다",
+      "kind": "known_item",
+      "source_doc": "29210"
+    },
+    {
+      "query_id": "ki016",
+      "query": "[반도체 hy-스쿨] EP4",
+      "kind": "known_item",
+      "source_doc": "29587"
+    },
+    {
+      "query_id": "ki017",
+      "query": "윤호TL이 아내에게 강의했던 내용 중",
+      "kind": "known_item",
+      "source_doc": "29419"
+    },
+    {
+      "query_id": "ki018",
+      "query": "[암 치료 후 식생활 3편] 유기농 식품이 암 재발 방지에 도움이?",
+      "kind": "known_item",
+      "source_doc": "29818"
+    },
+    {
+      "query_id": "ki019",
+      "query": "다양한 음식을 맛보고 찐 리뷰를 들어보자!",
+      "kind": "known_item",
+      "source_doc": "29634"
+    },
+    {
+      "query_id": "ki020",
+      "query": "‘소아청소년암 진료체계 구축’ 사업과 권역별 거점병원을 소개해 드립니다.🩺",
+      "kind": "known_item",
+      "source_doc": "29794"
+    },
+    {
+      "query_id": "ki021",
+      "query": "“수술 꼭 해야 하나요?”입니다",
+      "kind": "known_item",
+      "source_doc": "30151"
+    },
+    {
+      "query_id": "ki022",
+      "query": "2025년 현재, AI는 소프트웨어 개발 방식 자체를 근본적으로 재편하고 있습니다",
+      "kind": "known_item",
+      "source_doc": "29362"
+    },
+    {
+      "query_id": "ki023",
+      "query": "- 국립암센터 간호사 최찬영 선생님",
+      "kind": "known_item",
+      "source_doc": "29800"
+    },
+    {
+      "query_id": "ki024",
+      "query": "[대항병원] 쿠키건강TV 데일리건강_위염의 원인과 치료_대항병원 김완중",
+      "kind": "known_item",
+      "source_doc": "29105"
+    },
+    {
+      "query_id": "ki025",
+      "query": "[반도체 hy-스쿨2] 1교시",
+      "kind": "known_item",
+      "source_doc": "29555"
+    },
+    {
+      "query_id": "ki026",
+      "query": "치질인 줄 알았는데 검사 결과는 암이었습니다!ㅣ서울아산항외과 ㅣ청주항문외과",
+      "kind": "known_item",
+      "source_doc": "30337"
+    },
+    {
+      "query_id": "ki027",
+      "query": "또한 상대적으로 빈도가 낮지만 유해균이 높은 환자도 있다고 하는데요",
+      "kind": "known_item",
+      "source_doc": "30264"
+    },
+    {
+      "query_id": "ki028",
+      "query": "암을 유발하는 음식들은 무엇?_너너블리(유튜브 크리에이터)",
+      "kind": "known_item",
+      "source_doc": "29909"
+    },
+    {
+      "query_id": "ki029",
+      "query": "[AI & Culture] 착한 AI에 대하여 (feat",
+      "kind": "known_item",
+      "source_doc": "29532"
+    },
+    {
+      "query_id": "tp000",
+      "query": "치질 수술 후 회복 기간",
+      "kind": "topical",
+      "difficulty": "direct"
+    },
+    {
+      "query_id": "tp001",
+      "query": "변실금 원인과 치료",
+      "kind": "topical",
+      "difficulty": "direct"
+    },
+    {
+      "query_id": "tp002",
+      "query": "대장내시경 전날 준비",
+      "kind": "topical",
+      "difficulty": "direct"
+    },
+    {
+      "query_id": "tp003",
+      "query": "HBM 고대역폭 메모리란",
+      "kind": "topical",
+      "difficulty": "direct"
+    },
+    {
+      "query_id": "tp004",
+      "query": "항암치료 부작용 관리",
+      "kind": "topical",
+      "difficulty": "direct"
+    },
+    {
+      "query_id": "tp005",
+      "query": "치핵 비수술 치료 방법",
+      "kind": "topical",
+      "difficulty": "vocab_gap"
+    },
+    {
+      "query_id": "tp006",
+      "query": "디램 가격 전망",
+      "kind": "topical",
+      "difficulty": "vocab_gap"
+    },
+    {
+      "query_id": "tp007",
+      "query": "뇌종양 진단 방법",
+      "kind": "topical",
+      "difficulty": "vocab_gap"
+    },
+    {
+      "query_id": "tp008",
+      "query": "변 볼 때 피가 나요",
+      "kind": "topical",
+      "difficulty": "colloquial"
+    },
+    {
+      "query_id": "tp009",
+      "query": "항문이 가렵고 따가울 때",
+      "kind": "topical",
+      "difficulty": "colloquial"
+    },
+    {
+      "query_id": "tp010",
+      "query": "수술 안 하고 낫는 방법 없나요",
+      "kind": "topical",
+      "difficulty": "colloquial"
+    },
+    {
+      "query_id": "tp011",
+      "query": "암에 걸리면 뭘 조심해야 하나요",
+      "kind": "topical",
+      "difficulty": "colloquial"
+    },
+    {
+      "query_id": "tp012",
+      "query": "SK하이닉스 채용",
+      "kind": "topical",
+      "difficulty": "entity"
+    },
+    {
+      "query_id": "tp013",
+      "query": "국가암정보센터",
+      "kind": "topical",
+      "difficulty": "entity"
+    },
+    {
+      "query_id": "tp014",
+      "query": "서울아산항외과 오세헌",
+      "kind": "topical",
+      "difficulty": "entity"
+    },
+    {
+      "query_id": "tp015",
+      "query": "대장암 검진 주기",
+      "kind": "topical",
+      "difficulty": "cross"
+    },
+    {
+      "query_id": "tp016",
+      "query": "반도체 공정 미세화",
+      "kind": "topical",
+      "difficulty": "cross"
+    },
+    {
+      "query_id": "tp017",
+      "query": "전기차 배터리 충전 방법",
+      "kind": "topical",
+      "difficulty": "no_answer"
+    },
+    {
+      "query_id": "tp018",
+      "query": "제주도 여행 코스 추천",
+      "kind": "topical",
+      "difficulty": "no_answer"
+    },
+    {
+      "query_id": "tp019",
+      "query": "파이썬 프로그래밍 입문",
+      "kind": "topical",
+      "difficulty": "no_answer"
+    }
+  ]
+}
