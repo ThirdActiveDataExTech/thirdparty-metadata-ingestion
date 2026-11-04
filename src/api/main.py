@@ -203,6 +203,42 @@ def get_jsonld(dataset_id: str):
     return JSONResponse(doc, media_type="application/ld+json")
 
 
+@app.get("/v1/discover", response_model=schemas.DiscoverResponse, tags=["검색"])
+def discover(
+    purpose: str = Query(..., min_length=2,
+                         description="하려는 일을 자연어로. 예: 암 환자 교육 자료를 만들고 싶다"),
+    limit: int = Query(10, ge=1, le=30),
+    seeds: int = Query(5, ge=1, le=20, description="씨앗으로 쓸 검색 결과 수"),
+):
+    """활용 목적으로 **데이터셋 묶음**을 만든다 (C2).
+
+    검색은 "맞는 것 하나하나"를 준다. 그런데 사람이 데이터를 찾는 이유는 대개
+    무언가를 하기 위해서이고, 그러려면 **함께 쓸 것들**이 필요하다.
+
+        목적 → 카탈로그 검색(C1) → 관계 1-hop 확장(B3) → 묶음
+
+    각 항목에 **어떻게 도달했는지**가 `paths`로 실린다. 직접 검색됐는지,
+    무엇을 통해 어떤 관계로 왔는지 — 근거가 없으면 묶음을 믿을 수도,
+    틀린 것을 걸러낼 수도 없다.
+    """
+    from src.search import discovery as disc
+
+    r = disc.discover(purpose, top_k=limit, seeds=seeds)
+    return schemas.DiscoverResponse(
+        purpose=r["purpose"], seeds=r["seeds"], note=r.get("note"),
+        bundle=[
+            schemas.BundleItem(
+                dataset_id=b["dataset_id"], title=b["title"], score=b["score"],
+                reached_by=b["reached_by"], why=disc.explain(b),
+                paths=[schemas.BundlePath(**{k: v for k, v in p.items()
+                                             if k in schemas.BundlePath.model_fields})
+                       for p in b["paths"]],
+            )
+            for b in r["bundle"]
+        ],
+    )
+
+
 @app.get("/v1/search", response_model=schemas.SearchResponse, tags=["검색"])
 def search(
     q: str = Query(..., min_length=1, description="자연어 질의"),

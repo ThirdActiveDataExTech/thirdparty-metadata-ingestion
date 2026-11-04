@@ -75,3 +75,31 @@ class Page(BaseModel):
     limit: int
     offset: int
     items: List[DatasetSummary] = []
+
+
+class BundlePath(BaseModel):
+    """한 데이터셋에 **어떻게 도달했는지**. 근거가 없으면 묶음을 믿을 수 없다."""
+
+    how: str = Field(..., description="search(직접 검색) · relation(관계 확장)")
+    search_rank: Optional[int] = None
+    via: Optional[str] = Field(None, description="어느 데이터셋을 통해 왔는가")
+    via_title: Optional[str] = None
+    relation_type: Optional[str] = None
+    relation_score: Optional[float] = None
+    shared_keywords: List[str] = []
+
+
+class BundleItem(BaseModel):
+    dataset_id: str
+    title: str
+    score: float
+    reached_by: str = Field(..., description="search · relation · both")
+    why: str = Field(..., description="사람이 읽을 한 줄 설명")
+    paths: List[BundlePath] = []
+
+
+class DiscoverResponse(BaseModel):
+    purpose: str
+    seeds: List[Dict[str, Any]] = Field([], description="검색으로 찾은 씨앗 데이터셋")
+    bundle: List[BundleItem] = []
+    note: Optional[str] = None
