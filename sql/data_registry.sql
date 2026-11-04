@@ -93,6 +93,28 @@ CREATE TABLE data_registry (
     -- 수집 데이터 실제 종료일 (수집 후 자동 갱신, NULL=진행 중)
     -- dcat_dataset.temporal_end 와 동기화
 
+    -- ── 원천 스키마 드리프트 (C4, 2026-11-04 추가) ────────────
+    -- 어댑터 스펙(configs/sources/*.yaml)은 원천 응답의 경로를 문자열로 박아 둔다.
+    -- 원천이 그 경로를 옮기거나 없애면 dig()가 None을 주고 해당 컬럼이
+    -- **오류 없이 NULL**로 들어간다 — 수집은 '성공'으로 끝난다.
+    -- 그래서 수집할 때마다 응답의 모양을 재서 지난번과 비교한다.
+    -- 규격: src/pipeline_engine/drift.py
+
+    source_schema_fingerprint TEXT,
+    -- 핵심 필드 경로 집합의 SHA-256(hex). 달라지면 원천 모양이 바뀐 것이다
+
+    source_schema_fields      JSONB,
+    -- 그 지문의 원재료 — 정렬된 경로 배열. 지문만으로는 '바뀌었다'까지만 알고
+    -- **무엇이** 바뀌었는지는 모른다. 차이를 짚으려면 직전 집합이 있어야 한다
+    -- 예) ["description","link","originallink","pubDate","title"]
+
+    source_schema_checked_at  TIMESTAMPTZ,
+    -- 마지막으로 **검사한** 시각. 변경이 없어도 갱신된다.
+    -- 멈춰 있으면 감지기 자체가 안 도는 것이다(조용한 실패 방지)
+
+    source_schema_changed_at  TIMESTAMPTZ,
+    -- 마지막으로 **달라진** 시각. 변경이 있을 때만 갱신된다
+
     -- ── 관리 ──────────────────────────────────────────────────
     registered_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
     -- 레지스트리 최초 등록 일시
@@ -105,3 +127,8 @@ CREATE TABLE data_registry (
 CREATE INDEX idx_data_registry_status   ON data_registry(status);
 CREATE INDEX idx_data_registry_next     ON data_registry(next_collect_at);
 CREATE INDEX idx_data_registry_updated  ON data_registry(updated_at DESC);
+
+-- "최근 원천이 바뀐 데이터셋" 운영 조회용. 한 번도 안 바뀐 행(NULL)은 색인에서 뺀다
+CREATE INDEX idx_data_registry_schema_changed
+    ON data_registry (source_schema_changed_at DESC)
+    WHERE source_schema_changed_at IS NOT NULL;

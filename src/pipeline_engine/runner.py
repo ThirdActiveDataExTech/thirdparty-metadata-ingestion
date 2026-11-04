@@ -33,7 +33,7 @@ from typing import Any, Dict, List, Optional
 import yaml
 
 from src.collectors.adapters.rest_json import RestJsonCollector
-from src.pipeline_engine import steps
+from src.pipeline_engine import drift, steps
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +43,11 @@ PIPELINE_ROOT = Path("configs/pipelines")
 #: normalize 없이 store하면 원천 모양이 그대로 들어가고, store 없이 postprocess하면
 #: 빈 데이터셋을 임베딩한다.
 STEP_ORDER = ["collect", "normalize", "store", "postprocess"]
+
+#: 원천 스키마 드리프트 감지를 단계로 만들지 않는다. 데이터를 옮기는 일이 아니라
+#: **수집 결과를 재는 일**이고, 단계로 두면 스펙이 그걸 끌 수 있게 된다 —
+#: 끌 수 있는 감지기는 결국 꺼져 있다. 스펙의 `drift: false`로만 뺀다.
+DRIFT_DEFAULT = True
 
 
 class PipelineError(RuntimeError):
@@ -93,6 +98,8 @@ def run(name_or_path: str, limit: Optional[int] = None,
                 raws = steps.collect(adapter, query=spec.get("query"),
                                      limit=limit or spec.get("limit"))
                 result["steps"][step] = {"count": len(raws)}
+                if spec.get("drift", DRIFT_DEFAULT):
+                    result["drift"] = _check_drift(dataset_id, raws, adapter, dry_run)
             elif step == "normalize":
                 rows = steps.normalize(adapter, raws)
                 result["steps"][step] = {"count": len(rows)}
@@ -116,6 +123,21 @@ def run(name_or_path: str, limit: Optional[int] = None,
 
     result["seconds"] = round(time.time() - t0, 2)
     return result
+
+
+def _check_drift(dataset_id: str, raws: List[Dict[str, Any]],
+                 adapter: Any, dry_run: bool) -> Dict[str, Any]:
+    """원천 모양을 재서 기록한다 (C4).
+
+    **감지 실패가 수집을 무효로 만들지 않는다.** 데이터는 이미 손에 있다 —
+    여기서 예외를 올리면 "원천 모양을 못 쟀다"는 이유로 멀쩡한 수집이 버려진다.
+    """
+    try:
+        return drift.check(dataset_id, raws, getattr(adapter, "spec", {}) or {},
+                           dry_run=dry_run)
+    except Exception as e:                        # noqa: BLE001
+        logger.warning("드리프트 감지 실패(수집은 유효): %s", e)
+        return {"status": "error", "severity": "none", "error": str(e)[:300]}
 
 
 def available() -> List[str]:

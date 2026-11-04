@@ -96,6 +96,7 @@ DB 스키마, 테이블 정의. **테이블이 추가되거나 컬럼이 변경�
 | [검색 임계값·하이브리드 측정](database/search_threshold_probe.md) | 질의 19건 실측 — 고정 임계값 불가, 최희귀어 규칙 (ADR-018 근거) | 완성 (2026-10-30) |
 | [하이브리드 검색 운영](database/hybrid_search.md) | 두 채널·RRF 구성, 배포 순서, 토크나이저 버전 관리, 결과 읽는 법 | 완성 (2026-10-30) |
 | [카탈로그 API](api/02_Catalog_API.md) | C6 — 엔드포인트, 노출 금지 목록, CKAN 연합, 공개 범위 경고 | 완성 (2026-11-04) |
+| [원천 스키마 드리프트 감지](database/source_schema_drift.md) | C4 — 지문 비교(사건) + 매핑 점검(상태), 히스테리시스, 결과 읽는 법 | 완성 (2026-11-04) |
 | [메타데이터 품질 실측](database/metadata_quality_probe.md) | P0-5 — 키워드 엣지 밀도 7.3%, 발견형 시계열 1일, 수집 중단 상태 | 완성 (2026-11-02) |
 | [벡터 테이블 형식 통합 제안](database/vec_schema_unification_proposal.md) | 정형·비정형 `*_vec` 통합안 (vec_role) — 와이즈넛 협의용 | 제안 (협의 전) |
 | [컬럼 충족 매트릭스](database/column_fill_matrix.md) | 테이블별 컬럼을 무엇이 어떻게 채우는가 (사용자/API/고정값/AI) | 완성 |

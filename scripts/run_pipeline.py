@@ -27,6 +27,28 @@ from src.pipeline_engine import runner
 logging.basicConfig(level=logging.INFO, format="%(levelname)-7s %(message)s")
 
 
+#: 심각도별 표시. breaking은 **수집이 성공해도** 컬럼이 비는 상태라 눈에 띄어야 한다.
+_MARK = {"none": "  ", "additive": "ℹ️ ", "removed": "⚠️ ", "breaking": "🚨"}
+
+
+def _print_drift(d) -> None:
+    """원천 스키마 변화를 사람이 읽을 모양으로 (C4)."""
+    if not d:
+        return
+    mark = _MARK.get(d.get("severity"), "  ")
+    print(f"\n{mark} 원천 스키마: {d.get('status')} / {d.get('severity')} "
+          f"(표본 {d.get('sample')}건, 필드 {d.get('field_count', '-')}개)")
+    if d.get("reason"):
+        print(f"     {d['reason']}")
+    for path in d.get("added", []):
+        print(f"     + {path}")
+    for path in d.get("removed", []):
+        print(f"     - {path}")
+    for path in d.get("broken_mappings", []):
+        hint = ", ".join(d.get("suggestions", {}).get(path, [])) or "후보 없음"
+        print(f"     ✗ 스펙이 읽는 {path} 가 지금 안 온다 → 후보: {hint}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -54,6 +76,7 @@ def main() -> int:
             print(f"  ❌ {step:<12} {info['error'][:70]}")
         else:
             print(f"  ✅ {step:<12} {info}  ({secs}초)")
+    _print_drift(r.get("drift"))
     print(f"\n{'성공' if r['ok'] else '실패'} — 총 {r['seconds']}초")
     return 0 if r["ok"] else 1
 
