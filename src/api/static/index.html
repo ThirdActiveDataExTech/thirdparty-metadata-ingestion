@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ThirdEye 내부 개발 콘솔</title>
+<style>
+  :root{
+    --bg:#f4f6f9; --panel:#fff; --line:#dfe4ec; --ink:#1b2430; --muted:#6b7684;
+    --brand:#1a4fa0; --brand-ink:#fff; --accent:#0f7b6c; --warn:#b4690e; --bad:#b3261e;
+    --chip:#eef2f8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:14px/1.55 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Segoe UI",sans-serif}
+  header{background:var(--brand);color:var(--brand-ink);padding:10px 16px;
+         display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  header .brand{font-weight:700;font-size:16px;letter-spacing:-.3px}
+  header .tag{font-size:11px;background:rgba(255,255,255,.18);padding:2px 7px;border-radius:9px}
+  header form{flex:1;display:flex;gap:6px;min-width:260px}
+  header input[type=search]{flex:1;padding:7px 10px;border:0;border-radius:4px;font-size:14px}
+  header select{padding:7px 8px;border:0;border-radius:4px}
+  header button{padding:7px 16px;border:0;border-radius:4px;background:#0d3578;color:#fff;cursor:pointer}
+  nav{background:var(--panel);border-bottom:1px solid var(--line);padding:0 16px;display:flex;gap:2px;overflow-x:auto}
+  nav button{background:none;border:0;border-bottom:2px solid transparent;padding:11px 14px;
+             cursor:pointer;color:var(--muted);font-size:14px;white-space:nowrap}
+  nav button.on{color:var(--brand);border-bottom-color:var(--brand);font-weight:600}
+  main{padding:16px;max-width:1280px;margin:0 auto}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px;margin-bottom:14px}
+  .panel h2{margin:0 0 2px;font-size:15px}
+  .panel .sub{color:var(--muted);font-size:12px;margin-bottom:12px}
+  .grid{display:grid;gap:10px}
+  .stages{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+  .stage{border:1px solid var(--line);border-radius:5px;padding:11px}
+  .stage .n{font-size:24px;font-weight:700}
+  .stage .l{font-size:12px;color:var(--muted)}
+  .stage .note{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.4}
+  .stage.alert{background:#fff8ec;border-color:#f0d9ae}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:12px;white-space:nowrap}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .chip{display:inline-block;background:var(--chip);border-radius:10px;padding:1px 8px;font-size:12px;margin:1px 2px 1px 0}
+  .chip.t{background:#e6f0ff;color:#14407f}
+  .pill{font-size:11px;padding:1px 7px;border-radius:9px;background:var(--chip);color:var(--muted)}
+  .pill.ok{background:#e4f4ec;color:var(--accent)} .pill.warn{background:#fdf0dc;color:var(--warn)}
+  .pill.bad{background:#fdeceb;color:var(--bad)}
+  .hit{border-bottom:1px solid var(--line);padding:10px 2px;cursor:pointer}
+  .hit:hover{background:#fafbfd}
+  .hit .t{color:var(--brand);font-weight:600}
+  .hit .m{color:var(--muted);font-size:12px;margin-top:3px}
+  button.act{border:1px solid var(--line);background:#fff;border-radius:4px;padding:4px 11px;cursor:pointer;font-size:13px}
+  button.act:hover{border-color:var(--brand);color:var(--brand)}
+  button.act.ok:hover{border-color:var(--accent);color:var(--accent)}
+  button.act.bad:hover{border-color:var(--bad);color:var(--bad)}
+  button.act.sel{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .empty{padding:36px 14px;text-align:center;color:var(--muted)}
+  .empty b{display:block;color:var(--ink);margin-bottom:6px;font-size:15px}
+  .bar{height:7px;background:var(--chip);border-radius:4px;overflow:hidden}
+  .bar>i{display:block;height:100%;background:var(--accent)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .ev{font-size:12px;color:var(--muted);background:#fafbfd;border:1px solid var(--line);
+      border-radius:4px;padding:7px 9px;margin-top:6px}
+  pre{margin:0;font-size:12px;white-space:pre-wrap;word-break:break-all}
+  .scroll{overflow-x:auto}
+  a.link{color:var(--brand);cursor:pointer;text-decoration:none}
+  .muted{color:var(--muted)}
+  .warnbox{background:#fff8ec;border:1px solid #f0d9ae;border-radius:5px;padding:9px 11px;font-size:12.5px;margin-bottom:12px}
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">ThirdEye</span>
+  <span class="tag">내부 개발 콘솔 · 프로토타입</span>
+  <form id="qf">
+    <select id="qsrc">
+      <option value="dataset">데이터셋</option>
+      <option value="video">영상</option>
+      <option value="news">뉴스</option>
+      <option value="blog">블로그</option>
+    </select>
+    <input type="search" id="q" placeholder="검색어를 입력하세요" value="전기차 충전">
+    <button type="submit">검색</button>
+  </form>
+</header>
+
+<nav id="nav"></nav>
+<main id="view"><div class="empty">불러오는 중…</div></main>
+
+<script>
+const API = "";
+const TABS = [
+  ["find",   "데이터 찾기"],
+  ["detail", "데이터셋 상세"],
+  ["graph",  "관계 지도"],
+  ["bundle", "데이터 합치기"],
+  ["review", "검토"],
+  ["label",  "라벨링"],
+  ["ops",    "수집 관리"],
+  ["struct", "정형"],
+];
+let tab = "ops", current = null, lastSearch = null, labelState = null;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const num = n => (n ?? 0).toLocaleString("ko-KR");
+const when = t => t ? String(t).replace("T"," ").slice(0,16) : "—";
+async function api(p, opt){ const r = await fetch(API+p, opt); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+function post(p, body){ return api(p, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)}); }
+
+function drawNav(){
+  $("#nav").innerHTML = TABS.map(([k,l]) =>
+    `<button class="${k===tab?'on':''}" data-k="${k}">${l}</button>`).join("");
+  $("#nav").querySelectorAll("button").forEach(b =>
+    b.onclick = () => { tab = b.dataset.k; drawNav(); render(); });
+}
+function show(html){ $("#view").innerHTML = html; }
+function loading(){ show('<div class="empty">불러오는 중…</div>'); }
+function fail(e){ show(`<div class="panel"><h2>불러오지 못했습니다</h2><pre class="muted">${esc(e.message)}</pre></div>`); }
+
+/* ── 수집 관리 (와이즈넛 화면1) ───────────────────────────────── */
+async function viewOps(){
+  loading();
+  const [ov, reg, runs] = await Promise.all([
+    api("/v1/console/overview"), api("/v1/console/registry"), api("/v1/console/runs?limit=30")]);
+  const w = ov.waiting_on_human;
+  const stages = ov.stages.map(s => `
+    <div class="stage ${s.key==='review'&&s.count?'alert':''}">
+      <div class="l">${esc(s.label)}</div>
+      <div class="n">${num(s.count)}<span class="l"> ${esc(s.unit)}</span></div>
+      <div class="note">${esc(s.note)}</div></div>`).join("");
+  const types = ov.by_type.map(t => `<tr><td>${esc(t.source_type)}</td>
+      <td class="num">${num(t.datasets)}</td><td class="num">${num(t.items)}</td></tr>`).join("");
+  const driftCols = reg.drift_columns;
+  const rows = reg.items.map(r => `<tr>
+      <td>${esc(r.title)}<div class="muted" style="font-size:11px">${esc(r.dataset_id)}</div></td>
+      <td><span class="pill ${r.status==='active'?'ok':r.status==='error'?'bad':''}">${esc(r.status)}</span></td>
+      <td class="num">${num(r.item_count)}</td>
+      <td>${when(r.last_collected_at)}</td><td>${when(r.next_collect_at)}</td>
+      ${driftCols ? `<td>${r.source_schema_changed_at ? '<span class="pill warn">변경</span> '+when(r.source_schema_changed_at)
+          : (r.source_schema_checked_at ? '<span class="pill ok">동일</span>' : '<span class="muted">미검사</span>')}</td>` : ""}
+    </tr>`).join("");
+  const log = runs.items.map(r => `<tr>
+      <td>${when(r.started_at)}</td><td>${esc(r.title ?? r.dataset_id)}</td>
+      <td>${esc(r.activity_type)}</td><td class="num">${num(r.rows_affected)}</td>
+      <td><span class="pill ${r.status==='success'?'ok':'bad'}">${esc(r.status)}</span></td>
+      <td>${esc(r.triggered_by ?? "")}</td></tr>`).join("");
+  show(`
+    <div class="panel"><h2>수집 현황</h2>
+      <div class="sub">단계별 적체와 실행 이력. 와이즈넛 설계 초안 §5.1 화면1에 대응한다.</div>
+      <div class="grid stages">${stages}</div></div>
+
+    <div class="panel"><h2>사람이 처리해야 진도가 나가는 것</h2>
+      <div class="sub">이 콘솔을 만든 이유다. 아래 셋은 자동으로 끝나지 않는다.</div>
+      <table><tbody>
+        <tr><td>관계 검토 대기</td><td class="num">${num(w.relations)}건</td>
+            <td><a class="link" onclick="go('review')">검토 화면 →</a></td></tr>
+        <tr><td>분류 추천(사용자 선택 대기)</td><td class="num">${num(w.category_suggestions)}건</td>
+            <td class="muted">ADR-020 — 자동 부여하지 않는다</td></tr>
+        <tr><td>검색 평가 라벨</td><td class="num">${num(w.labels_done)} / ${num(w.labels_total)}</td>
+            <td><a class="link" onclick="go('label')">라벨링 화면 →</a></td></tr>
+      </tbody></table></div>
+
+    <div class="panel"><h2>소스 유형별</h2>
+      <table><thead><tr><th>source_type</th><th class="num">데이터셋</th><th class="num">아이템</th></tr></thead>
+      <tbody>${types}</tbody></table></div>
+
+    <div class="panel"><h2>데이터셋 운영 현황</h2>
+      <div class="sub">${driftCols ? "원천 스키마 드리프트 감지 결과를 함께 표시한다."
+        : "⚠️ 드리프트 컬럼이 아직 없다 — sql/migration_2026_11_04_source_schema_drift.sql 미적용"}</div>
+      <div class="scroll"><table><thead><tr><th>데이터셋</th><th>상태</th><th class="num">아이템</th>
+        <th>마지막 수집</th><th>다음 예정</th>${driftCols?"<th>원천 스키마</th>":""}</tr></thead>
+      <tbody>${rows}</tbody></table></div></div>
+
+    <div class="panel"><h2>실행 이력</h2>
+      <div class="sub">상태에 사유를 병기하지 않는다. 사유는 상세로 분리한다(와이즈넛 §5.1).</div>
+      <div class="scroll"><table><thead><tr><th>시작</th><th>대상</th><th>작업</th>
+        <th class="num">건수</th><th>상태</th><th>실행자</th></tr></thead><tbody>${log}</tbody></table></div></div>`);
+}
+
+/* ── 데이터 찾기 (와이즈넛 화면3) ─────────────────────────────── */
+async function runSearch(){
+  const q = $("#q").value.trim(), src = $("#qsrc").value;
+  if(!q) return;
+  tab = "find"; drawNav(); loading();
+  try{
+    lastSearch = await api(`/v1/search?q=${encodeURIComponent(q)}&source=${src}&limit=20&explain=true`);
+    render();
+  }catch(e){ fail(e); }
+}
+function viewFind(){
+  if(!lastSearch) return show(`<div class="empty"><b>검색어를 입력하세요</b>
+      벡터·키워드 두 채널을 RRF로 결합합니다(ADR-010). 결과에 두 채널의 순위가 그대로 실립니다.</div>`);
+  const r = lastSearch, rt = r.rarest_token;
+  const hits = r.hits.map(h => `
+    <div class="hit" ${r.source==='dataset'?`onclick="openDataset('${esc(h.id)}')"`:""}>
+      <div class="t">${esc(h.title)}</div>
+      <div class="m">${esc(h.subtitle ?? "")}</div>
+      <div class="m">
+        <span class="pill">RRF ${h.rrf?.toFixed(4) ?? "—"}</span>
+        <span class="pill ${h.vec_rank?'ok':''}">벡터 ${h.vec_rank ?? "미검출"}</span>
+        <span class="pill ${h.kw_rank?'ok':''}">키워드 ${h.kw_rank ?? "미검출"}</span>
+      </div>
+      ${h.ai_summary?`<div class="ev">${esc(h.ai_summary)}</div>`:""}
+      ${(h.ai_keywords||[]).map(k=>`<span class="chip">${esc(k)}</span>`).join("")}
+    </div>`).join("");
+  show(`
+    <div class="panel">
+      <h2>“${esc(r.query)}” 검색 결과 ${num(r.total)}건</h2>
+      <div class="sub">소스: ${esc(r.source)} · 형태소: ${r.tokens.map(t=>esc(t)).join(" · ")}</div>
+      ${rt ? `<div class="warnbox">최희귀어 <b>${esc(rt.token)}</b> — 문서빈도 ${num(rt.df)}건
+        ${rt.absent ? "· <b>이 말이 색인에 전혀 없다. 답이 없을 가능성이 높다</b>(ADR-018)" : ""}</div>` : ""}
+      ${hits || '<div class="empty">결과가 없습니다</div>'}
+    </div>`);
+}
+
+/* ── 데이터셋 상세 (와이즈넛 화면4) ───────────────────────────── */
+async function openDataset(id){ current = id; tab = "detail"; drawNav(); render(); }
+async function viewDetail(){
+  if(!current) return show(`<div class="empty"><b>데이터셋을 고르세요</b>
+      '데이터 찾기'에서 소스를 <b>데이터셋</b>으로 두고 검색한 뒤 결과를 누르면 열립니다.</div>`);
+  loading();
+  const [d, f, it] = await Promise.all([
+    api(`/v1/datasets/${encodeURIComponent(current)}`),
+    api(`/v1/console/datasets/${encodeURIComponent(current)}/features`),
+    api(`/v1/console/datasets/${encodeURIComponent(current)}/items?limit=10`)]);
+  const feat = Object.fromEntries(f.items.map(x => [x.feature_name, x.value]));
+  const kw = (feat.top_keywords||[]).map(k => `<span class="chip t">${esc(k.term||k)}</span>`).join("");
+  const rep = (feat.representative_text||[]).map(t => `<li>${esc(t)}</li>`).join("");
+  const sug = (feat.suggested_category||[]).map(c =>
+      `<button class="act">${esc(c.name||c.category||JSON.stringify(c))}</button>`).join(" ");
+  const prev = it.items.length ? `<div class="scroll"><table><thead><tr>${
+      it.columns.map(c=>`<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${
+      it.items.map(row=>`<tr>${it.columns.map(c=>`<td>${esc(String(row[c]??"")).slice(0,90)}</td>`).join("")}</tr>`).join("")
+    }</tbody></table></div>` : `<div class="empty">${esc(it.reason||"아이템이 없습니다")}</div>`;
+  const byType = {};
+  (d.relations||[]).forEach(r => (byType[r.relation_type] ||= []).push(r));
+  const rels = Object.entries(byType).map(([t, arr]) => `
+      <div style="margin-bottom:10px"><b>${esc(t)}</b>
+      ${arr.map(r=>`<div class="hit" onclick="openDataset('${esc(r.target_dataset_id||r.dataset_id)}')">
+        <div class="t">${esc(r.title||r.target_dataset_id)}</div>
+        <div class="m"><span class="pill">${(r.score??0).toFixed(4)}</span>
+        ${r.status?`<span class="pill ${r.status==='APPROVED'?'ok':'warn'}">${esc(r.status)}</span>`:""}
+        ${(r.evidence?.shared_keywords||[]).slice(0,6).map(k=>`<span class="chip">${esc(k)}</span>`).join("")}
+        </div></div>`).join("")}</div>`).join("")
+    || '<div class="empty">연관 데이터셋이 없습니다</div>';
+  show(`
+    <div class="panel"><h2>${esc(d.title)}</h2>
+      <div class="sub">${esc(d.dataset_id)}</div>
+      <p>${esc(d.description||"")}</p>
+      <table><tbody>
+        <tr><th>제공기관</th><td>${esc(d.publisher)}</td><th>원천</th><td>${esc(d.source)}</td></tr>
+        <tr><th>소스 유형</th><td>${esc(d.source_type)}</td><th>아이템</th><td>${num(d.item_count)}</td></tr>
+        <tr><th>수록 기간</th><td>${esc(d.temporal_start??"—")} ~ ${esc(d.temporal_end??"진행 중")}</td>
+            <th>라이선스</th><td>${esc(d.license??"—")}</td></tr>
+      </tbody></table>
+      <div style="margin-top:8px">${(d.keywords||[]).map(k=>`<span class="chip">${esc(k)}</span>`).join("")}</div>
+      <div style="margin-top:10px"><button class="act" onclick="openGraph('${esc(d.dataset_id)}')">관계 지도 보기 →</button></div>
+    </div>
+
+    <div class="two">
+      <div class="panel"><h2>B1 특징</h2>
+        <div class="sub">등록 메타가 아니라 <b>아이템에서 역산한</b> 것이다 — 설명이 평균 28자라 그대로는 못 쓴다.</div>
+        <div>${kw || '<span class="muted">키워드 없음</span>'}</div>
+        ${rep?`<div class="sub" style="margin-top:10px">대표 문장</div><ul>${rep}</ul>`:""}
+        ${sug?`<div class="sub" style="margin-top:10px">분류 추천 — 사용자가 고른다(ADR-020)</div>${sug}`:""}
+      </div>
+      <div class="panel"><h2>연관 데이터셋</h2>
+        <div class="sub">관계 유형별로 묶어 제시한다(와이즈넛 §5.2 화면4).</div>${rels}</div>
+    </div>
+
+    <div class="panel"><h2>데이터 미리보기</h2>
+      <div class="sub">${it.table ? esc(it.table)+" 상위 10건" : ""}</div>${prev}</div>`);
+}
+
+/* ── 관계 지도 (와이즈넛 화면5) ───────────────────────────────── */
+async function openGraph(id){ current = id; tab = "graph"; drawNav(); render(); }
+async function viewGraph(){
+  if(!current) return show(`<div class="empty"><b>기준 데이터셋이 필요합니다</b>
+      상세 화면에서 ‘관계 지도 보기’를 누르세요.</div>`);
+  loading();
+  const g = await api(`/v1/console/datasets/${encodeURIComponent(current)}/graph?hops=2&per_node=5`);
+  const W=900,H=520,CX=W/2,CY=H/2;
+  const byHop={}; g.nodes.forEach(n => (byHop[n.hop] ||= []).push(n));
+  const pos={};
+  Object.entries(byHop).forEach(([h,list]) => list.forEach((n,i) => {
+    const r = +h * 185, a = (i/list.length)*2*Math.PI - Math.PI/2;
+    pos[n.dataset_id] = +h===0 ? [CX,CY] : [CX+r*Math.cos(a), CY+r*Math.sin(a)];
+  }));
+  const COLOR={SEMANTICALLY_RELATED:"#1a4fa0", KEYWORD_OVERLAP:"#0f7b6c"};
+  const lines = g.edges.filter(e=>pos[e.source_dataset_id]&&pos[e.target_dataset_id]).map(e=>{
+    const [x1,y1]=pos[e.source_dataset_id], [x2,y2]=pos[e.target_dataset_id];
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${COLOR[e.relation_type]||"#aab"}"
+            stroke-opacity="${e.status==='APPROVED'?0.75:0.3}" stroke-width="${e.hop===1?2:1}"/>`;}).join("");
+  const dots = g.nodes.map(n=>{
+    const [x,y]=pos[n.dataset_id]; const root = n.hop===0;
+    return `<g style="cursor:pointer" onclick="openDataset('${esc(n.dataset_id)}')">
+      <circle cx="${x}" cy="${y}" r="${root?13:8}" fill="${root?"#1a4fa0":"#6b8fc7"}"/>
+      <text x="${x}" y="${y-16}" text-anchor="middle" font-size="11" fill="#1b2430">${esc((n.title||"").slice(0,18))}</text>
+      <text x="${x}" y="${y+20}" text-anchor="middle" font-size="9.5" fill="#6b7684">${esc(n.source_type)} · ${num(n.item_count)}</text>
+    </g>`;}).join("");
+  const tbl = g.edges.map(e=>`<tr><td>${e.hop}</td><td>${esc(e.source_dataset_id)}</td>
+      <td>${esc(e.relation_type)}</td><td class="num">${(e.score??0).toFixed(4)}</td>
+      <td>${esc(e.target_dataset_id)}</td>
+      <td>${esc((e.evidence?.shared_keywords||[]).join(", "))}</td></tr>`).join("");
+  show(`
+    <div class="panel"><h2>관계 지도</h2>
+      <div class="sub">목록으로 표현할 수 없는 <b>다단계 연결</b>이 이 화면의 존재 이유다(와이즈넛 §5.2).
+        중심이 기준 데이터셋이고, 거리가 단계 수(hop)다. 흐린 선은 아직 검토 대기(PENDING)다.</div>
+      <div class="scroll"><svg width="${W}" height="${H}">${lines}${dots}</svg></div>
+      <div>${Object.entries(COLOR).map(([k,v])=>`<span class="chip" style="border-left:9px solid ${v}">${k}</span>`).join("")}</div>
+    </div>
+    <div class="panel"><h2>관계 목록</h2>
+      <div class="sub">색 구분이 어려운 경우를 위해 표를 함께 제공한다(와이즈넛 §5.2).</div>
+      <div class="scroll"><table><thead><tr><th>hop</th><th>source</th><th>유형</th>
+        <th class="num">점수</th><th>target</th><th>공유 키워드</th></tr></thead><tbody>${tbl}</tbody></table></div></div>`);
+}
+
+/* ── 데이터 합치기 = C2 활용 목적 묶음 ───────────────────────── */
+async function viewBundle(){
+  const purpose = (window._purpose ?? "");
+  show(`<div class="panel"><h2>데이터 합치기 — 활용 목적 묶음</h2>
+    <div class="sub">검색어가 아니라 <b>하고 싶은 일</b>을 적는다. 검색으로 씨앗을 찾고 관계로 넓힌 뒤
+      순위로 합친다(C2). 왜 묶였는지가 각 항목에 붙는다.</div>
+    <form onsubmit="doBundle(event)" style="display:flex;gap:6px;margin-bottom:12px">
+      <input id="purpose" style="flex:1;padding:8px;border:1px solid var(--line);border-radius:4px"
+             value="${esc(purpose||"전기차 충전 인프라 수요를 분석하고 싶다")}">
+      <button class="act" type="submit">묶기</button></form>
+    <div id="bundleOut"></div></div>`);
+}
+async function doBundle(ev){
+  ev.preventDefault();
+  const p = $("#purpose").value.trim(); window._purpose = p;
+  $("#bundleOut").innerHTML = '<div class="empty">묶는 중…</div>';
+  const b = await api(`/v1/discover?purpose=${encodeURIComponent(p)}&top_k=10`);
+  $("#bundleOut").innerHTML = (b.note?`<div class="warnbox">${esc(b.note)}</div>`:"") +
+    (b.bundle.length ? b.bundle.map(x=>`
+      <div class="hit" onclick="openDataset('${esc(x.dataset_id)}')">
+        <div class="t">${esc(x.title)}</div>
+        <div class="m"><span class="pill">${x.score.toFixed(4)}</span>
+          <span class="pill ${x.reached_by==='both'?'ok':''}">${esc(x.reached_by)}</span></div>
+        <div class="ev">${esc(x.why)}</div></div>`).join("")
+      : '<div class="empty">묶인 데이터셋이 없습니다</div>');
+}
+
+/* ── 검토 (와이즈넛 화면2의 우리 버전) ───────────────────────── */
+async function viewReview(){
+  loading();
+  const r = await api("/v1/console/review/relations?status=PENDING&limit=50");
+  if(!r.items.length) return show('<div class="empty"><b>검토 대기가 없습니다</b></div>');
+  show(`<div class="panel"><h2>관계 검토 — ${num(r.items.length)}건</h2>
+    <div class="sub">자동 산출은 <b>확정이 아니다</b>. 근거(evidence)를 보고 사람이 정한다.
+      B2를 다시 돌려도 여기서 바꾼 것은 지워지지 않는다.</div>
+    ${r.items.map(x=>`<div class="hit" id="rel${x.id}">
+      <div class="t">${esc(x.source_title)} <span class="muted">↔</span> ${esc(x.target_title)}</div>
+      <div class="m"><span class="pill">${esc(x.relation_type)}</span>
+        <span class="pill">점수 ${(x.score??0).toFixed(4)}</span>
+        <span class="pill">${esc(x.method)}</span></div>
+      <div class="ev">${esc(JSON.stringify(x.evidence))}</div>
+      <div style="margin-top:7px">
+        <button class="act ok" onclick="decide(${x.id},'APPROVED',event)">승인</button>
+        <button class="act bad" onclick="decide(${x.id},'REJECTED',event)">거부</button></div>
+    </div>`).join("")}</div>`);
+}
+async function decide(id, action, ev){
+  ev.stopPropagation();
+  await post("/v1/console/review/relations", {id, action});
+  const el = document.getElementById("rel"+id);
+  el.style.opacity = .4;
+  el.querySelector("div[style]").innerHTML =
+    `<span class="pill ${action==='APPROVED'?'ok':'bad'}">${action}</span>`;
+}
+
+/* ── 라벨링 (대기 #1) ─────────────────────────────────────────── */
+async function viewLabel(){
+  if(!labelState){ loading(); labelState = await api("/v1/console/labeling"); labelState.i = 0; }
+  const st = labelState, q = st.queries[st.i];
+  if(!q) return show('<div class="empty"><b>채점할 질의가 없습니다</b></div>');
+  const pct = st.progress.total ? Math.round(st.progress.done/st.progress.total*100) : 0;
+  show(`<div class="panel">
+      <h2>검색 평가 라벨링</h2>
+      <div class="sub">질의 ${st.i+1} / ${st.queries.length} · 전체 ${num(st.progress.done)} / ${num(st.progress.total)}건 (${pct}%)
+        — 이게 끝나야 C1 완료 판정이 됩니다.</div>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+      <div style="margin:12px 0"><b style="font-size:16px">${esc(q.query)}</b>
+        <span class="muted">(${esc(q.query_id)})</span></div>
+      ${q.candidates.map(c=>`<div class="hit" style="cursor:default">
+        <div class="t">${esc(c.title)}</div>
+        <div class="m">${esc(c.doc_id)}</div>
+        <div style="margin-top:5px">
+          ${[0,1,2].map(g=>`<button class="act ${c.grade===g?'sel':''}"
+             onclick="grade('${esc(q.query_id)}','${esc(c.doc_id)}',${g},this)">${g}</button>`).join(" ")}
+          <span class="muted" style="margin-left:8px">0 무관 · 1 부분 · 2 적합</span>
+        </div></div>`).join("")}
+      <div style="margin-top:12px">
+        <button class="act" onclick="moveQ(-1)">← 이전</button>
+        <button class="act" onclick="moveQ(1)">다음 →</button></div>
+    </div>`);
+}
+function moveQ(d){ labelState.i = Math.max(0, Math.min(labelState.queries.length-1, labelState.i+d)); render(); }
+async function grade(query_id, doc_id, g, btn){
+  const res = await post("/v1/console/labeling", {query_id, doc_id, grade:g});
+  labelState.progress = res.progress;
+  const q = labelState.queries.find(x=>x.query_id===query_id);
+  q.candidates.find(c=>String(c.doc_id)===String(doc_id)).grade = g;
+  btn.parentElement.querySelectorAll("button").forEach(b=>b.classList.remove("sel"));
+  btn.classList.add("sel");
+}
+
+/* ── 정형 (비워 둔다) ─────────────────────────────────────────── */
+function viewStruct(){
+  show(`<div class="panel"><h2>정형 데이터</h2>
+    <div class="empty"><b>아직 들어오지 않았습니다</b>
+      <p><code>meta_datagokr_file</code> 0건 · <code>meta_datagokr_file_vec</code> 0건</p>
+      <p class="muted" style="max-width:640px;margin:10px auto">
+        정형은 data.go.kr 목록 1건이 곧 데이터셋이라 제목·기관·갱신주기·라이선스를 <b>파싱으로 채웁니다.</b>
+        비정형은 원천에 ‘데이터셋’이라는 개념이 없어 사람이 정의해야 하고, 그 아래 아이템만 자동으로 찹니다.<br><br>
+        저장 형식(<code>vec_role</code>)과 임베딩 모델 규약은 와이즈넛 협의 중입니다.
+        합의 전에 화면을 만들면 결과에 따라 다시 만들게 되므로 비워 둡니다.</p>
+    </div></div>`);
+}
+
+function go(k){ tab = k; drawNav(); render(); }
+function render(){
+  const f = {ops:viewOps, find:viewFind, detail:viewDetail, graph:viewGraph,
+             bundle:viewBundle, review:viewReview, label:viewLabel, struct:viewStruct}[tab];
+  try{ const r = f(); if(r && r.catch) r.catch(fail); }catch(e){ fail(e); }
+}
+$("#qf").onsubmit = e => { e.preventDefault(); runSearch(); };
+drawNav(); render();
+</script>
+</body>
+</html>

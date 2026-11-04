@@ -32,12 +32,14 @@
 
 import json
 import logging
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
-from src.api import schemas
+from src.api import console, schemas
 from src.database.db import get_conn
 
 logger = logging.getLogger(__name__)
@@ -52,6 +54,24 @@ app = FastAPI(
         "올렸는지 볼 수 있다."
     ),
 )
+
+# ── 내부 개발 콘솔 ──────────────────────────────────────────────────────────
+# 프로토타입이다. 실제 포털 화면은 케이웨어 과업이고, 여기 있는 것은 우리가
+# 확인·검토·소통하기 위한 것이다(src/api/console.py 머리말).
+#
+# ⚠️ 콘솔은 **권한을 보지 않는다**(총괄 관리자 시점). 로컬에서만 띄운다.
+app.include_router(console.router)
+
+_STATIC = Path(__file__).parent / "static"
+if _STATIC.is_dir():
+    app.mount("/console", StaticFiles(directory=str(_STATIC), html=True), name="console")
+
+
+@app.get("/", include_in_schema=False)
+def _root():
+    """맨손으로 열었을 때 빈 화면 대신 콘솔로 보낸다."""
+    return RedirectResponse("/console/")
+
 
 #: 기본으로 내보낼 공개 범위.
 #: ⚠️ 2026-11-04 기준 모든 데이터셋이 `ORG`라, PUBLIC만 내보내면 빈 응답이 된다.
