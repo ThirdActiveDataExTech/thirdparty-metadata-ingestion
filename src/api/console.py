@@ -127,28 +127,41 @@ def overview():
     return out
 
 
+#: 드리프트 컬럼 존재 여부. 한 번만 보고 기억한다 — 아래 주석 참조.
+_HAS_DRIFT: Optional[bool] = None
+
+
+def _has_drift_columns(cur) -> bool:
+    """`source_schema_*` 컬럼이 있는가(= 2026-11-04 마이그레이션 적용 여부).
+
+    ⚠️ **일부러 실패하는 SELECT로 알아내면 안 된다.** 커넥션은 프로세스당 하나를
+    **공유**하는데(src/database/db.py), 콘솔은 화면 하나가 API 세 개를 동시에 부른다.
+    실패한 질의가 트랜잭션을 ERROR로 만들면 **같은 순간 다른 요청의 질의까지**
+    `InFailedSqlTransaction`으로 죽는다. 2026-11-04 콘솔을 붙이고 실제로 겪었다.
+
+    그래서 스키마는 information_schema로 **묻고**, 결과는 기억한다.
+    """
+    global _HAS_DRIFT
+    if _HAS_DRIFT is None:
+        cur.execute("SELECT 1 FROM information_schema.columns "
+                    "WHERE table_name='data_registry' AND column_name='source_schema_fingerprint'")
+        _HAS_DRIFT = cur.fetchone() is not None
+    return _HAS_DRIFT
+
+
 @router.get("/registry")
 def registry():
     """데이터셋별 수집 운영 현황. 원천 스키마 드리프트가 있으면 함께 보여준다."""
     cur = get_conn().cursor()
-    base = ("SELECT r.dataset_id, d.title, d.source_type, r.status, r.item_count, "
-            "r.row_count, r.last_collected_at, r.next_collect_at, r.last_error")
-    tail = (" FROM data_registry r JOIN dcat_dataset d USING (dataset_id) "
-            "ORDER BY r.next_collect_at NULLS LAST")
-    try:
-        cur.execute(base + ", r.source_schema_fingerprint, r.source_schema_checked_at, "
-                    "r.source_schema_changed_at" + tail)
-        rows = _rows(cur)
-        drift = True
-    except Exception:                             # noqa: BLE001
-        # 드리프트 마이그레이션(2026-11-04) 미적용 상태. 실패한 SELECT가 트랜잭션을
-        # ERROR로 남기므로 되돌려 놓는다 — 안 그러면 다음 질의가 전부 죽는다.
-        get_conn().rollback()
-        cur = get_conn().cursor()
-        cur.execute(base + tail)
-        rows = _rows(cur)
-        drift = False
-    return {"drift_columns": drift, "items": rows}
+    drift = _has_drift_columns(cur)
+    extra = (", r.source_schema_fingerprint, r.source_schema_checked_at, "
+             "r.source_schema_changed_at") if drift else ""
+    cur.execute(
+        "SELECT r.dataset_id, d.title, d.source_type, r.status, r.item_count, "
+        "r.row_count, r.last_collected_at, r.next_collect_at, r.last_error" + extra +
+        " FROM data_registry r JOIN dcat_dataset d USING (dataset_id) "
+        "ORDER BY r.next_collect_at NULLS LAST")
+    return {"drift_columns": drift, "items": _rows(cur)}
 
 
 @router.get("/runs")

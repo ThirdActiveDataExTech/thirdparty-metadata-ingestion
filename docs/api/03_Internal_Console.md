@@ -5,7 +5,25 @@ PYTHONPATH=. python scripts/run_console.py
 → http://127.0.0.1:8000/console/
 ```
 
-구현: `src/api/console.py`(API) · `src/api/static/index.html`(화면)
+구현
+
+```
+src/api/console.py          콘솔 전용 API (/v1/console/…)
+src/api/static/
+├── index.html              뼈대만 (32줄)
+├── css/console.css
+└── js/
+    ├── core.js             상태·helper·라우팅
+    ├── app.js              진입점 — 화면 등록
+    └── {ops,find,detail,graph,bundle,review,label,struct}.js   화면 1개당 1파일
+```
+
+**빌드 체인이 없다.** 브라우저가 ES 모듈을 그대로 읽는다 — `npm` · `node_modules` ·
+빌드 산출물이 저장소에 없고, 고칠 때 새로고침만 하면 된다. 케이웨어가 자기 스택으로
+다시 만들 것이므로 **여기 쏟는 도구 설정은 어차피 버려진다.**
+
+`core.js`는 화면을 import하지 않는다 — 하면 순환이 된다. `app.js`가 등록한다.
+생성한 HTML의 `onclick`이 닿는 전역은 `window.C` 하나뿐이고, 각 화면이 자기 것만 올린다.
 
 ---
 
@@ -60,8 +78,10 @@ PYTHONPATH=. python scripts/run_console.py
 | 응답 키 불일치 | 최희귀어의 키는 `term`이 아니라 **`token`** |
 | `keywords` 컬럼이 사라짐 | 미리보기의 자격증명 컬럼 차단이 부분 문자열(`key`) 검사라 **`keywords`·`search_keyword`가 걸려 안 보였다.** 낱말 단위 검사로 고쳤다 |
 | 고립된 외부 데이터셋 | CKAN 연합 30건은 검색에는 걸리는데 **관계가 0건**이라 관계 지도에서 외톨이다 (D-4) |
+| **동시 요청이 서로를 죽였다** | 화면 하나가 API 셋을 동시에 부른다. 커넥션은 프로세스당 하나라 **한 요청의 실패한 SELECT가 다른 요청을 `InFailedSqlTransaction`으로** 죽였다. 그 자리는 고쳤지만 구조는 남아 있다 — NEXT_STEPS §6.2 |
 
 앞의 셋은 **화면이 없으면 드러나지 않는 종류**다. API는 200을 돌려주고 있었다.
+마지막 것은 더하다 — **사람이 한 번에 하나씩 부르는 동안에는 영원히 안 나온다.**
 
 ## 6. 쓰기는 둘뿐이다
 
