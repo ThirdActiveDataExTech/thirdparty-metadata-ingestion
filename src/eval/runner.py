@@ -30,21 +30,33 @@ def _vector(query: str, source: str, top_k: int) -> List[str]:
     return [str(r["id"]) for r in search_vector_only(query, source, top_k)]
 
 
-@register("hybrid", "벡터 + 키워드, RRF k=60")
-def _hybrid(query: str, source: str, top_k: int) -> List[str]:
-    return [str(r["id"]) for r in hybrid.search(query, source, top_k, rrf_k=60)]
+@register("hybrid_cd", "벡터 + 키워드(ts_rank_cd), RRF k=60 — 예전 점수 방식")
+def _hybrid_cd(query: str, source: str, top_k: int) -> List[str]:
+    return [str(r["id"]) for r in hybrid.search(query, source, top_k, rrf_k=60,
+                                                score_mode="cover_density")]
 
 
-def _rrf_config(k: int):
+@register("hybrid_idf", "벡터 + 키워드(IDF 합), RRF k=60")
+def _hybrid_idf(query: str, source: str, top_k: int) -> List[str]:
+    return [str(r["id"]) for r in hybrid.search(query, source, top_k, rrf_k=60,
+                                                score_mode="idf_sum")]
+
+
+def _rrf_config(k: int, mode: str):
     def _fn(query: str, source: str, top_k: int) -> List[str]:
-        return [str(r["id"]) for r in hybrid.search(query, source, top_k, rrf_k=k)]
+        return [str(r["id"]) for r in hybrid.search(query, source, top_k,
+                                                    rrf_k=k, score_mode=mode)]
     return _fn
 
 
-# ADR-010이 평가 항목으로 정해 둔 스윕. 정답지가 없어 미뤄 뒀던 것이다.
+# ADR-010이 평가 항목으로 정해 둔 k 스윕. 2026-11-04에 답이 나왔다 —
+# cover_density에서는 k를 어떻게 바꿔도 recall@1이 0.7333으로 동일했다.
+# IDF 방식에서도 같은지 확인하려고 양쪽 다 남긴다.
 for _k in (10, 20, 30):
-    CONFIGS[f"hybrid_k{_k}"] = {"desc": f"벡터 + 키워드, RRF k={_k}",
-                                "fn": _rrf_config(_k)}
+    CONFIGS[f"hybrid_cd_k{_k}"] = {"desc": f"ts_rank_cd, RRF k={_k}",
+                                   "fn": _rrf_config(_k, "cover_density")}
+    CONFIGS[f"hybrid_idf_k{_k}"] = {"desc": f"IDF 합, RRF k={_k}",
+                                    "fn": _rrf_config(_k, "idf_sum")}
 
 
 def run_config(name: str, queries: List[Dict[str, Any]], source: str,
