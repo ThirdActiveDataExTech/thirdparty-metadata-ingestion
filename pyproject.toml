@@ -20,6 +20,7 @@ dependencies = [
     "PyYAML",                   # 수집 어댑터 소스 스펙(configs/sources/*.yaml) — A1
     "fastapi",                  # 카탈로그 OpenAPI — C6
     "uvicorn[standard]",        # ASGI 서버
+    "python-multipart>=0.0.20", # 포털 정형 1st party 업로드(multipart) — src/api/structured.py
 ]
 
 [project.optional-dependencies]

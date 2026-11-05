@@ -39,7 +39,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from src.api import console, manage, schemas
+from src.api import console, manage, schemas, structured
 from src.database.db import get_conn
 
 logger = logging.getLogger(__name__)
@@ -64,6 +64,7 @@ app = FastAPI(
 # 삼키므로, 뒤에 오는 `…/trend`·`…/package`·`…/run`을 식별자의 일부로 읽는다
 # (main.py `/jsonld`가 그렇게 죽어 있었다 — tests/test_api_routing.py).
 app.include_router(manage.router)
+app.include_router(structured.router)
 app.include_router(console.router)
 
 _STATIC = Path(__file__).parent / "static"

@@ -6,6 +6,7 @@ architecture/05_Object_Storage_Export.md §5 결정에 따라, 이 모듈의 업
 """
 
 import json
+import re
 import logging
 from typing import Any, Dict, Optional
 
@@ -44,6 +45,11 @@ def upload_json(key: str, obj: Dict[str, Any]) -> None:
     get_s3_client().put_object(
         Bucket=config.S3_BUCKET, Key=key, Body=body.encode("utf-8"), ContentType="application/json; charset=utf-8"
     )
+
+
+def upload_bytes(key: str, data: bytes, content_type: str = "application/octet-stream") -> None:
+    """원본 파일을 그대로 올린다(정형 1st party 업로드)."""
+    get_s3_client().put_object(Bucket=config.S3_BUCKET, Key=key, Body=data, ContentType=content_type)
 
 
 def read_json(key: str) -> Optional[Dict[str, Any]]:
@@ -119,3 +125,19 @@ def delete_prefix(prefix: str, dataset_id: str) -> int:
         if not page.get("IsTruncated"):
             return removed
         token = page.get("NextContinuationToken")
+
+
+#: 정형 1st party 업로드 구획. 초안(dcat_dataset_draft) 단위로 `…/upload/{16자 해시}/`
+_UPLOAD_PREFIX = re.compile(r"^raw/structured/upload/[0-9a-f]{16}/$")
+
+
+def delete_upload_prefix(prefix: str) -> int:
+    """업로드 취소 시 원본을 지운다. 업로드 구획의 정확한 모양이 아니면 거절한다."""
+    if not _UPLOAD_PREFIX.match(prefix):
+        raise ValueError(f"업로드 구획이 아니다: {prefix!r}")
+    s3 = get_s3_client()
+    page = s3.list_objects_v2(Bucket=config.S3_BUCKET, Prefix=prefix)
+    objs = [{"Key": o["Key"]} for o in page.get("Contents", [])]
+    if objs:
+        s3.delete_objects(Bucket=config.S3_BUCKET, Delete={"Objects": objs, "Quiet": True})
+    return len(objs)

@@ -123,3 +123,37 @@ class TestDeletePrefixGuard:
         monkeypatch.setattr(s3_client, "get_s3_client", lambda: pytest.fail("S3를 건드렸다"))
         with pytest.raises(ValueError):
             s3_client.delete_prefix(prefix, "urn:youtube:x")
+
+
+@pytest.mark.parametrize("method,path,expected", [
+    ("POST", "/v1/console/structured/uploads", "upload_structured"),
+    ("GET", "/v1/console/structured/uploads", "list_uploads"),
+    ("DELETE", "/v1/console/structured/uploads/3", "cancel_upload"),
+    ("GET", "/v1/console/errors", "errors"),
+])
+def test_정형_업로드·오류_라우트(method, path, expected):
+    assert _endpoint_m(path, method) == expected
+
+
+class TestUploadPrefixGuard:
+    """업로드 취소는 원본을 지운다 — 업로드 구획의 정확한 모양이 아니면 거절한다."""
+
+    @pytest.mark.parametrize("prefix", ["", "raw/", "raw/structured/", "raw/structured/upload/",
+                                        "raw/structured/upload/xyz/", "raw/video/youtube_x/",
+                                        "raw/structured/upload/83f9eada1fc4e5f9"])          # 끝 슬래시 없음
+    def test_거절(self, prefix, monkeypatch):
+        from src.storage import s3_client
+        monkeypatch.setattr(s3_client, "get_s3_client", lambda: pytest.fail("S3를 건드렸다"))
+        with pytest.raises(ValueError):
+            s3_client.delete_upload_prefix(prefix)
+
+
+def test_메타데이터가_JSON이_아니면_저장하기_전에_거절한다(monkeypatch):
+    """원본을 올리기 전에 거른다 — 반쯤 올라간 업로드를 남기지 않는다."""
+    from fastapi.testclient import TestClient
+    from src.storage import s3_client
+    monkeypatch.setattr(s3_client, "upload_bytes", lambda *a, **k: pytest.fail("S3에 올렸다"))
+    r = TestClient(app).post("/v1/console/structured/uploads",
+                             files={"metadata": ("m.json", b"not json", "application/json"),
+                                    "files": ("d.csv", b"a,b\n1,2\n", "text/csv")})
+    assert r.status_code == 400 and "JSON" in r.json()["detail"]

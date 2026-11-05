@@ -390,7 +390,7 @@ def _catalog_row(r: Dict[str, Any]) -> Dict[str, Any]:
 @router.get("/datasets")
 def catalog(q: Optional[str] = None, source_type: Optional[str] = None,
             publisher: Optional[str] = None, category: Optional[str] = None,
-            origin: Optional[str] = None, date_from: Optional[str] = None,
+            origin: Optional[str] = None, party: Optional[str] = None, date_from: Optional[str] = None,
             date_to: Optional[str] = None, ids: Optional[str] = None,
             sort: str = Query("updated_at"), limit: int = Query(20, ge=1, le=200),
             offset: int = Query(0, ge=0)):
@@ -413,6 +413,12 @@ def catalog(q: Optional[str] = None, source_type: Optional[str] = None,
         where.append("publisher = %(pub)s"); params["pub"] = publisher
     if origin:
         where.append("dataset_origin = %(origin)s"); params["origin"] = origin
+    if party:
+        # 정형 1st party(기관 직접 보유) / 3rd party(외부 원천). 값이 비어 있는 행은 '미지정'
+        if party == "none":
+            where.append("party IS NULL")
+        else:
+            where.append("party = %(party)s"); params["party"] = party
     if category:
         where.append("EXISTS (SELECT 1 FROM jsonb_array_elements_text(category) c "
                      "WHERE c = %(cat)s OR c LIKE %(catp)s)")
@@ -442,7 +448,8 @@ def facets():
     cur = get_conn().cursor()
     out: Dict[str, Any] = {}
     for key, col in (("source_types", "source_type"), ("publishers", "publisher"),
-                     ("sources", "source"), ("origins", "dataset_origin")):
+                     ("sources", "source"), ("origins", "dataset_origin"),
+                     ("parties", "coalesce(party, 'none')")):
         cur.execute(f"SELECT {col} AS value, count(*) AS count FROM dcat_dataset "
                     f"WHERE {col} IS NOT NULL GROUP BY 1 ORDER BY 2 DESC, 1")
         out[key] = _rows(cur)
