@@ -85,3 +85,37 @@ def storage_key(dataset_id: str) -> str:
     if dataset_id.startswith("urn:"):
         return dataset_id[4:].replace(":", "_")
     return dataset_id
+
+
+#: 삭제를 허용하는 최상위 구획. 이 밖의 접두는 절대 지우지 않는다.
+_DELETABLE_ROOTS = ("raw/", "jsonld/", "package/")
+
+
+def delete_prefix(prefix: str, dataset_id: str) -> int:
+    """한 데이터셋의 객체를 접두로 지운다. 지운 개수를 돌려준다.
+
+    ⚠️ 접두 삭제는 잘못 쓰면 버킷을 비운다. 세 겹으로 막는다.
+      1. 허용 구획(`raw/` `jsonld/` `package/`)으로 시작해야 한다
+      2. 그 데이터셋의 storage_key가 **경로 조각으로** 들어 있어야 한다
+         (`raw/video/youtube_x/` 는 되고 `raw/video/` 는 안 된다)
+      3. 끝이 `/`여야 한다 — `youtube_x`가 `youtube_x2`까지 지우지 않게
+    """
+    key = storage_key(dataset_id)
+    if (not prefix.startswith(_DELETABLE_ROOTS) or not prefix.endswith("/")
+            or f"/{key}/" not in f"/{prefix}"):
+        raise ValueError(f"지울 수 없는 접두: {prefix!r} (데이터셋 {dataset_id})")
+    s3 = get_s3_client()
+    removed = 0
+    token = None
+    while True:
+        kw = {"Bucket": config.S3_BUCKET, "Prefix": prefix}
+        if token:
+            kw["ContinuationToken"] = token
+        page = s3.list_objects_v2(**kw)
+        objs = [{"Key": o["Key"]} for o in page.get("Contents", [])]
+        if objs:
+            s3.delete_objects(Bucket=config.S3_BUCKET, Delete={"Objects": objs, "Quiet": True})
+            removed += len(objs)
+        if not page.get("IsTruncated"):
+            return removed
+        token = page.get("NextContinuationToken")

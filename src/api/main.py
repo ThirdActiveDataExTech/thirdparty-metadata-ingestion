@@ -39,7 +39,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from src.api import console, schemas
+from src.api import console, manage, schemas
 from src.database.db import get_conn
 
 logger = logging.getLogger(__name__)
@@ -60,6 +60,10 @@ app = FastAPI(
 # 확인·검토·소통하기 위한 것이다(src/api/console.py 머리말).
 #
 # ⚠️ 콘솔은 **권한을 보지 않는다**(총괄 관리자 시점). 로컬에서만 띄운다.
+# ⚠️ manage를 **먼저** 넣는다. console의 상세 `GET /datasets/{dataset_id:path}`는 슬래시까지
+# 삼키므로, 뒤에 오는 `…/trend`·`…/package`·`…/run`을 식별자의 일부로 읽는다
+# (main.py `/jsonld`가 그렇게 죽어 있었다 — tests/test_api_routing.py).
+app.include_router(manage.router)
 app.include_router(console.router)
 
 _STATIC = Path(__file__).parent / "static"
