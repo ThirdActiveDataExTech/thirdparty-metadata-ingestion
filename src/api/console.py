@@ -266,7 +266,7 @@ def graph(dataset_id: str, hops: int = Query(2, ge=1, le=3),
 # ── 화면 2. 검토 (관계 승인/거부) ───────────────────────────────────────────
 
 @router.get("/review/relations")
-def review_relations(status: str = Query("PENDING"), limit: int = Query(50, le=200)):
+def review_relations(status: str = Query("PENDING"), limit: int = Query(50, le=1000)):
     """사람이 판단할 관계 목록. `evidence`를 그대로 실어 보낸다 —
     근거 없이 승인/거부를 누르게 하면 검토가 아니라 요식이 된다."""
     cur = get_conn().cursor()
@@ -450,6 +450,11 @@ def facets():
                    FROM dcat_dataset, jsonb_array_elements_text(category) c
                    GROUP BY 1 ORDER BY 2 DESC, 1""")
     out["categories"] = _rows(cur)
+    # 중분류 건수 — 검색 화면의 카테고리 트리(대분류 → 중분류)가 쓴다
+    cur.execute("""SELECT c AS value, count(DISTINCT dataset_id) AS count
+                   FROM dcat_dataset, jsonb_array_elements_text(category) c
+                   GROUP BY 1 ORDER BY 1""")
+    out["subcategories"] = _rows(cur)
     return out
 
 
