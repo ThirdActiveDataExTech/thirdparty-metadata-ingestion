@@ -11,8 +11,10 @@
 
 ## 우리가 수집한 것과 섞이지 않게 표시한다
 
+    source_type    = 'external_catalog'  구분의 기준값 — 1 dataset = 1 source_type
     dataset_origin = 'external'    수집 파이프라인이 건드리지 않는다
     source         = 'CKAN:<포털>'  어느 포털에서 왔는지
+    party          = '3rd'         외부 원천 — 우리 기관이 보유한 데이터(1st)가 아니다
     external_ids   = ['<포털>:<id>'] 원천 식별자 (와이즈넛 합의 형식)
 
 **`data_registry`에 넣지 않는다.** 그 테이블은 "다음에 언제 수집할 것인가"를
@@ -123,11 +125,14 @@ def to_dcat(pkg: Dict[str, Any], portal: str,
     return {
         "dataset_id": f"{URN_PREFIX}:{slug}:{pkg_id}",
         "title": title[:500],
-        "description": notes[:2000] or None,
+        # NOT NULL 컬럼이다. None을 넣으면 그 회차 저장 전체가 실패한다(한 배치라서) — 빈 문자열로 둔다.
+        # 제목으로 채우지 않는다: 없는 설명을 지어낸 것처럼 보인다
+        "description": notes[:2000],
         "publisher": (org or slug)[:200],
         "source_type": "external_catalog",
         "source": f"CKAN:{slug}",
         "dataset_origin": "external",
+        "party": "3rd",
         "keywords": keywords,
         "license": pkg.get("license_title") or pkg.get("license_id"),
         "landing_page": f"{portal.rstrip('/')}/dataset/{pkg.get('name') or pkg_id}",
@@ -188,18 +193,19 @@ def store(rows: List[Dict[str, Any]], dry_run: bool = False) -> Dict[str, int]:
          json.dumps(r["keywords"], ensure_ascii=False),
          r["license"], r["landing_page"],
          json.dumps(r["external_ids"], ensure_ascii=False),
-         r["accrual_periodicity"], r["language"], r["spatial"], "ORG")
+         r["accrual_periodicity"], r["language"], r["spatial"], "ORG", r["party"])
         for r in rows
     ]
     execute_values(
         cur,
         "INSERT INTO dcat_dataset (dataset_id, title, description, publisher, "
         "  source_type, source, dataset_origin, keywords, license, landing_page, "
-        "  external_ids, accrual_periodicity, language, spatial, visibility) VALUES %s "
+        "  external_ids, accrual_periodicity, language, spatial, visibility, party) VALUES %s "
         "ON CONFLICT (dataset_id) DO UPDATE SET "
         "  title = EXCLUDED.title, description = EXCLUDED.description, "
         "  publisher = EXCLUDED.publisher, keywords = EXCLUDED.keywords, "
         "  license = EXCLUDED.license, landing_page = EXCLUDED.landing_page, "
+        "  party = COALESCE(dcat_dataset.party, EXCLUDED.party), "
         "  updated_at = now()",
         payload, page_size=200, fetch=False)
     conn.commit()

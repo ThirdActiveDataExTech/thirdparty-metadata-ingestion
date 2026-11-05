@@ -67,6 +67,8 @@ CREATE TABLE dcat_dataset (
     -- (확장) 출처 유형 분류 — data_registry.pg_meta_table 라우팅과
     -- "1 dataset = 1 source_type" 불변 규칙이 이 값의 존재를 전제로 함
     -- 값) 'video', 'news', 'blog', 'shopping_insight', 'persona_insight'
+    --     'external_catalog' : 외부 포털 연합분(메타데이터만 들여옴, 수집하지 않음 — data_registry 행 없음)
+    --                          src/federation/ckan.py. **외부 연합분을 가려낼 때 이 값을 기준으로 쓴다**
 
     landing_page        TEXT,
     -- dcat:landingPage | 플랫폼 공식 소개 페이지 (사람이 읽는 페이지)
@@ -176,6 +178,8 @@ CREATE TABLE dcat_dataset (
     -- 'user'  : 사용자가 UI에서 직접 생성 (동일 소스 타입 내 복수 채널·영상·검색어 자유 조합)
     --           예) YouTube 데이터셋: 채널 여러 개 + 개별 영상 선택
     --           주의: source_type이 다른 항목(YouTube+뉴스 혼합 등)은 지원하지 않음
+    -- 'external' : (모비젠 확장) 외부 포털에서 연합해 온 데이터셋 — source_type='external_catalog'와 함께 쓴다.
+    --              수집 파이프라인이 건드리지 않는다. 와이즈넛 정의(admin/user)에는 없는 값이다
 
     owner_id             TEXT,
     -- 데이터셋을 생성한 사용자 식별자. 플랫폼 계정 테이블(같은 datagokr DB 안에
@@ -214,6 +218,7 @@ CREATE TABLE dcat_dataset (
 
     party               TEXT,
     -- 파티 구분 | '1st' / '3rd'
+    -- 1st = 우리 기관이 직접 보유(정형 포털 업로드), 3rd = 외부 원천(비정형 수집·외부 포털 연합분)
     -- 케이웨어 cetus_dataset_file.data_tp_cd와 대응 (정형·비정형 동일 방식)
 
     visibility          TEXT NOT NULL DEFAULT 'ORG',

@@ -389,7 +389,7 @@ def _catalog_row(r: Dict[str, Any]) -> Dict[str, Any]:
 
 @router.get("/datasets")
 def catalog(q: Optional[str] = None, source_type: Optional[str] = None,
-            publisher: Optional[str] = None, category: Optional[str] = None,
+            exclude_source_type: Optional[str] = None, publisher: Optional[str] = None, category: Optional[str] = None,
             origin: Optional[str] = None, party: Optional[str] = None, date_from: Optional[str] = None,
             date_to: Optional[str] = None, ids: Optional[str] = None,
             sort: str = Query("updated_at"), limit: int = Query(20, ge=1, le=200),
@@ -399,6 +399,8 @@ def catalog(q: Optional[str] = None, source_type: Optional[str] = None,
     `category`는 **대분류 접두**로 거른다(`기술` → `기술 > 전기·전자` 등). 분류표가
     `대분류 > 중분류` 문자열이라 대분류만 고르는 화면에서 정확 일치로는 안 걸린다.
     `ids`는 문장검색 결과를 카탈로그 정보로 채울 때 쓴다(쉼표 구분).
+    `exclude_source_type`은 그 유형을 뺀다(쉼표 구분) — 홈 신규데이터가 외부 포털
+    연합분(`external_catalog`)에 덮이지 않게 쓴다.
     """
     if sort not in _SORTS:
         raise HTTPException(400, f"sort는 {sorted(_SORTS)} 중 하나다")
@@ -409,6 +411,9 @@ def catalog(q: Optional[str] = None, source_type: Optional[str] = None,
         params["q"] = f"%{q}%"
     if source_type:
         where.append("source_type = %(st)s"); params["st"] = source_type
+    if exclude_source_type:
+        where.append("NOT (source_type = ANY(%(xst)s))")
+        params["xst"] = [v.strip() for v in exclude_source_type.split(",") if v.strip()]
     if publisher:
         where.append("publisher = %(pub)s"); params["pub"] = publisher
     if origin:

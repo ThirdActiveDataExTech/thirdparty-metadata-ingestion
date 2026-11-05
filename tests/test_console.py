@@ -91,3 +91,33 @@ class TestDecideGuard:
         with pytest.raises(HTTPException) as e:
             console.decide_relation({"id": 1, "action": "지워버리기"})
         assert e.value.status_code == 400
+
+
+class TestCatalogExclude:
+    """홈 신규데이터는 외부 포털 연합분을 뺀다 — 쿼리에 실제로 걸리는지 본다(DB 없이)."""
+
+    def test_제외_유형이_WHERE와_인자로_들어간다(self, monkeypatch):
+        from src.api import console
+        seen = {}
+
+        class Cur:
+            def execute(self, sql, params=None):
+                seen.setdefault("calls", []).append((sql, params))
+            def fetchall(self):
+                return []
+            def fetchone(self):
+                return [0]
+            description = []
+
+        class Conn:
+            def cursor(self):
+                return Cur()
+
+        monkeypatch.setattr(console, "get_conn", lambda: Conn())
+        try:
+            console.catalog(exclude_source_type="external_catalog, ", sort="created_at", limit=6, offset=0)
+        except Exception:
+            pass  # 결과 가공은 이 테스트의 관심이 아니다
+        sql, params = seen["calls"][0]
+        assert "NOT (source_type = ANY(%(xst)s))" in sql
+        assert params["xst"] == ["external_catalog"]

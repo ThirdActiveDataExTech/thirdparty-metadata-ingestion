@@ -59,6 +59,17 @@ class TestCkanMapping:
         assert r["source"].startswith("CKAN:")
         assert r["external_ids"] == ["open-canada-ca:abc-123"]
 
+    def test_설명이_없어도_None을_넣지_않는다(self):
+        # description은 NOT NULL — None 하나가 그 회차 배치 전체를 실패시킨다
+        r = ckan.to_dcat({"id": "x", "title": "제목만 있음"}, self.PORTAL)
+        assert r["description"] == ""
+
+    def test_외부_원천이라_3rd_party다(self):
+        # 비어 있으면 포털의 1st/3rd 필터 어느 쪽에도 안 잡힌다(2026-11-05 30건이 그랬다)
+        r = ckan.to_dcat(self.PKG, self.PORTAL)
+        assert r["party"] == "3rd"
+        assert r["source_type"] == "external_catalog"
+
     def test_원본을_복제하지_않고_가리킨다(self):
         r = ckan.to_dcat(self.PKG, self.PORTAL)
         assert r["landing_page"].endswith("/dataset/my-dataset")
@@ -146,3 +157,10 @@ class TestStoreContract:
     def test_다시_들여오면_갱신한다(self):
         import inspect
         assert "ON CONFLICT" in inspect.getsource(ckan.store)
+
+    def test_party를_적재한다(self):
+        # INSERT 컬럼에 party가 빠지면 to_dcat이 채워도 DB엔 NULL로 들어간다
+        import inspect
+        src = inspect.getsource(ckan.store)
+        assert "visibility, party)" in src
+        assert "COALESCE(dcat_dataset.party, EXCLUDED.party)" in src
