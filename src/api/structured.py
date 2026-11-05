@@ -40,8 +40,12 @@ router = APIRouter(prefix="/v1/console", tags=["정형 업로드·오류"])
 MAX_TOTAL_BYTES = 500 * 1024 * 1024
 MAX_FILES = 50
 
-#: 초안의 출처 표기 — 포털 직접 업로드(1st party)
-SOURCE = "PORTAL_UPLOAD"
+#: 초안의 출처 표기 — 와이즈넛 설계의 원천 포털 코드 `FIRST_PARTY`(포털 직접 업로드)
+SOURCE = "FIRST_PARTY"
+
+#: 와이즈넛 설계 v2의 초안 상태값. 실패 상태는 아직 없다 — 인계 규격 협의 대상(NEXT_STEPS D1).
+#: 그때까지는 이 셋 밖의 상태이거나 `mapping_evidence.error`가 있으면 실패로 본다
+DRAFT_STATUSES = ("PENDING", "PUBLISHED", "DISCARDED")
 
 #: 아직 아무도 매핑하지 않았다는 표시. 와이즈넛 알고리즘이 자기 버전으로 바꾼다
 UNMAPPED = "unmapped"
@@ -188,8 +192,8 @@ def errors(days: int = 30):
                     ORDER BY r.next_collect_at""")
     overdue = [{**r, "hours_late": round(float(r["hours_late"]), 1)} for r in _rows(cur)]
     cur.execute("""SELECT id, source, status, content->>'title' AS title, created_at, mapping_evidence->>'error' AS error
-                   FROM dcat_dataset_draft WHERE status IN ('FAILED','ERROR','REJECTED')
-                   ORDER BY created_at DESC LIMIT 100""")
+                   FROM dcat_dataset_draft WHERE status <> ALL(%s) OR mapping_evidence ? 'error'
+                   ORDER BY created_at DESC LIMIT 100""", (list(DRAFT_STATUSES),))
     drafts = _rows(cur)
     return {"days": days, "failed_runs": failed_runs, "in_error": in_error, "overdue": overdue,
             "failed_drafts": drafts,

@@ -892,11 +892,24 @@
 #### D1. 플랫폼 운영 기능 〔모비젠〕 — 🟩 **포털 실연결 (2026-11-05)**
 - ✅ **포털(portal-mockup `feat/real-api`)을 실데이터·실API에 붙였다.** 목업의 가짜 동작
   (메모리 저장, 해시 가짜 임베딩, 특정 문장 하나에 정답 하드코딩, API Key를 콘솔에 출력,
-  무조건 통과하는 '검증')을 전부 걷어냈다. 화면 30개를 헤드리스 Chrome으로 전수 확인했고
+  무조건 통과하는 '검증')을 전부 걷어냈다. 화면 42개를 헤드리스 Chrome으로 전수 확인했고
   등록→확인→등록→상세→삭제를 클릭으로 끝까지 통과했다
   - 등록·수정·삭제·지금 수집·추이·패키지·파이프라인·평가·연합 실행 — `src/api/manage.py`
-  - 연구계획서 과업 74개 기능을 '기능 지도'(/roadmap)로 펼쳤다: 구현 32 · 일부 10 · 미구현 32.
+  - 연구계획서 전 기관 과업 133개 기능을 '기능 지도'(/roadmap)로 펼쳤다: 구현 41 · 일부 19 · 미구현 73.
     미구현 기능은 화면에 자리를 두고 누르면 과업·사유를 띄운다
+  - ✅ **정형 1st party 업로드** — 메타데이터 JSON + 원본 파일 → 오브젝트 스토리지
+    `raw/structured/upload/{해시16}/` + `dcat_dataset_draft`(`source='FIRST_PARTY'`, `PENDING`).
+    파싱·매핑·등재는 와이즈넛 알고리즘 몫. **전 기관 수집 오류** 화면(`GET /v1/console/errors`)
+  - ⏸ **정형 1st party 인계 규격 — 와이즈넛과 메일로 협의 예정**(2026-11-05 결정, 처리는 와이즈넛 몫)
+    1. 파싱 실패 상태: 설계 v2엔 `PENDING/PUBLISHED/DISCARDED`뿐 → `FAILED` 추가 + 사유 `mapping_evidence.error` 제안.
+       그때까지 오류 화면은 "세 상태 밖이거나 `error` 키가 있는 행"을 실패로 본다
+    2. `content`: 지금은 업로드 원문을 넣는다. 설계상 매핑 끝난 DCAT 필드 → 업로드 시 비우고 와이즈넛이 채우기 제안
+    3. `mapping_evidence`: 업로드 정보(파일·party·시각)가 최상위에 있다 → `mapping_evidence.upload`로 묶기 제안
+    4. 새 업로드 감지: 폴링(`PENDING` + `mapping_version='unmapped'`) vs 알림
+    5. `dcat_dataset` 등재 주체: `PUBLISHED`로 바꾸는 쪽이 등재(`party='1st'`, `dataset_origin='admin'`)
+    6. 원본 파일 경로 규칙(`metadata.json` + `files/*`)을 `meta_datagokr_file` 생성 시 읽기
+    7. 업로드 JSON 양식(기대 키 목록) — 정형 샘플 받을 때 함께
+    - 용량 제한(1회 500MB·50파일)은 우리 결정, 통보만
   - 참고 포털(모비젠 DATA CATALOG)에서 카테고리 트리·트리맵·My Catalog·고객지원 구성을 가져왔다
   - ⏸ `.env`에 **ENCRYPTION_KEY**(사용자 API Key 암호화 저장)·**PACKAGE_SIGNING_KEY**(신뢰 패키지 서명)가
     없다. 코드는 붙었고, 없으면 사유와 함께 거절한다
