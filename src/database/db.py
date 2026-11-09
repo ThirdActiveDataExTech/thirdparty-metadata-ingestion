@@ -1,8 +1,8 @@
-"""PostgreSQL 커넥션 — 프로세스당 1개 재사용 (성능 개선, 2026-07-28).
+"""PostgreSQL 커넥션 — 스레드당 1개 재사용 (2026-07-28 프로세스당 → 2026-11-09 스레드당).
 
 기존엔 호출부(`database/*.py`, 파이프라인)가 함수 호출마다 `get_conn()`으로 새
 커넥션을 열고 즉시 닫아서, 원격 DB(TCP+인증 왕복)에 쿼리 수만큼 반복 접속하는
-비용이 컸다(예: YouTube 1400개+ 채널 재실행 ~5분). 이제 프로세스당 커넥션 1개를
+비용이 컸다(예: YouTube 1400개+ 채널 재실행 ~5분). 그래서 커넥션을
 지연 생성해 재사용한다.
 
 - `get_conn()` 호출마다 가볍게 살아있는지 확인(`SELECT 1`) 후, 죽어있으면
@@ -13,22 +13,28 @@
   실제로 커넥션을 닫지 않고, 트랜잭션이 남아있으면 rollback만 해서 다음 재사용을
   위해 정리한다.
 
-⚠️ **멀티스레드 주의**: 이 모듈은 "한 프로세스 = 순차 실행"을 전제로 커넥션 1개를
-공유한다. psycopg2 커넥션은 스레드 세이프하지 않다 — 나중에 Airflow가 같은 프로세스
-안에서 여러 태스크를 스레드로 동시 실행하는 구조(예: 특정 LocalExecutor 설정)로
-바뀌면 이 설계 그대로는 안 되고, 그 전에 반드시 `psycopg2.pool`(예:
-`ThreadedConnectionPool`)로 마이그레이션해야 한다 — 인터페이스(`get_conn()`/
-`close()`)는 그대로 유지한 채 이 파일 내부만 바꾸면 되도록 설계했으니 호출부
-(`database/meta_*.py`, `pipelines/*.py`)는 그때도 안 건드려도 된다.
-KubernetesExecutor(태스크마다 별도 Pod = 별도 프로세스)로 가면 이 문제 자체가
-없다 — Airflow 실행 방식은 아직 미정(`NEXT_STEPS.md` §6.2).
+**스레드마다 커넥션 1개** (2026-11-09, NEXT_STEPS §6.2 결정 8-A). 예전엔 프로세스
+전체가 커넥션 1개를 나눠 썼는데, API(FastAPI)는 동기 엔드포인트를 스레드풀에서
+동시에 돌려서 **요청들이 한 트랜잭션을 공유**했다 — 한 요청의 실패한 SELECT가 다른
+요청을 `InFailedSqlTransaction`으로 죽였고(2026-11-04 실측), `commit()`은 남의 쓰기까지
+함께 확정할 수 있었다. psycopg2 커넥션은 스레드 세이프하지 않다.
+
+- 같은 스레드 안에서는 지금처럼 하나를 재사용한다 → 파이프라인(단일 스레드)은 동작이 같다.
+- 요청 단위 풀(`ThreadedConnectionPool`)이 아닌 이유: API 호출부 35곳이 `close()`로
+  반납하지 않는다. 풀로 바꾸면 그 35곳을 다 고쳐야 하고, 하나라도 빠지면 연결이 샌다.
+- 커넥션 수 = 동시에 DB를 쓰는 스레드 수. API는 스레드 수를 제한한다(`main.py` API_THREADS).
+  스레드가 사라지면 그 스레드의 커넥션도 GC로 닫힌다(anyio는 다음 요청이 올 때 10초 넘게 쉰
+  작업 스레드를 정리한다 — 2026-11-09 실측: 동시 40·540요청 내내 API 커넥션 ≤ 10, 정리 후 1).
+- Airflow가 한 프로세스 안에서 태스크를 스레드로 동시 실행해도 같은 이유로 안전하다.
 """
+
+import threading
 
 import psycopg2
 import psycopg2.extensions
 from src.common import config
 
-_conn = None
+_local = threading.local()
 
 
 class _ReusableConnection:
@@ -70,13 +76,29 @@ def _is_alive(conn) -> bool:
         return False
 
 
+def _discard_failed(conn) -> None:
+    """앞선 작업이 실패한 트랜잭션을 남겼으면 되돌린다.
+
+    실패한 트랜잭션은 rollback 전까지 모든 질의를 거부한다 — 그대로 두면 이 스레드의
+    다음 요청이 남의 실패를 떠안는다. 진행 중(INTRANS) 트랜잭션은 건드리지 않는다:
+    같은 스레드의 바깥 호출부가 아직 커밋 전인 쓰기를 들고 있을 수 있다.
+    """
+    try:
+        if conn.get_transaction_status() == psycopg2.extensions.TRANSACTION_STATUS_INERROR:
+            conn.rollback()
+    except Exception:
+        pass
+
+
 def get_conn():
-    global _conn
-    if _conn is None or _conn.closed or not _is_alive(_conn):
-        if _conn is not None:
+    conn = getattr(_local, "conn", None)
+    if conn is not None and not conn.closed:
+        _discard_failed(conn)
+    if conn is None or conn.closed or not _is_alive(conn):
+        if conn is not None:
             try:
-                _conn.close()
+                conn.close()
             except Exception:
                 pass
-        _conn = _connect()
-    return _ReusableConnection(_conn)
+        conn = _local.conn = _connect()
+    return _ReusableConnection(conn)

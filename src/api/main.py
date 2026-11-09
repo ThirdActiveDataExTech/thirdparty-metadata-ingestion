@@ -32,19 +32,35 @@
 
 import json
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import anyio.to_thread
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.api import console, manage, schemas, structured
+from src.common.config import get_env
 from src.database.db import get_conn
 
 logger = logging.getLogger(__name__)
 
+#: 동기 엔드포인트를 돌리는 스레드 수 상한. DB 커넥션은 스레드마다 1개라(src/database/db.py)
+#: 이 값이 곧 API가 여는 커넥션 상한이다. anyio 기본값(40)이면 DB max_connections(100)의
+#: 40%를 API 혼자 쓸 수 있다 — 수집·와이즈넛 적재와 같은 DB를 쓴다.
+API_THREADS = int(get_env("API_THREADS", "10"))
+
+
+@asynccontextmanager
+async def _lifespan(_app):
+    anyio.to_thread.current_default_thread_limiter().total_tokens = API_THREADS
+    yield
+
+
 app = FastAPI(
+    lifespan=_lifespan,
     title="써드파티 액티브 메타데이터 카탈로그 API",
     version="0.1.0",
     description=(
