@@ -911,6 +911,8 @@
     `raw/structured/upload/{해시16}/` + `dcat_dataset_draft`(`source='FIRST_PARTY'`, `PENDING`).
     파싱·매핑·등재는 와이즈넛 알고리즘 몫. **전 기관 수집 오류** 화면(`GET /v1/console/errors`)
   - ⏸ **정형 1st party 인계 규격 — 와이즈넛과 메일로 협의 예정**(2026-11-05 결정, 처리는 와이즈넛 몫)
+    → 2026-11-09 발송본 작성: [correspondence/2026-11-09_wisenut_firstparty_handoff.md](correspondence/2026-11-09_wisenut_firstparty_handoff.md)
+      (1~8번, 벡터 규약 메일과 분리 — 결정 15-A). 발송은 사용자
     1. 파싱 실패 상태: 설계 v2엔 `PENDING/PUBLISHED/DISCARDED`뿐 → `FAILED` 추가 + 사유 `mapping_evidence.error` 제안.
        그때까지 오류 화면은 "세 상태 밖이거나 `error` 키가 있는 행"을 실패로 본다
     2. `content`: 지금은 업로드 원문을 넣는다. 설계상 매핑 끝난 DCAT 필드 → 업로드 시 비우고 와이즈넛이 채우기 제안
@@ -1104,7 +1106,7 @@
 | # | 사항 | 막고 있는 것 | 근거 문서 |
 |---|---|---|---|
 | D-1 | **비정형에 공통 분류 체계(76종)를 쓸 것인가** — 소비재·생활 영역이 없어 패션·화장품·식품·디지털가전은 무엇을 골라도 틀린다. (A) 체계에 대분류 추가 / (B) 비정형 별도 체계 / (C) 비정형은 `category` 미사용 | `sql/migration_2026_11_02_category_source.sql` 적용 보류. C6 등록 API 설계 | [ADR-020](adr/020_Category_Suggestion_Not_Assignment.md) |
-| D-2 | **`vec_role` 행 분리 채택 여부** — 와이즈넛 회신 대기 | B2 착수(대표 벡터 적재) | [ADR-019](adr/019_Dataset_Profile_Vectors.md) |
+| D-2 | **`vec_role` 행 분리 채택 여부** — ⚠️ 11-09 확인: 회신 '대기'가 아니라 **우리 초안이 미발송**이었다. 결정 15-A로 발송본 준비([correspondence](correspondence/2026-11-02_wisenut_vector_relation_reply.md)), 발송은 사용자 | B2 착수(대표 벡터 적재) | [ADR-019](adr/019_Dataset_Profile_Vectors.md) |
 | D-3 | **임베딩 모델·프리픽스 규약** — 정형·비정형 교차 관계 계산의 전제. D-2가 거절돼도 별도 합의 필요 | `SEMANTICALLY_RELATED` 교차 산출 | 회신 초안 §5 (로컬 전용) |
 
 > D-1은 **추천과 사람 선택이 쌓이면 데이터로 판단할 수 있다**(ADR-020). 지금 고르지 않는다.
