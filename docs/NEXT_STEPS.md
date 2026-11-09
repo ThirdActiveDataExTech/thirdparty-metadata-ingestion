@@ -954,8 +954,12 @@
       API 기본 노출은 아직 PUBLIC+ORG(인증 붙는 D1에서 PUBLIC만으로 좁힘)
     - 구현은 결정 목록을 마친 뒤 결정 3(활용 기록)과 함께
   - 참고 포털(모비젠 DATA CATALOG)에서 카테고리 트리·트리맵·My Catalog·고객지원 구성을 가져왔다
-  - ⏸ `.env`에 **ENCRYPTION_KEY**(사용자 API Key 암호화 저장)·**PACKAGE_SIGNING_KEY**(신뢰 패키지 서명)가
-    없다. 코드는 붙었고, 없으면 사유와 함께 거절한다
+  - ✅ **ENCRYPTION_KEY·PACKAGE_SIGNING_KEY (2026-11-09 결정 10)** — `.env`에서 빠져 있던 것을 복구.
+    ENCRYPTION_KEY는 새로 만들지 않고 기존 K8s Secret(`dataset-credentials-encryption-key`, 항목 이름 **`key`**) 값을 옮김,
+    PACKAGE_SIGNING_KEY는 신규 생성(배포 시 K8s Secret으로도 만들 것). 값은 화면에 내지 않음.
+    검증: pgcrypto 왕복 · 저장 경로(`dcat.get_api_key`) 복호화 일치(테스트 행 미커밋) · 포털 경로 패키지 서명·체크섬 검증 통과.
+    함께 고침: CronJob이 Secret의 없는 항목(`ENCRYPTION_KEY`)을 참조 → `key`.
+    ⏳ 서명이 HMAC(공유키)라 외부 수신자는 검증 못 함 → HF·GPT 내보내기 구현 때 공개키(Ed25519 등) 검토
   - ⚠️ `dcat_dataset.category` 25건은 ADR-020 이전 **자동 부여값**이 남아 있다
     (예: `전기차 충전 블로그` → `기술 > 원자력`). 상세의 '분류 확정'으로 바로잡을 수 있다
 - (이전) 내부 콘솔 프로토타입 (2026-11-04) — `/console`. 포털로 대체됐다.
