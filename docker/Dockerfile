@@ -42,18 +42,22 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
-COPY pyproject.toml ./
+COPY pyproject.toml docker/constraints.txt ./
 # 소스는 복사하지 않는다 — 코드만 바뀌었을 때 이 레이어를 재사용하기 위해서다.
 # 그래서 `pip install .`이 아니라 **의존성 목록만** 꺼내 설치한다. 이 저장소는
 # 패키지로 설치해 쓰지 않고 PYTHONPATH=/app 으로 돌린다(개발 환경과 동일).
 # tomllib는 3.11 표준 라이브러리라 추가 의존성이 없다.
+# 버전은 docker/constraints.txt(테스트 통과한 .venv의 freeze)로 고정한다 — 그 파일 머리말 참조.
 # torch는 **CPU 휠을 먼저** 깐다. sentence-transformers가 끌고 오는 PyPI 기본 torch는
 # CUDA 빌드라 nvidia 라이브러리까지 수 GB가 붙는다 — 서버에 GPU가 없다(ADR-016).
+# PyPI를 보조 인덱스로 두는 것은 torch 의존성의 고정 버전이 CPU 인덱스에 없을 수 있어서다.
+# 같은 버전이면 `2.8.0+cpu`가 `2.8.0`보다 높게 정렬돼 CPU 휠이 선택된다.
 RUN python -m venv /opt/venv \
  && /opt/venv/bin/pip install --upgrade pip \
- && /opt/venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu \
+ && /opt/venv/bin/pip install torch -c constraints.txt \
+      --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple \
  && python -c "import tomllib; print('\n'.join(tomllib.load(open('pyproject.toml','rb'))['project']['dependencies']))" > /tmp/requirements.txt \
- && /opt/venv/bin/pip install -r /tmp/requirements.txt
+ && /opt/venv/bin/pip install -r /tmp/requirements.txt -c constraints.txt
 
 # ── 2단계: 모델 굽기 ──────────────────────────────────────────────────
 # 런타임에 외부로 나가지 않도록 가중치를 이미지에 포함한다.
