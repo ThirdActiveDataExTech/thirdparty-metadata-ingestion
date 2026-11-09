@@ -809,6 +809,11 @@
   - ⏸ **`sql/migration_2026_11_04_source_schema_drift.sql` 미적용** — `data_registry`에
     `source_schema_*` 4컬럼을 더하는 DDL이다. 적용 전까지 감지는 돌지만 **기록이 안 되고**,
     `load_previous`가 없는 컬럼을 읽어 매번 `status: error`로 떨어진다(수집은 유효)
+    - **2026-11-09 결정 12-A: 적용한다** — 와이즈넛 적재 전(정형 0건)이라 ADR-014상 단독 변경 가능한 지금이 적기.
+      절차: 스케줄러 일시정지·실행 중 Job 없음 확인 → 로컬 API 내림 → `lock_timeout 5s`로 적용 → 파일 내 검증 3종 통과 후 COMMIT
+    - ⚠️ **감지가 붙은 곳은 선언형 실행기(`pipeline_engine`, 현재 `naver_news_adapter` 1개, 수동 실행)뿐이다.**
+      스케줄러가 돌리는 25건(`src/pipelines/*` → `run_dataset`)에는 감지가 없다 → DDL을 적용해도
+      C4 기준 "원천 스키마 변경 자동 감지"는 실제 수집에서 미충족. **스케줄 경로에 감지 연결 = 구현 단계 과제**
   - ⏸ **CronJob 등록 미완** — P0-3(Docker 빌드 미검증)에 걸려 있다
 - 🟦 **목표선**: Airflow 도입(ADR-007) + 동적 DAG 생성 + 사용량 기반 동시성 조절 + 자동 재구성.
 - **구현**
