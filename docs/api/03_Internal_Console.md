@@ -1,5 +1,9 @@
 # 내부 개발 콘솔 (프로토타입)
 
+> ⛔ **화면은 폐기됨 (2026-11-09, NEXT_STEPS 결정 9).** `src/api/static/`을 지웠고 화면은 포털(portal-mockup)이
+> 대신한다. **API(`src/api/console.py`, `/v1/console/…`)는 포털이 쓰고 있어 그대로 남는다.**
+> 아래는 당시 설계·발견 기록으로 남겨 둔다. 지운 화면 코드는 git 기록에 있다.
+
 ```
 PYTHONPATH=. python scripts/run_console.py
 → http://127.0.0.1:8000/console/

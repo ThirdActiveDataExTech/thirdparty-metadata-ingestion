@@ -33,13 +33,11 @@
 import json
 import logging
 from contextlib import asynccontextmanager
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import anyio.to_thread
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
 
 from src.api import console, manage, schemas, structured
 from src.common.config import get_env
@@ -71,11 +69,11 @@ app = FastAPI(
     ),
 )
 
-# ── 내부 개발 콘솔 ──────────────────────────────────────────────────────────
-# 프로토타입이다. 실제 포털 화면은 케이웨어 과업이고, 여기 있는 것은 우리가
-# 확인·검토·소통하기 위한 것이다(src/api/console.py 머리말).
+# ── 포털·관리자 페이지용 API (/v1/console/…) ─────────────────────────────────
+# 이름은 예전 내부 콘솔에서 왔다. 콘솔 화면(src/api/static)은 2026-11-09 지웠고
+# (NEXT_STEPS 결정 9) 지금은 포털(portal-mockup)이 이 API를 쓴다 — 이름을 바꾸려면 포털과 함께.
 #
-# ⚠️ 콘솔은 **권한을 보지 않는다**(총괄 관리자 시점). 로컬에서만 띄운다.
+# ⚠️ **권한을 보지 않는다**(총괄 관리자 시점). 로컬에서만 띄운다.
 # ⚠️ manage를 **먼저** 넣는다. console의 상세 `GET /datasets/{dataset_id:path}`는 슬래시까지
 # 삼키므로, 뒤에 오는 `…/trend`·`…/package`·`…/run`을 식별자의 일부로 읽는다
 # (main.py `/jsonld`가 그렇게 죽어 있었다 — tests/test_api_routing.py).
@@ -83,15 +81,11 @@ app.include_router(manage.router)
 app.include_router(structured.router)
 app.include_router(console.router)
 
-_STATIC = Path(__file__).parent / "static"
-if _STATIC.is_dir():
-    app.mount("/console", StaticFiles(directory=str(_STATIC), html=True), name="console")
-
 
 @app.get("/", include_in_schema=False)
 def _root():
-    """맨손으로 열었을 때 빈 화면 대신 콘솔로 보낸다."""
-    return RedirectResponse("/console/")
+    """맨손으로 열었을 때 빈 화면 대신 API 문서로 보낸다. 화면은 포털에 있다."""
+    return RedirectResponse("/docs")
 
 
 #: 기본으로 내보낼 공개 범위.

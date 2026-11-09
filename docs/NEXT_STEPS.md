@@ -958,9 +958,10 @@
     없다. 코드는 붙었고, 없으면 사유와 함께 거절한다
   - ⚠️ `dcat_dataset.category` 25건은 ADR-020 이전 **자동 부여값**이 남아 있다
     (예: `전기차 충전 블로그` → `기술 > 원자력`). 상세의 '분류 확정'으로 바로잡을 수 있다
-- (이전) 내부 콘솔 프로토타입 (2026-11-04) — `/console`. 포털로 대체됐다
+- (이전) 내부 콘솔 프로토타입 (2026-11-04) — `/console`. 포털로 대체됐다.
+  **화면은 2026-11-09 삭제(결정 9-A)** — `src/api/static/` 제거, API `/`는 `/docs`로. `/v1/console/*` API는 포털이 써서 유지(이름 변경은 포털과 함께)
 - 🟩 **최소선**: 데이터셋 등록·상태·수집 이력 조회 API(C6에 엔드포인트 추가).
-  - ✅ 조회 API + **내부 개발 콘솔** — `src/api/console.py`, `src/api/static/index.html`,
+  - ✅ 조회 API + **내부 개발 콘솔** — `src/api/console.py`, ~~`src/api/static/index.html`~~(2026-11-09 삭제),
     `scripts/run_console.py`. 설계·발견은 [api/03_Internal_Console.md](api/03_Internal_Console.md)
   - ⚠️ **포털이 아니다.** 실제 사용자 화면·디자인·배포는 케이웨어 과업이고, 이것은
     (a) 계획서 기능이 실 데이터에서 도는지 확인 (b) 사람이 판단해야 하는 일
