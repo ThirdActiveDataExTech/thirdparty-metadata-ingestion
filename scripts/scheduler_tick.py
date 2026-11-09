@@ -49,13 +49,18 @@ MAX_DATASETS_PER_TICK = int(os.getenv("TICK_MAX_DATASETS", "10"))
 
 #: 한 틱의 전체 시간 예산(초). 초과하면 **진행 중인 건을 끝내고** 다음 건은 안 집는다.
 #: 중간에 끊지 않는 이유 — 파이프라인이 DB·S3를 중간 상태로 남길 수 있다.
-TICK_BUDGET_SEC = int(os.getenv("TICK_BUDGET_SEC", str(50 * 60)))
+#: 크론 주기(15분, 와이즈넛 계약)보다 짧게 둔다.
+TICK_BUDGET_SEC = int(os.getenv("TICK_BUDGET_SEC", str(14 * 60)))
 
 #: 시각 기준은 **UTC**. DB가 TIMESTAMPTZ라 비교는 서버가 하지만, 로그는 사람이 읽는다.
 TZ = timezone.utc
 
 #: 이 상태의 데이터셋만 돌린다. 'paused'는 의도적 중단이라 건드리지 않는다.
-RUNNABLE_STATUS = ("active", "pending")
+#: 'error'도 돌린다 — 파이프라인이 실패 시 next_collect_at을 +1시간으로 잡아 두므로 그 시각이
+#: 지나면 재시도된다. ⚠️ 와이즈넛 자동 실행 계약의 폴링 조건은 ('pending','active')뿐이다(ADR-008).
+#: 그대로면 일시적 오류 한 번에 사람이 손댈 때까지 멈춘다 → **우리 확장**, 와이즈넛 협의 대상
+#: (2026-11-09 결정 11-2(b), NEXT_STEPS D1 메일 목록).
+RUNNABLE_STATUS = ("active", "pending", "error")
 
 #: 같은 데이터셋이 두 틱에서 동시에 돌지 않게 하는 자문 잠금(advisory lock)의 키 공간.
 #: 틱이 예산(50분)보다 오래 걸리고 크론이 1시간마다 돌면 겹칠 수 있다 —

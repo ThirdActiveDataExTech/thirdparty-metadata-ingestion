@@ -172,6 +172,33 @@ class TestOperatingSpec:
         assert "paused" not in tick_mod.RUNNABLE_STATUS
 
     def test_예산이_크론_주기보다_짧다(self):
-        # 1시간 주기 크론에 50분 예산 — 틱이 겹칠 여지를 줄인다.
+        # 15분 주기 크론(와이즈넛 계약)에 14분 예산 — 틱이 겹칠 여지를 줄인다.
         # 그래도 겹칠 수 있어서 advisory lock이 따로 있다.
-        assert tick_mod.TICK_BUDGET_SEC < 3600
+        assert tick_mod.TICK_BUDGET_SEC < 15 * 60
+
+    def test_실패한_데이터셋도_다시_집는다(self):
+        """실패 시 next_collect_at을 +1시간으로 잡는다 — error를 빼면 그 재시도가 영영 안 돈다.
+
+        2026-11-09 발견: 주석은 '재시도는 자동'이라 했지만 폴링이 error를 제외해
+        일시적 오류 한 번이면 사람이 손댈 때까지 멈췄다.
+        """
+        assert "error" in tick_mod.RUNNABLE_STATUS
+
+
+class TestNextCollectInterval:
+    """다음 수집 시각 = 종료 시각 + 이 간격. 와이즈넛 자동 실행 계약의 산정 규칙(ADR-008)."""
+
+    def test_갱신_주기를_따른다(self):
+        from src.database.dcat import parse_iso8601_duration_to_timedelta as f
+        assert f("P1D") == timedelta(days=1) and f("P7D") == timedelta(days=7)
+
+    @pytest.mark.parametrize("missing", [None, ""])
+    def test_주기가_없으면_주간이다(self, missing):
+        """예전엔 None에서 AttributeError → 그 데이터셋이 수집 성공 직후 error로 떨어졌다."""
+        from src.database.dcat import parse_iso8601_duration_to_timedelta as f
+        assert f(missing) == timedelta(days=7)
+
+    def test_모르는_형식은_조용히_넘기지_않는다(self):
+        from src.database.dcat import parse_iso8601_duration_to_timedelta as f
+        with pytest.raises(ValueError):
+            f("PT1H")

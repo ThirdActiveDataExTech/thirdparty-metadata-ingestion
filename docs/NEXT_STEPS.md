@@ -914,6 +914,9 @@
     5. `dcat_dataset` 등재 주체: `PUBLISHED`로 바꾸는 쪽이 등재(`party='1st'`, `dataset_origin='admin'`)
     6. 원본 파일 경로 규칙(`metadata.json` + `files/*`)을 `meta_datagokr_file` 생성 시 읽기
     7. 업로드 JSON 양식(기대 키 목록) — 정형 샘플 받을 때 함께
+    8. **(2026-11-09 추가) 자동 실행 계약 — 실패 재시도**: 계약 폴링 조건은 `status IN ('pending','active')`라
+       `error`가 다시 돌지 않는다. 우리는 `error`도 폴링해 파이프라인이 잡은 +1시간 뒤 재시도하도록 확장했다(ADR-008).
+       계약 조건에 `error`(+ `next_collect_at` 경과)를 넣자고 제안. 주기 15분·주간 폴백은 계약대로 맞춤
     - 용량 제한(1회 500MB·50파일)은 우리 결정, 통보만
   - ✅ **관리자 화면 분리 (2026-11-05 결정 B — 한 앱 안에서 분리)** — 관리 화면 전부 `/admin` 아래 +
     관리자 전용 레이아웃(왼쪽 메뉴). 데이터셋 관리 `/datasets` → `/admin/datasets`(예전 주소 넘김).
@@ -960,7 +963,9 @@
     검증: pgcrypto 왕복 · 저장 경로(`dcat.get_api_key`) 복호화 일치(테스트 행 미커밋) · 포털 경로 패키지 서명·체크섬 검증 통과.
     함께 고침: CronJob이 Secret의 없는 항목(`ENCRYPTION_KEY`)을 참조 → `key`.
     ⏳ 서명이 HMAC(공유키)라 외부 수신자는 검증 못 함 → HF·GPT 내보내기 구현 때 공개키(Ed25519 등) 검토
-  - 🟨 **수집 스케줄러 K8s 배포 (2026-11-09 결정 11-A)** — CronJob `collector-tick`(ns `metadata-ingestion`, 매시)
+  - 🟨 **수집 스케줄러 K8s 배포 (2026-11-09 결정 11-A)** — CronJob `collector-tick`(ns `metadata-ingestion`, **15분** — 와이즈넛 계약)
+    - 계약 대조(ADR-008): 처음 배포는 매시였다 → 15분·예산 14분으로 복구. 실패(`error`)도 재시도하도록 확장(와이즈넛 협의 8번),
+      수집 주기 없으면 주간 폴백 추가
     - 이미지 `registry.example.com/thirdparty/metadata-collector:v0.1.0-20261109-dev-6eaefdf`(4.22GB).
       이름을 나눈 이유: `thirdparty/metadata-ingestion`은 **와이즈넛 서비스**(Active Metadata Management, FastAPI :8085)
     - Dockerfile 보정: CPU torch · whisper small 굽기 · configs 복사 · **버전 고정**(`docker/constraints.txt`, yt-dlp만 최신).

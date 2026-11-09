@@ -209,11 +209,16 @@ def get_api_key(dataset_id: str, credential_type: str) -> Optional[str]:
     return config.get_env(env_name)
 
 
-def parse_iso8601_duration_to_timedelta(duration: str) -> timedelta:
+def parse_iso8601_duration_to_timedelta(duration: Optional[str]) -> timedelta:
     """dcat_dataset.accrual_periodicity(예: 'P1D', 'P7D')를 timedelta로 변환.
 
     이 프로젝트에서 실제 쓰이는 값이 P{n}D 형태뿐이라 그 범위만 지원한다.
+    값이 없으면 **주간(7일)** — 와이즈넛 자동 실행 계약의 산정 규칙
+    "차기 등록 예정일 → 갱신 주기 → 둘 다 없으면 주간"(ADR-008). 비정형은 차기 등록
+    예정일이 늘 NULL이라 갱신 주기·주간 두 단계만 해당한다.
     """
+    if not duration:
+        return timedelta(days=7)
     if not duration.startswith("P") or not duration.endswith("D"):
         raise ValueError(f"지원하지 않는 accrual_periodicity 형식: {duration!r}")
     days = int(duration[1:-1])
