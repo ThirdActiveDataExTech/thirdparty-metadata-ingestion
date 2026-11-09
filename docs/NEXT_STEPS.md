@@ -534,6 +534,7 @@
 | **P0-7** | **수집이 멈춰 있다.** 18개 데이터셋이 `next_collect_at`을 2~3일 경과. K8s에 CronJob이 없고 Airflow 미도입이라 사람이 직접 쳐야만 돈다. 그 결과 발견형 3종(video/news/blog)의 `active_meta_*` 관측일이 **1일**뿐이라 **B2 시계열 공변동이 정의되지 않는다** | 🟡 도구 작성됨 | B2 · C4 · 모든 시계열 분석 |
 | | → [scripts/scheduler_tick.py](../scripts/scheduler_tick.py) + [k8s/cronjobs/collector-tick-cronjob.yaml](../k8s/cronjobs/collector-tick-cronjob.yaml) 작성 완료. **아직 아무것도 돌리지 않았다** — 마이그레이션 적용이 선행이고(수집이 `token_text`를 쓴다), CronJob은 P0-3 이미지 빌드가 선행이다 | | |
 | **P0-6** | **검색 평가셋** — 하네스·known-item 라벨 완료 (2026-11-04). **topical 라벨은 사람 판정 대기** | 🟡 절반 | C1 완료기준·C2·C6 |
+| | → **2026-11-09 결정 16-B**: 1인 전량 판정(중복 판정 생략). **화면 보강만 구현 단계에서 먼저**(영상 설명 일부·YouTube 링크·0/1/2 단축키 + 판정 기준 1쪽), **판정은 나중에** — 코퍼스가 고정 스냅샷이라 늦게 해도 유효. 기한: C1 수치 제시가 필요한 연차 실적 정리 1주 전(시점 확인 필요). 그 전에 검색 방식을 크게 바꾸게 되면 앞당긴다. 추정: 라벨러 1.5~2.5시간(보강 후) | | |
 | | → `src/eval/`, `scripts/eval_search.py`, `eval/search/video/`. 질의 50건(known-item 30 자동 + topical 20 설계). 사람 판정 후보 **393건** 풀링 완료 | | |
 | | → **즉시 성과**: RRF `k` 스윕의 답이 **"k로는 안 된다"**로 나왔다. k를 60→30→20→10으로 낮춰도 `recall@1`이 전부 **0.7333**으로 동일하다. k는 깊이만 바꾸고 1위를 뺏기는 것은 못 막는다 | | |
 
