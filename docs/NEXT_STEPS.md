@@ -960,6 +960,18 @@
     검증: pgcrypto 왕복 · 저장 경로(`dcat.get_api_key`) 복호화 일치(테스트 행 미커밋) · 포털 경로 패키지 서명·체크섬 검증 통과.
     함께 고침: CronJob이 Secret의 없는 항목(`ENCRYPTION_KEY`)을 참조 → `key`.
     ⏳ 서명이 HMAC(공유키)라 외부 수신자는 검증 못 함 → HF·GPT 내보내기 구현 때 공개키(Ed25519 등) 검토
+  - 🟨 **수집 스케줄러 K8s 배포 (2026-11-09 결정 11-A)** — CronJob `collector-tick`(ns `metadata-ingestion`, 매시)
+    - 이미지 `registry.example.com/thirdparty/metadata-collector:v0.1.0-20261109-dev-6eaefdf`(4.22GB).
+      이름을 나눈 이유: `thirdparty/metadata-ingestion`은 **와이즈넛 서비스**(Active Metadata Management, FastAPI :8085)
+    - Dockerfile 보정: CPU torch · whisper small 굽기 · configs 복사 · **버전 고정**(`docker/constraints.txt`, yt-dlp만 최신).
+      고정 전엔 transformers 5·sentence-transformers 6·torch 2.15가 들어와 컨테이너 테스트 20건 실패(임베딩 불일치 위험)
+    - 컨테이너 안 테스트 420/424(실패 4 = eval 데이터·httpx 미포함, 실행 무관)
+    - Secret `metadata-ingestion-env`(12키) 생성 — 값은 사용자가 .env에서 직접 주입
+    - 수동 1건 검증: `persona_insight_dataset_6f9b05` 성공(17.8초, 264행, `triggered_by=scheduler_tick`, 다음 예정 +1일)
+    - ⏳ **레지스트리 푸시 전** — 관리자 계정 미확보. 기반 이미지(`hub/python:3.11.17-slim`)도 hub에 없어 서버에 있던
+      이미지에 정책 주소 태그만 붙여 `--pull=never`로 빌드. 노드(CRI-O)와 podman이 저장소를 같이 써서 IfNotPresent로 동작.
+      **노드가 바뀌거나 이미지가 정리되면 재빌드 필요** → 계정 생기면 두 이미지 푸시
+    - ⏳ `PACKAGE_SIGNING_KEY` K8s Secret은 API를 클러스터에 올릴 때
   - ⚠️ `dcat_dataset.category` 25건은 ADR-020 이전 **자동 부여값**이 남아 있다
     (예: `전기차 충전 블로그` → `기술 > 원자력`). 상세의 '분류 확정'으로 바로잡을 수 있다
 - (이전) 내부 콘솔 프로토타입 (2026-11-04) — `/console`. 포털로 대체됐다.
