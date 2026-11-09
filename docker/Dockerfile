@@ -9,9 +9,19 @@
 # 사내 정책: Docker Hub 이미지는 registry.example.com/hub 경유, `latest` 금지,
 #            원본 주소는 지우지 않고 주석으로 남긴다.
 #
-# 빌드 (레지스트리가 닿는 곳에서):
-#   docker build -f docker/Dockerfile -t registry.example.com/metadata-ingestion:0.1.0 .
-#   docker push  registry.example.com/metadata-ingestion:0.1.0
+# 이미지 이름은 **metadata-collector**다. `thirdparty/metadata-ingestion`은 와이즈넛의 별도 서비스
+# (Active Metadata Management, FastAPI :8085)가 쓰고 있어 겹치지 않게 했다(2026-11-09).
+# 태그 관례: v<버전>-<YYYYMMDD>-dev-<커밋7>
+#
+# 빌드 (RnD-analyzer01, root podman — 저장소가 /DATA이고 CRI-O와 이미지 저장소를 같이 쓴다):
+#   sudo podman build --pull=never --format docker -f docker/Dockerfile \
+#        -t registry.example.com/thirdparty/metadata-collector:<태그> .
+#   sudo podman push registry.example.com/thirdparty/metadata-collector:<태그>   # 관리자 계정 필요
+#
+# ⏳ 2026-11-09 현재 **푸시 전**이다(레지스트리 관리자 계정 미확보). 기반 이미지도 hub에 없어
+#    서버에 있던 python:3.11-slim(=3.11.17)에 정책 주소 태그만 붙여 빌드했다(--pull=never).
+#    CronJob은 노드에 있는 이미지를 그대로 쓴다(IfNotPresent). 노드가 늘거나 이미지가
+#    정리되면 다시 빌드해야 한다 — 계정이 생기면 기반 이미지와 이 이미지를 푸시할 것.
 #
 # ⚠️ 빌드 시점에 네트워크가 필요하다 — 임베딩 모델을 **이미지에 굽는다**.
 #    런타임에 HuggingFace를 받으러 가지 않게 하려는 것이고, 04_Implementation_Methods
@@ -19,8 +29,8 @@
 # ══════════════════════════════════════════════════════════════════════
 
 # ── 1단계: 의존성 설치 ────────────────────────────────────────────────
-# image: python:3.11.9-slim
-FROM registry.example.com/hub/python:3.11.9-slim AS builder
+# image: python:3.11.17-slim
+FROM registry.example.com/hub/python:3.11.17-slim AS builder
 
 ENV PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
@@ -37,8 +47,11 @@ COPY pyproject.toml ./
 # 그래서 `pip install .`이 아니라 **의존성 목록만** 꺼내 설치한다. 이 저장소는
 # 패키지로 설치해 쓰지 않고 PYTHONPATH=/app 으로 돌린다(개발 환경과 동일).
 # tomllib는 3.11 표준 라이브러리라 추가 의존성이 없다.
+# torch는 **CPU 휠을 먼저** 깐다. sentence-transformers가 끌고 오는 PyPI 기본 torch는
+# CUDA 빌드라 nvidia 라이브러리까지 수 GB가 붙는다 — 서버에 GPU가 없다(ADR-016).
 RUN python -m venv /opt/venv \
  && /opt/venv/bin/pip install --upgrade pip \
+ && /opt/venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu \
  && python -c "import tomllib; print('\n'.join(tomllib.load(open('pyproject.toml','rb'))['project']['dependencies']))" > /tmp/requirements.txt \
  && /opt/venv/bin/pip install -r /tmp/requirements.txt
 
@@ -48,14 +61,19 @@ RUN python -m venv /opt/venv \
 FROM builder AS models
 
 ENV HF_HOME=/opt/hf
+# faster-whisper 'small' — YouTube 자막 STT(src/collectors/youtube_transcript_collector.py).
+# 런타임은 HF_HUB_OFFLINE=1이라 여기서 굽지 않으면 YouTube 수집이 STT에서 실패한다.
 RUN /opt/venv/bin/python -c "\
 from sentence_transformers import SentenceTransformer; \
 SentenceTransformer('intfloat/multilingual-e5-base', device='cpu')" \
+ && /opt/venv/bin/python -c "\
+from faster_whisper import WhisperModel; \
+WhisperModel('small', device='cpu', compute_type='int8')" \
  && /opt/venv/bin/python -c "from kiwipiepy import Kiwi; Kiwi()"
 
 # ── 3단계: 실행 이미지 ────────────────────────────────────────────────
-# image: python:3.11.9-slim
-FROM registry.example.com/hub/python:3.11.9-slim AS runtime
+# image: python:3.11.17-slim
+FROM registry.example.com/hub/python:3.11.17-slim AS runtime
 
 # ffmpeg: yt-dlp가 오디오를 뽑을 때 쓴다(YouTube 자막 STT).
 # libgomp1: ctranslate2(faster-whisper)가 링크한다.
@@ -81,6 +99,7 @@ WORKDIR /app
 COPY src/     /app/src/
 COPY scripts/ /app/scripts/
 COPY sql/     /app/sql/
+COPY configs/ /app/configs/
 
 # 루트로 돌지 않는다. 쓰기는 /tmp만 필요하다(모델·코드는 읽기 전용).
 RUN useradd --create-home --uid 10001 ingest \
