@@ -65,10 +65,10 @@ app = FastAPI(
     title="써드파티 액티브 메타데이터 카탈로그 API",
     version="0.1.0",
     description=(
-        "수집한 비정형 데이터의 카탈로그와 검색을 제공한다. 읽기 전용이다.\n\n"
-        "검색은 벡터·키워드 두 채널을 RRF로 결합한다(ADR-010). "
-        "결과에 두 채널의 순위가 그대로 실려 나오므로 어느 쪽이 그 문서를 "
-        "올렸는지 볼 수 있다."
+        "수집한 비정형 데이터의 카탈로그와 검색을 제공합니다. 읽기 전용입니다.\n\n"
+        "검색은 벡터·키워드 두 채널을 RRF로 결합합니다(ADR-010). "
+        "결과에 두 채널의 순위가 함께 나오므로 어느 채널이 해당 문서를 "
+        "상위로 올렸는지 확인할 수 있습니다."
     ),
 )
 
@@ -138,7 +138,8 @@ def healthz():
         cur.execute("SELECT count(*) FROM dcat_dataset")
         return {"status": "ok", "datasets": cur.fetchone()[0]}
     except Exception as e:                        # noqa: BLE001
-        raise HTTPException(503, f"데이터베이스에 닿지 않는다: {type(e).__name__}")
+        logger.warning("헬스 체크 DB 실패: %s", type(e).__name__)
+        raise HTTPException(503, "데이터베이스에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요")
 
 
 @app.get("/v1/datasets", response_model=schemas.Page, tags=["카탈로그"])
@@ -196,7 +197,7 @@ def get_jsonld(dataset_id: str, user: Optional[User] = Depends(optional_user)):
         doc = jsonld_export.build_dataset_jsonld(dataset_id)
     except Exception as e:                        # noqa: BLE001
         logger.warning("JSON-LD 생성 실패 %s: %s", dataset_id, e)
-        raise HTTPException(500, "JSON-LD를 만들지 못했다")
+        raise HTTPException(500, "JSON-LD를 생성하지 못했습니다")
     return JSONResponse(doc, media_type="application/ld+json")
 
 
@@ -216,7 +217,7 @@ def get_dataset(dataset_id: str, user: Optional[User] = Depends(optional_user)):
         {**vparams, "_id": dataset_id})
     rows = _rows(cur)
     if not rows:
-        raise HTTPException(404, f"없는 데이터셋: {dataset_id}")
+        raise HTTPException(404, "데이터셋을 찾을 수 없습니다")
     row = rows[0]
 
     cur.execute(
@@ -268,11 +269,21 @@ def discover(
     from src.search import discovery as disc
 
     r = disc.discover(purpose, top_k=limit * 2, seeds=seeds)
-    # 볼 수 없는 데이터셋은 씨앗·묶음에서 뺀다(넉넉히 받아 limit을 채운다)
-    ok = visible_ids(get_conn().cursor(),
-                     [x["dataset_id"] for x in r["seeds"]] + [b["dataset_id"] for b in r["bundle"]], user)
+    # 볼 수 없는 데이터셋은 씨앗·묶음에서 뺀다(넉넉히 받아 limit을 채운다).
+    # 근거(paths)의 경유 데이터셋도 같다 — 보이는 항목이라도 숨은 데이터셋을 거쳐 왔다면
+    # 그 경로는 지우고(제목이 새지 않게), 남는 경로가 없으면 항목째 뺀다.
+    ids = ([x["dataset_id"] for x in r["seeds"]] + [b["dataset_id"] for b in r["bundle"]]
+           + [p["via"] for b in r["bundle"] for p in b["paths"] if p.get("via")])
+    ok = visible_ids(get_conn().cursor(), ids, user)
     r["seeds"] = [x for x in r["seeds"] if x["dataset_id"] in ok]
-    r["bundle"] = [b for b in r["bundle"] if b["dataset_id"] in ok][:limit]
+    bundle = []
+    for b in r["bundle"]:
+        if b["dataset_id"] not in ok:
+            continue
+        paths = [p for p in b["paths"] if p["how"] == "search" or p.get("via") in ok]
+        if paths:
+            bundle.append({**b, "paths": paths})
+    r["bundle"] = bundle[:limit]
     return schemas.DiscoverResponse(
         purpose=r["purpose"], seeds=r["seeds"], note=r.get("note"),
         bundle=[
@@ -304,13 +315,14 @@ def search(
     from src.search import hybrid, tokenize
 
     if source not in hybrid.SOURCES:
-        raise HTTPException(400, f"알 수 없는 source: {source} "
-                                 f"(가능: {sorted(hybrid.SOURCES)})")
+        raise HTTPException(400, f"지원하지 않는 검색 대상입니다: {source} "
+                                 f"(가능한 값: {sorted(hybrid.SOURCES)})")
     try:
         rows = hybrid.search(q, source, limit * 2)
     except tokenize.TokenizerMismatch as e:
         # 조용히 빈 결과를 주면 "결과가 없다"로 오해한다. 분명히 알린다
-        raise HTTPException(503, f"검색 색인이 현재 토크나이저와 맞지 않는다: {e}")
+        logger.error("검색 색인·토크나이저 불일치: %s", e)
+        raise HTTPException(503, "검색 색인을 다시 만들어야 합니다. 관리자에게 문의해 주세요")
     # 볼 수 없는 데이터셋의 결과는 뺀다(넉넉히 받아 limit을 채운다)
     cur0 = get_conn().cursor()
     owner = item_dataset_map(cur0, source, [r["id"] for r in rows])

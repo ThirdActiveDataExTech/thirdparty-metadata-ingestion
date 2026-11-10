@@ -121,7 +121,7 @@ def _resolve_handle(handle: str, key: str) -> Optional[Dict[str, str]]:
     r = requests.get("https://www.googleapis.com/youtube/v3/channels",
                      params={"part": "id,snippet", "forHandle": handle, "key": key}, timeout=15)
     if r.status_code != 200:
-        raise HTTPException(502, config.mask_secrets(f"YouTube 핸들 조회 실패({r.status_code}): {r.text[:200]}"))
+        raise HTTPException(502, config.mask_secrets(f"YouTube 핸들을 조회하지 못했습니다(HTTP {r.status_code}): {r.text[:200]}"))
     items = r.json().get("items") or []
     if not items:
         return None
@@ -136,7 +136,7 @@ def parse_youtube_target(raw: str) -> Dict[str, str]:
         return {"kind": "channel", "value": m.group(1) if m else s}
     m = re.search(r"youtube\.com/shorts/([\w-]{11})", s)
     if m:
-        return {"kind": "invalid", "value": s, "reason": "Shorts는 수집하지 않는다"}
+        return {"kind": "invalid", "value": s, "reason": "Shorts 영상은 수집하지 않습니다"}
     m = re.search(r"(?:youtube\.com/watch\?(?:.*&)?v=|youtu\.be/)([\w-]{11})", s)
     if m:
         return {"kind": "video", "value": m.group(1)}
@@ -146,7 +146,7 @@ def parse_youtube_target(raw: str) -> Dict[str, str]:
     if _VIDEO_ID.match(s):
         return {"kind": "video", "value": s}
     return {"kind": "invalid", "value": s,
-            "reason": "채널 URL(/channel/UC… 또는 /@핸들)·영상 URL·영상 ID 중 하나여야 한다"}
+            "reason": "채널 URL(/channel/UC… 또는 /@핸들), 영상 URL, 영상 ID 중 하나를 입력해 주세요"}
 
 
 def resolve_youtube_targets(targets: List[str], user_key: Optional[str]) -> Dict[str, Any]:
@@ -161,11 +161,11 @@ def resolve_youtube_targets(targets: List[str], user_key: Optional[str]) -> Dict
         elif p["kind"] == "handle":
             key = key or _youtube_key(user_key)
             if not key:
-                problems.append({"input": t, "reason": "핸들을 채널 ID로 바꿀 API Key가 서버에 없다"})
+                problems.append({"input": t, "reason": "서버에 YouTube API Key가 없어 핸들을 채널 ID로 변환할 수 없습니다"})
                 continue
             hit = _resolve_handle(p["value"], key)
             if not hit:
-                problems.append({"input": t, "reason": "그런 핸들의 채널이 없다"})
+                problems.append({"input": t, "reason": "해당 핸들의 채널을 찾을 수 없습니다"})
                 continue
             channels.append(hit["channel_id"])
             resolved.append({"input": t, "kind": "channel", "value": hit["channel_id"], "title": hit["title"]})
@@ -207,7 +207,7 @@ def check_registration(body: Dict[str, Any] = Body(...)):
     """
     st = body.get("source_type")
     if st not in DISCOVERY | DECLARATIVE:
-        raise HTTPException(400, f"source_type은 {sorted(DISCOVERY | DECLARATIVE)} 중 하나다")
+        raise HTTPException(400, f"수집 유형은 {sorted(DISCOVERY | DECLARATIVE)} 중 하나여야 합니다")
     out: Dict[str, Any] = {"source_type": st, "problems": []}
     resolved = None
     if st == "video":
@@ -215,10 +215,10 @@ def check_registration(body: Dict[str, Any] = Body(...)):
                                            (body.get("credentials") or {}).get("youtube_api_key"))
         out.update(resolved)
         if not resolved["channels"] and not resolved["videos"]:
-            out["problems"].append({"input": "", "reason": "수집 대상이 하나도 해석되지 않았다"})
+            out["problems"].append({"input": "", "reason": "수집 대상을 하나도 확인하지 못했습니다. 입력값을 확인해 주세요"})
     subjects = _subjects_for(body, resolved)
     if st != "video" and not subjects:
-        out["problems"].append({"input": "", "reason": "검색어(또는 카테고리)를 1개 이상 넣어야 한다"})
+        out["problems"].append({"input": "", "reason": "검색어(또는 카테고리)를 1개 이상 입력해 주세요"})
     out["subjects"] = subjects
     out["duplicates"] = _duplicates(st, subjects) if subjects else []
     out["ok"] = not out["problems"]
@@ -234,8 +234,8 @@ def _store_credentials(dataset_id: str, creds: Dict[str, str]) -> List[str]:
     enc = config.get_env("ENCRYPTION_KEY")
     if not enc:
         raise HTTPException(
-            400, "서버에 ENCRYPTION_KEY가 없어 API Key를 안전하게 저장할 수 없다. "
-                 "키 칸을 비우면 서버 공유 키로 수집한다.")
+            400, "서버 암호화 설정이 없어 API Key를 안전하게 저장할 수 없습니다. "
+                 "키 입력란을 비우면 서버 공용 키로 수집합니다")
     conn = get_conn()
     cur = conn.cursor()
     for ctype, value in creds.items():
@@ -263,9 +263,9 @@ def parse_category(raw: Any) -> List[str]:
     cats = _clean_list(raw)
     bad = [c for c in cats if not is_valid(c)]
     if bad:
-        raise HTTPException(400, f"분류표에 없는 값: {bad}")
+        raise HTTPException(400, f"분류표에 없는 값입니다: {bad}")
     if not 1 <= len(cats) <= MAX_PER_DATASET or len(set(cats)) != len(cats):
-        raise HTTPException(400, f"분류는 서로 다른 값 1~{MAX_PER_DATASET}개다 (첫 값이 대표)")
+        raise HTTPException(400, f"분류는 서로 다른 값으로 1~{MAX_PER_DATASET}개를 선택해 주세요 (첫 번째 값이 대표 분류)")
     return cats
 
 
@@ -278,36 +278,36 @@ def register_as(body: Dict[str, Any], origin: str, owner_id: Optional[str]) -> D
     assert origin in ("admin", "user")
     st = body.get("source_type")
     if st not in DISCOVERY | DECLARATIVE:
-        raise HTTPException(400, f"source_type은 {sorted(DISCOVERY | DECLARATIVE)} 중 하나다")
+        raise HTTPException(400, f"수집 유형은 {sorted(DISCOVERY | DECLARATIVE)} 중 하나여야 합니다")
     title, desc = (body.get("title") or "").strip(), (body.get("description") or "").strip()
     if not title or not desc:
         # 설명은 관계 산출(SEMANTICALLY_RELATED)의 판정 근거다 — 비우면 안 된다
-        raise HTTPException(400, "제목과 설명은 필수다")
+        raise HTTPException(400, "제목과 설명은 필수 입력 항목입니다")
     period = body.get("periodicity") or "P1D"
     if not _PERIOD.match(period):
-        raise HTTPException(400, "수집 주기는 P{n}D 형식이다 (예: P1D 매일, P7D 매주)")
+        raise HTTPException(400, "수집 주기는 P{n}D 형식이어야 합니다 (예: P1D 매일, P7D 매주)")
     visibility = body.get("visibility") or "ORG"
     if visibility not in VISIBILITY:
-        raise HTTPException(400, f"공개 범위는 {sorted(VISIBILITY)} 중 하나다")
+        raise HTTPException(400, f"공개 범위는 {sorted(VISIBILITY)} 중 하나여야 합니다")
     creds = body.get("credentials") or {}
     unknown = set(creds) - set(CREDENTIALS[st])
     if unknown:
-        raise HTTPException(400, f"{st}에 쓰지 않는 자격증명: {sorted(unknown)}")
+        raise HTTPException(400, f"{st} 수집에 사용하지 않는 인증 정보입니다: {sorted(unknown)}")
     chosen = parse_category(body["category"]) if _clean_list(body.get("category")) else []
     if any(isinstance(v, str) and v.strip() for v in creds.values()) and not config.get_env("ENCRYPTION_KEY"):
         # 등록부터 하고 키 저장에서 실패하면 키 없는 데이터셋이 남는다. 먼저 막는다
-        raise HTTPException(400, "서버에 ENCRYPTION_KEY가 없어 API Key를 안전하게 저장할 수 없다. "
-                                 "키 칸을 비우면 서버 공유 키로 수집한다.")
+        raise HTTPException(400, "서버 암호화 설정이 없어 API Key를 안전하게 저장할 수 없습니다. "
+                                 "키 입력란을 비우면 서버 공용 키로 수집합니다")
 
     pre = check_registration(body)
     if not pre["ok"]:
-        raise HTTPException(400, "입력을 확인하라: " + "; ".join(
+        raise HTTPException(400, "입력값을 확인해 주세요: " + "; ".join(
             f"{p['input']} — {p['reason']}" if p["input"] else p["reason"] for p in pre["problems"]))
     if pre["duplicates"] and not body.get("allow_duplicate"):
         if origin == "user":
             # 사용자에게 남의 데이터셋 제목을 알려 주지 않는다(PRIVATE일 수 있다) — my.check가 가린 목록을 본다
-            raise HTTPException(409, f"같은 수집 조건의 데이터셋이 이미 {len(pre['duplicates'])}개 있다")
-        raise HTTPException(409, "같은 수집 조건의 데이터셋이 이미 있다: " +
+            raise HTTPException(409, f"같은 수집 조건의 데이터셋이 이미 {len(pre['duplicates'])}개 있습니다")
+        raise HTTPException(409, "같은 수집 조건의 데이터셋이 이미 있습니다: " +
                             ", ".join(d["title"] for d in pre["duplicates"]))
 
     R = _registrar()
@@ -324,7 +324,7 @@ def register_as(body: Dict[str, Any], origin: str, owner_id: Optional[str]) -> D
     else:
         cats = _clean_list(body.get("categories"))
         if any(":" not in c for c in cats):
-            raise HTTPException(400, "카테고리는 'ID:이름' 형식이다 (예: 50000148:패션의류)")
+            raise HTTPException(400, "카테고리는 'ID:이름' 형식이어야 합니다 (예: 50000148:패션의류)")
         args.categories = ",".join(cats)
     try:
         dataset_id = R.register_discovery(args) if st in DISCOVERY else R.register_declarative(args)
@@ -347,7 +347,7 @@ def register_as(body: Dict[str, Any], origin: str, owner_id: Optional[str]) -> D
     stored = _store_credentials(dataset_id, creds)
     return {"dataset_id": dataset_id, "status": "pending", "credentials_stored": stored,
             "category": chosen, "visibility": visibility,
-            "note": "등록만 됐다. 수집은 '지금 수집'이나 스케줄러가 한다"}
+            "note": "등록했습니다. 수집은 '지금 수집'을 누르거나 정해진 주기에 자동으로 진행됩니다"}
 
 
 # ── 수정 ──────────────────────────────────────────────────────────────────
@@ -361,38 +361,38 @@ def update(dataset_id: str, body: Dict[str, Any] = Body(...), admin: User = Depe
         if col in body:
             v = (body[col] or "").strip()
             if not v:
-                raise HTTPException(400, f"{col}은 비울 수 없다")
+                raise HTTPException(400, f"{col} 항목은 비울 수 없습니다")
             sets.append(f"{col}=%s"); params.append(v)
     if "keywords" in body:
         kws = _clean_list(body["keywords"])
         if not kws:
-            raise HTTPException(400, "키워드는 1개 이상이어야 한다 — 비우면 키워드 검색·관계에서 빠진다")
+            raise HTTPException(400, "키워드를 1개 이상 입력해 주세요. 키워드가 없으면 키워드 검색과 관계 분석에서 제외됩니다")
         sets.append("keywords=%s::jsonb"); params.append(json.dumps(kws, ensure_ascii=False))
     if "accrual_periodicity" in body:
         if not _PERIOD.match(body["accrual_periodicity"] or ""):
-            raise HTTPException(400, "수집 주기는 P{n}D 형식이다")
+            raise HTTPException(400, "수집 주기는 P{n}D 형식이어야 합니다")
         sets.append("accrual_periodicity=%s"); params.append(body["accrual_periodicity"])
     if "visibility" in body:
         if body["visibility"] not in VISIBILITY:
-            raise HTTPException(400, f"공개 범위는 {sorted(VISIBILITY)} 중 하나다")
+            raise HTTPException(400, f"공개 범위는 {sorted(VISIBILITY)} 중 하나여야 합니다")
         sets.append("visibility=%s"); params.append(body["visibility"])
     cats = None
     if "category" in body:
         cats = parse_category(body["category"])
         sets.append("category=%s::jsonb"); params.append(json.dumps(cats, ensure_ascii=False))
     if not sets:
-        raise HTTPException(400, "바꿀 항목이 없다")
+        raise HTTPException(400, "변경할 항목이 없습니다")
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("SELECT category FROM dcat_dataset WHERE dataset_id=%s", (dataset_id,))
     prev = cur.fetchone()
     if prev is None:
-        raise HTTPException(404, f"없는 데이터셋: {dataset_id}")
+        raise HTTPException(404, "데이터셋을 찾을 수 없습니다")
     cur.execute(f"UPDATE dcat_dataset SET {', '.join(sets)}, updated_at=now() "
                 f"WHERE dataset_id=%s RETURNING dataset_id", (*params, dataset_id))
     if cur.fetchone() is None:
         conn.rollback()
-        raise HTTPException(404, f"없는 데이터셋: {dataset_id}")
+        raise HTTPException(404, "데이터셋을 찾을 수 없습니다")
     if cats is not None:
         # 관리자 상세의 '분류 확정' — 그때 저장돼 있던 최신 추천을 보여 준 것으로 기록한다
         from src.database.category import record_decision
@@ -413,7 +413,7 @@ def delete(dataset_id: str, confirm: str = Query(..., description="실수 방지
     오브젝트 스토리지 원본은 지운다 — 남기면 고아 객체가 된다(2026-10-29에 2,157개를 정리했다).
     """
     if confirm != dataset_id:
-        raise HTTPException(400, "confirm이 dataset_id와 다르다")
+        raise HTTPException(400, "확인용으로 입력한 값이 데이터셋 ID와 다릅니다")
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("SELECT s3_raw_prefix, s3_jsonld_prefix FROM data_registry WHERE dataset_id=%s", (dataset_id,))
@@ -422,20 +422,22 @@ def delete(dataset_id: str, confirm: str = Query(..., description="실수 방지
         cur.execute("DELETE FROM dcat_dataset WHERE dataset_id=%s RETURNING dataset_id", (dataset_id,))
         if cur.fetchone() is None:
             conn.rollback()
-            raise HTTPException(404, f"없는 데이터셋: {dataset_id}")
+            raise HTTPException(404, "데이터셋을 찾을 수 없습니다")
         conn.commit()
     except HTTPException:
         raise
     except Exception as e:                        # noqa: BLE001
         conn.rollback()
-        raise HTTPException(409, f"삭제하지 못했다(참조가 남아 있다): {type(e).__name__}: {str(e)[:200]}")
+        logger.warning("데이터셋 삭제 실패 (%s): %s: %s", dataset_id, type(e).__name__,
+                       config.mask_secrets(str(e))[:300])
+        raise HTTPException(409, "삭제하지 못했습니다. 다른 데이터가 이 데이터셋을 참조하고 있을 수 있습니다")
     removed = {}
     from src.storage import s3_client
     for p in prefixes:
         try:
             removed[p] = s3_client.delete_prefix(p, dataset_id)
         except Exception as e:                    # noqa: BLE001
-            removed[p] = f"실패: {config.mask_secrets(str(e))[:200]}"
+            removed[p] = f"삭제 실패: {config.mask_secrets(str(e))[:200]}"
     return {"dataset_id": dataset_id, "deleted": True, "storage": removed}
 
 
@@ -450,7 +452,7 @@ def _spawn(key: str, cmd: List[str]) -> Dict[str, Any]:
     with _RUNS_LOCK:
         cur = _RUNS.get(key)
         if cur and cur["proc"].poll() is None:
-            raise HTTPException(409, "이미 실행 중이다")
+            raise HTTPException(409, "이미 실행 중입니다")
         _LOG_DIR.mkdir(exist_ok=True)
         log = _LOG_DIR / (re.sub(r"[^\w.-]", "_", key) + ".log")
         fh = open(log, "w", encoding="utf-8")
@@ -480,7 +482,7 @@ def run_now(dataset_id: str):
     cur = get_conn().cursor()
     cur.execute("SELECT 1 FROM data_registry WHERE dataset_id=%s", (dataset_id,))
     if not cur.fetchone():
-        raise HTTPException(400, "수집 대상이 아니다(외부 포털 연합분은 메타데이터만 받는다)")
+        raise HTTPException(400, "수집 대상이 아닙니다(외부 포털 연계 데이터셋은 메타데이터만 받아 옵니다)")
     return _spawn(f"run:{dataset_id}", [sys.executable, "-m", "src.main", "run", dataset_id])
 
 
@@ -515,7 +517,7 @@ def trend(dataset_id: str, user: Optional[User] = Depends(optional_user)):
     cur.execute("SELECT source_type FROM dcat_dataset WHERE dataset_id=%s", (dataset_id,))
     row = cur.fetchone()
     if not row:
-        raise HTTPException(404, f"없는 데이터셋: {dataset_id}")
+        raise HTTPException(404, "데이터셋을 찾을 수 없습니다")
     st = row[0]
     if st in _TREND:
         meta, act, agg, label = _TREND[st]
@@ -534,7 +536,7 @@ def trend(dataset_id: str, user: Optional[User] = Depends(optional_user)):
                     (dataset_id,))
         series = [{"date": str(r[0])[:10], "value": float(r[1] or 0), "rows": r[2]} for r in cur.fetchall()]
         return {"kind": "periodic", "metric": label, "series": series}
-    return {"kind": "none", "reason": "이 유형은 시계열을 수집하지 않는다"}
+    return {"kind": "none", "reason": "이 유형은 시계열 데이터를 수집하지 않습니다"}
 
 
 # ── 신뢰 패키지 (C5) ──────────────────────────────────────────────────────
@@ -549,8 +551,8 @@ def package(dataset_id: str, background: BackgroundTasks, user: Optional[User] =
     """
     key = config.get_env("PACKAGE_SIGNING_KEY")
     if not key:
-        raise HTTPException(503, "서버에 PACKAGE_SIGNING_KEY가 없어 서명할 수 없다. "
-                                 "서명 없는 패키지는 만들지 않는다.")
+        raise HTTPException(503, "서버 서명 설정이 없어 패키지를 만들 수 없습니다. "
+                                 "관리자에게 문의해 주세요")
     from scripts import package_dataset as P
     from src.packaging import builder
     from src.storage import jsonld_export
@@ -600,7 +602,7 @@ def run_pipeline(name: str, dry_run: bool = True, limit: Optional[int] = Query(N
     """파이프라인 실행. 기본은 **dry-run**(수집·정규화까지, DB에 쓰지 않음)."""
     from src.pipeline_engine import runner
     if name not in runner.available():
-        raise HTTPException(404, f"없는 파이프라인: {name}")
+        raise HTTPException(404, f"해당 파이프라인을 찾을 수 없습니다: {name}")
     cmd = [sys.executable, "scripts/run_pipeline.py", name]
     if dry_run:
         cmd.append("--dry-run")

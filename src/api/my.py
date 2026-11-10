@@ -63,9 +63,9 @@ def _own(cur, dataset_id: str, uid: str) -> List[str]:
     cur.execute("SELECT owner_id, category FROM dcat_dataset WHERE dataset_id=%s", (dataset_id,))
     row = cur.fetchone()
     if row is None:
-        raise HTTPException(404, f"없는 데이터셋: {dataset_id}")
+        raise HTTPException(404, "데이터셋을 찾을 수 없습니다")
     if row[0] != uid:
-        raise HTTPException(403, "내가 등록한 데이터셋만 바꿀 수 있다")
+        raise HTTPException(403, "본인이 등록한 데이터셋만 변경할 수 있습니다")
     return row[1] or []
 
 
@@ -81,10 +81,10 @@ def category_suggest(body: Dict[str, Any] = Body(...), uid: str = Depends(curren
     title = (body.get("title") or "").strip()
     desc = (body.get("description") or "").strip()
     if not title and not desc:
-        raise HTTPException(400, "제목이나 설명을 먼저 넣어야 추천할 수 있다")
+        raise HTTPException(400, "제목이나 설명을 먼저 입력해 주세요. 입력한 내용으로 분류를 추천합니다")
     from src.database.category import suggest_for_text
     return {"suggestions": suggest_for_text(title, desc, manage._clean_list(body.get("keywords"))),
-            "note": "추천일 뿐입니다. 맞는 것이 없으면 건너뛰세요 — 틀린 분류는 빈 분류보다 나쁩니다"}
+            "note": "자동 추천 결과입니다. 알맞은 분류가 없으면 선택하지 않아도 됩니다. 잘못된 분류는 검색 정확도를 떨어뜨립니다"}
 
 
 @router.post("/datasets/check")
@@ -214,7 +214,7 @@ def confirm_category(dataset_id: str, body: Dict[str, Any] = Body(...), uid: str
     prev = _own(cur, dataset_id, uid)
     if body.get("keep"):
         if not prev:
-            raise HTTPException(400, "유지할 분류가 없다 — 먼저 골라야 한다")
+            raise HTTPException(400, "유지할 분류가 없습니다. 분류를 먼저 선택해 주세요")
         chosen = prev
     else:
         chosen = manage.parse_category(body.get("category"))
@@ -235,7 +235,7 @@ def set_visibility(dataset_id: str, body: Dict[str, Any] = Body(...), uid: str =
     """공개 범위 변경. PRIVATE은 나만, ORG는 기관 안, PUBLIC은 전체."""
     v = body.get("visibility")
     if v not in manage.VISIBILITY:
-        raise HTTPException(400, f"공개 범위는 {sorted(manage.VISIBILITY)} 중 하나다")
+        raise HTTPException(400, f"공개 범위는 {sorted(manage.VISIBILITY)} 중 하나여야 합니다")
     conn = get_conn()
     cur = conn.cursor()
     _own(cur, dataset_id, uid)

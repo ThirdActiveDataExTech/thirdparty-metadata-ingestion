@@ -39,7 +39,7 @@ def ensure_visible(cur, dataset_id: str, user: Optional[User]) -> None:
     cur.execute(f"SELECT 1 FROM dcat_dataset WHERE dataset_id = %(_id)s AND {cond}",
                 {**params, "_id": dataset_id})
     if cur.fetchone() is None:
-        raise HTTPException(404, f"없는 데이터셋: {dataset_id}")
+        raise HTTPException(404, "데이터셋을 찾을 수 없습니다")
 
 
 def visible_ids(cur, ids: Iterable[str], user: Optional[User]) -> Set[str]:

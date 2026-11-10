@@ -40,7 +40,7 @@ RULES: List[Tuple[str, str, str, str, str, bool]] = [
      "메모리 부족", "CronJob memory limit 상향 또는 1회 처리 건수 축소",
      "처리 중 서버 자원이 부족했습니다. 관리자가 확인하고 있습니다", False),
     ("quota", r"quotaExceeded|rateLimitExceeded|Too Many Requests|" + _HTTP + r"429\b|호출 한도",
-     "API 호출 한도 초과", "한도 회복 후 자동 재시도 — 반복되면 수집 주기·건수 조정",
+     "API 호출 한도 초과", "한도가 풀리면 자동 재시도. 반복되면 수집 주기·건수 조정",
      "원천 API의 호출 한도를 넘었습니다. 한도가 풀리면 자동으로 다시 수집합니다", False),
     ("auth", r"Unauthorized|Forbidden|API key not valid|invalid[ _-]?(?:api[ _-]?)?key|keyInvalid|"
              r"SignatureDoesNotMatch|AccessDenied|" + _HTTP + r"40[13]\b",
@@ -53,11 +53,11 @@ RULES: List[Tuple[str, str, str, str, str, bool]] = [
      "오브젝트 스토리지", "SeaweedFS 상태·Secret S3_* 확인",
      "원본 저장소 문제로 수집하지 못했습니다. 관리자가 확인하고 있습니다", False),
     ("model", r"HF_HUB_OFFLINE|LocalEntryNotFound|huggingface\.co",
-     "모델 파일 누락", "이미지에 모델 굽기 누락 — Dockerfile 확인",
+     "모델 파일 누락", "이미지에 모델 파일 누락. Dockerfile 확인",
      "분석 모델을 불러오지 못했습니다. 관리자가 확인하고 있습니다", False),
     ("transient", r"timed out|Timeout|ConnectionError|ConnectTimeout|Temporary failure|"
                   r"Max retries|Connection reset|RemoteDisconnected|" + _HTTP + r"50[0234]\b",
-     "외부 서버 일시 오류", "조치 불필요 — 1시간 뒤 자동 재시도",
+     "외부 서버 일시 오류", "조치 불필요 (1시간 후 자동 재시도)",
      "원천 서버 응답이 늦거나 일시적으로 끊겼습니다. 자동으로 다시 수집합니다", False),
 ]
 _COMPILED = [(code, re.compile(pat, re.I), *rest) for code, pat, *rest in RULES]

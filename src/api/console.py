@@ -85,7 +85,7 @@ def _jsonb(v):
 # ── 화면 1. 수집 현황 ───────────────────────────────────────────────────────
 
 @router.get("/overview")
-def overview():
+def overview(user: Optional[User] = Depends(optional_user)):
     """단계별 적체와 사람 대기 건수.
 
     와이즈넛 화면1은 `수집 → 매핑 → 검토 대기 → 등재` 4단계다. **비정형에는
@@ -107,18 +107,20 @@ def overview():
 
     out["stages"] = [
         {"key": "collect",  "label": "수집",      "count": int(items),
-         "unit": "아이템", "note": "meta_* 적재 건수"},
+         "unit": "아이템", "note": "수집해 저장한 아이템 수"},
         {"key": "feature",  "label": "특징 추출", "count": featured,
-         "unit": "데이터셋", "note": "비정형에는 '매핑' 단계가 없다 — B1 특징 추출로 대체"},
+         "unit": "데이터셋", "note": "비정형 데이터는 '매핑' 단계 대신 특징 추출(B1)을 거칩니다"},
         {"key": "review",   "label": "검토 대기", "count": pending_rel,
-         "unit": "관계", "note": "사람이 승인해야 확정된다"},
+         "unit": "관계", "note": "관리자가 승인해야 확정됩니다"},
         {"key": "listed",   "label": "등재",      "count": registered,
-         "unit": "데이터셋", "note": "dcat_dataset"},
+         "unit": "데이터셋", "note": "카탈로그에 등재된 데이터셋 수"},
     ]
 
-    cur.execute("""SELECT source_type, count(*) AS datasets,
-                          coalesce(sum(item_count),0) AS items
-                   FROM dcat_dataset GROUP BY 1 ORDER BY 1""")
+    # 유형별 건수는 포털 첫 화면에 나간다 — 그 사람이 눌러 들어가 볼 수 있는 것만 센다
+    cond, vparams = visible_clause(user)
+    cur.execute(f"""SELECT source_type, count(*) AS datasets,
+                           coalesce(sum(item_count),0) AS items
+                    FROM dcat_dataset WHERE {cond} GROUP BY 1 ORDER BY 1""", vparams)
     out["by_type"] = _rows(cur)
 
     # 사람이 처리해야 진도가 나가는 것들. 화면의 존재 이유다.
@@ -208,18 +210,18 @@ def items(dataset_id: str, limit: int = Query(PREVIEW_LIMIT, le=100),
     cur.execute("SELECT pg_meta_table FROM data_registry WHERE dataset_id=%s", (dataset_id,))
     row = cur.fetchone()
     if row is None:
-        raise HTTPException(404, "data_registry에 없는 데이터셋이다")
+        raise HTTPException(404, "데이터셋을 찾을 수 없습니다")
     table = row[0]
     if not table:
         # 외부 카탈로그 연합분이 여기 걸린다 — 메타만 받아 오고 아이템이 없다.
         # 비어 있는 것이 **정상**이고, 화면은 그 사실을 보여줘야 한다.
         return {"table": None, "columns": [], "items": [],
-                "reason": "이 데이터셋에는 아이템 테이블이 없다 (메타데이터만 수집)"}
+                "reason": "메타데이터만 수집하는 데이터셋이라 아이템이 없습니다"}
     if not _IDENT.match(table):
-        raise HTTPException(500, "테이블명이 이상하다")
+        raise HTTPException(500, "아이템 저장 위치 설정이 올바르지 않습니다. 관리자에게 문의해 주세요")
     cur.execute("SELECT 1 FROM information_schema.tables WHERE table_name=%s", (table,))
     if not cur.fetchone():
-        raise HTTPException(500, f"{table} 테이블이 없다")
+        raise HTTPException(500, "아이템 저장 테이블을 찾을 수 없습니다. 관리자에게 문의해 주세요")
 
     cur.execute(f"SELECT * FROM {table} WHERE dataset_id=%s LIMIT %s", (dataset_id, limit))
     rows = _rows(cur)
@@ -307,13 +309,13 @@ def decide_relation(payload: Dict[str, Any] = Body(...)):
     """
     rid, action = payload.get("id"), payload.get("action")
     if action not in ("APPROVED", "REJECTED", "PENDING"):
-        raise HTTPException(400, "action은 APPROVED · REJECTED · PENDING 중 하나다")
+        raise HTTPException(400, "처리 값은 APPROVED · REJECTED · PENDING 중 하나여야 합니다")
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("UPDATE dcat_dataset_relation SET status=%s WHERE id=%s RETURNING id",
                 (action, rid))
     if cur.fetchone() is None:
-        raise HTTPException(404, "그런 관계가 없다")
+        raise HTTPException(404, "해당 관계를 찾을 수 없습니다")
     conn.commit()
     return {"id": rid, "status": action}
 
@@ -351,7 +353,7 @@ def save_label(payload: Dict[str, Any] = Body(...)):
     브라우저를 닫는 순간 날아간다."""
     query_id, doc_id, grade = payload.get("query_id"), payload.get("doc_id"), payload.get("grade")
     if grade not in (0, 1, 2, None):
-        raise HTTPException(400, "grade는 0·1·2 또는 null(미채점)이다")
+        raise HTTPException(400, "등급은 0·1·2 또는 미채점(null)이어야 합니다")
     pool = _load_pool()
     for q in pool:
         if q.get("query_id") != query_id:
@@ -363,7 +365,7 @@ def save_label(payload: Dict[str, Any] = Body(...)):
                     json.dumps(pool, ensure_ascii=False, indent=2), encoding="utf-8")
                 return {"query_id": query_id, "doc_id": doc_id, "grade": grade,
                         "progress": _label_progress()}
-    raise HTTPException(404, "그런 질의·문서 조합이 없다")
+    raise HTTPException(404, "해당 질의·문서 조합을 찾을 수 없습니다")
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -419,7 +421,7 @@ def catalog(q: Optional[str] = None, source_type: Optional[str] = None,
     연합분(`external_catalog`)에 덮이지 않게 쓴다.
     """
     if sort not in _SORTS:
-        raise HTTPException(400, f"sort는 {sorted(_SORTS)} 중 하나다")
+        raise HTTPException(400, f"정렬 기준은 {sorted(_SORTS)} 중 하나여야 합니다")
     vis, vparams = visible_clause(user)
     where, params = [vis], {"limit": limit, "offset": offset, **vparams}
     if q:
@@ -540,7 +542,7 @@ def search_items(q: str = Query(..., min_length=1), source: str = Query("video")
     사용자가 실제로 찾는 것도 대개 "그 내용이 담긴 영상"이다.
     """
     if source not in _ITEM_HYDRATE:
-        raise HTTPException(400, f"source는 {sorted(_ITEM_HYDRATE)} 중 하나다")
+        raise HTTPException(400, f"검색 대상은 {sorted(_ITEM_HYDRATE)} 중 하나여야 합니다")
     from src.search import hybrid
     # 볼 수 없는 데이터셋의 아이템을 빼고도 limit을 채우려고 넉넉히 받는다(RRF 순위라 위쪽은 같다)
     hits = hybrid.search(q, source, top_k=limit * 2)
@@ -616,7 +618,7 @@ def catalog_detail(dataset_id: str, user: Optional[User] = Depends(optional_user
     cur.execute(f"SELECT {_CATALOG_COLS} FROM dcat_dataset WHERE dataset_id=%s", (dataset_id,))
     rows = _rows(cur)
     if not rows:
-        raise HTTPException(404, f"없는 데이터셋: {dataset_id}")
+        raise HTTPException(404, "데이터셋을 찾을 수 없습니다")
     out = _catalog_row(rows[0])
     # 확정 이력(누가 골랐나)은 사용자 상세에 내지 않는다 — 관리자는 /features에서 본다
     cur.execute("SELECT feature_name, value FROM meta_feature "

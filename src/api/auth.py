@@ -170,7 +170,7 @@ def org_members(org: str) -> List[str]:
 def _key() -> bytes:
     k = config.get_env("AUTH_SIGNING_KEY") or ""
     if len(k) < 32:
-        raise HTTPException(503, "서버에 AUTH_SIGNING_KEY(32자 이상)가 없어 로그인할 수 없다")
+        raise HTTPException(503, "로그인 설정이 완료되지 않아 로그인할 수 없습니다. 관리자에게 문의해 주세요")
     return k.encode()
 
 
@@ -212,26 +212,26 @@ def optional_user(authorization: Optional[str] = Header(None)) -> Optional[User]
         return None
     scheme, _, token = authorization.partition(" ")
     if scheme.lower() != "bearer" or not token:
-        raise HTTPException(401, "Authorization 헤더 형식은 'Bearer <토큰>'이다")
+        raise HTTPException(401, "로그인 정보가 올바르지 않습니다. 다시 로그인해 주세요")
     claims = _decode(token.strip())
     if not claims:
-        raise HTTPException(401, "로그인이 만료됐거나 올바르지 않다. 다시 로그인하라")
+        raise HTTPException(401, "로그인이 만료되었습니다. 다시 로그인해 주세요")
     user = _user(str(claims.get("sub")))
     if user is None:
         # 계정 파일에서 지워진 사용자 — 토큰이 살아 있어도 막는다
-        raise HTTPException(401, "없는 계정이다. 다시 로그인하라")
+        raise HTTPException(401, "더 이상 사용할 수 없는 계정입니다. 다시 로그인해 주세요")
     return user
 
 
 def current_user(user: Optional[User] = Depends(optional_user)) -> User:
     if user is None:
-        raise HTTPException(401, "로그인이 필요하다")
+        raise HTTPException(401, "로그인이 필요합니다")
     return user
 
 
 def require_admin(user: User = Depends(current_user)) -> User:
     if not user.is_admin:
-        raise HTTPException(403, "관리자만 쓸 수 있다")
+        raise HTTPException(403, "관리자만 이용할 수 있습니다")
     return user
 
 
@@ -258,21 +258,24 @@ def login(body: Dict[str, Any] = Body(...)):
     uid = str(body.get("username") or "").strip()
     pw = str(body.get("password") or "")
     if not uid or not pw:
-        raise HTTPException(400, "아이디와 비밀번호를 넣어라")
+        raise HTTPException(400, "아이디와 비밀번호를 입력해 주세요")
     _key()                                  # 서명 키가 없으면 비밀번호를 보기 전에 거절
     now = time.time()
     if _locked(uid, now):
-        raise HTTPException(429, "로그인 실패가 많아 잠시 막았다. 10분 뒤 다시 시도하라")
+        raise HTTPException(429, "로그인에 여러 번 실패해 잠시 로그인이 제한되었습니다. 10분 후 다시 시도해 주세요")
     acc = load_accounts()["users"].get(uid)
     ok = verify_password(pw, acc["password_hash"] if acc and acc.get("password_hash") else _dummy())
     if not (acc and ok):
         _fail(uid, now)
-        logger.info("로그인 실패 (id=%s)", uid[:64])
-        raise HTTPException(401, "아이디 또는 비밀번호가 맞지 않다")
+        # 원인은 서버 로그에만 남긴다(응답은 같게) — 비밀번호 자체는 남기지 않는다
+        why = ("없는 아이디" if not acc else "비밀번호 미설정" if not acc.get("password_hash")
+               else "비밀번호 불일치")
+        logger.warning("로그인 실패 (id=%s, 원인=%s)", uid[:64], why)
+        raise HTTPException(401, "아이디 또는 비밀번호가 일치하지 않습니다")
     with _fails_lock:
         _fails.pop(uid, None)
     user = _user(uid)
-    logger.info("로그인 (id=%s, role=%s)", user.id, user.role)
+    logger.warning("로그인 성공 (id=%s, role=%s)", user.id, user.role)
     return {**make_token(user), "user": user.public()}
 
 

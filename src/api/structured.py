@@ -67,20 +67,20 @@ async def upload_structured(metadata: UploadFile = File(..., description="메타
     try:
         meta = json.loads(raw_meta.decode("utf-8-sig"))
     except (UnicodeDecodeError, json.JSONDecodeError) as e:
-        raise HTTPException(400, f"메타데이터가 JSON이 아니다: {e}")
+        raise HTTPException(400, f"메타데이터 파일이 올바른 JSON 형식이 아닙니다: {e}")
     if not isinstance(meta, dict):
-        raise HTTPException(400, "메타데이터 JSON의 최상위는 객체({ … })여야 한다")
+        raise HTTPException(400, "메타데이터 JSON은 객체({ … }) 형식이어야 합니다")
     if not files or not any(f.filename for f in files):
-        raise HTTPException(400, "원본 데이터 파일을 1개 이상 올려야 한다")
+        raise HTTPException(400, "원본 데이터 파일을 1개 이상 첨부해 주세요")
     if len(files) > MAX_FILES:
-        raise HTTPException(400, f"파일은 {MAX_FILES}개까지다")
+        raise HTTPException(400, f"파일은 최대 {MAX_FILES}개까지 올릴 수 있습니다")
 
     blobs, total = [], len(raw_meta)
     for f in files:
         data = await f.read()
         total += len(data)
         if total > MAX_TOTAL_BYTES:
-            raise HTTPException(413, f"한 번에 {MAX_TOTAL_BYTES // 1024 // 1024}MB까지 올릴 수 있다")
+            raise HTTPException(413, f"한 번에 {MAX_TOTAL_BYTES // 1024 // 1024}MB까지 올릴 수 있습니다")
         name = (f.filename or "file").replace("/", "_").replace("\\", "_")
         blobs.append((name, data, f.content_type or "application/octet-stream"))
 
@@ -94,7 +94,7 @@ async def upload_structured(metadata: UploadFile = File(..., description="메타
     cur.execute("SELECT id, status FROM dcat_dataset_draft WHERE payload_sha256=%s", (digest,))
     dup = cur.fetchone()
     if dup:
-        raise HTTPException(409, f"같은 메타데이터·파일 조합이 이미 올라와 있다 (초안 #{dup[0]}, {dup[1]})")
+        raise HTTPException(409, f"같은 메타데이터·파일 조합이 이미 업로드되어 있습니다 (초안 #{dup[0]}, {dup[1]})")
 
     from src.storage import s3_client
     prefix = f"raw/structured/upload/{digest[:16]}/"
@@ -110,7 +110,7 @@ async def upload_structured(metadata: UploadFile = File(..., description="메타
             s3_client.delete_upload_prefix(prefix)
         except Exception:                         # noqa: BLE001
             pass
-        raise HTTPException(502, config.mask_secrets(f"원본을 저장하지 못했다: {e}")[:300])
+        raise HTTPException(502, config.mask_secrets(f"원본 파일을 저장하지 못했습니다: {e}")[:300])
 
     evidence = {"party": "1st", "uploaded_at": datetime.now(timezone.utc).isoformat(),
                 "uploaded_by": "총괄 관리자", "note": note[:500], "metadata_key": prefix + "metadata.json",
@@ -125,7 +125,7 @@ async def upload_structured(metadata: UploadFile = File(..., description="메타
     draft_id = cur.fetchone()[0]
     conn.commit()
     return {"draft_id": draft_id, "status": "PENDING", "raw_storage_key": prefix, "files": len(uploaded),
-            "note": "올라갔다. 메타데이터 파싱·표준 매핑은 와이즈넛 알고리즘이 한다(매핑 대기)"}
+            "note": "업로드했습니다. 메타데이터 해석과 표준 매핑은 와이즈넛 알고리즘이 처리합니다(매핑 대기)"}
 
 
 @router.get("/structured/uploads", dependencies=[Depends(require_admin)])
@@ -146,7 +146,7 @@ def get_upload(draft_id: int):
     cur.execute("SELECT * FROM dcat_dataset_draft WHERE id=%s", (draft_id,))
     rows = _rows(cur)
     if not rows:
-        raise HTTPException(404, "그런 업로드가 없다")
+        raise HTTPException(404, "해당 업로드를 찾을 수 없습니다")
     return rows[0]
 
 
@@ -158,9 +158,9 @@ def cancel_upload(draft_id: int):
     cur.execute("SELECT status, raw_storage_key, source FROM dcat_dataset_draft WHERE id=%s", (draft_id,))
     row = cur.fetchone()
     if not row:
-        raise HTTPException(404, "그런 업로드가 없다")
+        raise HTTPException(404, "해당 업로드를 찾을 수 없습니다")
     if row[0] != "PENDING" or row[2] != SOURCE:
-        raise HTTPException(409, f"매핑 대기(PENDING)인 포털 업로드만 취소할 수 있다 (지금 {row[0]})")
+        raise HTTPException(409, f"매핑 대기(PENDING) 상태인 업로드만 취소할 수 있습니다 (현재 상태: {row[0]})")
     cur.execute("DELETE FROM dcat_dataset_draft WHERE id=%s", (draft_id,))
     conn.commit()
     from src.storage import s3_client
