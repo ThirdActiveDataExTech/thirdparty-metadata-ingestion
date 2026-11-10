@@ -29,8 +29,9 @@ import json
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
+from src.api.auth import require_admin
 from src.common import config
 from src.common.error_kind import classify_error
 from src.database.db import get_conn
@@ -57,7 +58,7 @@ def _rows(cur) -> List[Dict[str, Any]]:
     return [dict(zip(names, r)) for r in cur.fetchall()]
 
 
-@router.post("/structured/uploads")
+@router.post("/structured/uploads", dependencies=[Depends(require_admin)])
 async def upload_structured(metadata: UploadFile = File(..., description="메타데이터 JSON"),
                             files: List[UploadFile] = File(..., description="원본 데이터 파일"),
                             note: str = Form("")):
@@ -127,7 +128,7 @@ async def upload_structured(metadata: UploadFile = File(..., description="메타
             "note": "올라갔다. 메타데이터 파싱·표준 매핑은 와이즈넛 알고리즘이 한다(매핑 대기)"}
 
 
-@router.get("/structured/uploads")
+@router.get("/structured/uploads", dependencies=[Depends(require_admin)])
 def list_uploads(limit: int = 100):
     cur = get_conn().cursor()
     cur.execute("""SELECT id, source, status, mapping_version, raw_storage_key, auto_threshold,
@@ -139,7 +140,7 @@ def list_uploads(limit: int = 100):
     return {"items": _rows(cur)}
 
 
-@router.get("/structured/uploads/{draft_id}")
+@router.get("/structured/uploads/{draft_id}", dependencies=[Depends(require_admin)])
 def get_upload(draft_id: int):
     cur = get_conn().cursor()
     cur.execute("SELECT * FROM dcat_dataset_draft WHERE id=%s", (draft_id,))
@@ -149,7 +150,7 @@ def get_upload(draft_id: int):
     return rows[0]
 
 
-@router.delete("/structured/uploads/{draft_id}")
+@router.delete("/structured/uploads/{draft_id}", dependencies=[Depends(require_admin)])
 def cancel_upload(draft_id: int):
     """매핑 전(PENDING)에만 취소할 수 있다. 와이즈넛이 집어 간 뒤에는 그쪽 흐름을 깬다."""
     conn = get_conn()
@@ -169,7 +170,7 @@ def cancel_upload(draft_id: int):
 
 # ── 전 기관 수집 오류 ─────────────────────────────────────────────────────
 
-@router.get("/errors")
+@router.get("/errors", dependencies=[Depends(require_admin)])
 def errors(days: int = 30):
     """기관·원천과 상관없이 **실패한 것 전부**. 관리자가 매일 여는 화면이다."""
     cur = get_conn().cursor()

@@ -152,7 +152,10 @@ def test_메타데이터가_JSON이_아니면_저장하기_전에_거절한다(m
     """원본을 올리기 전에 거른다 — 반쯤 올라간 업로드를 남기지 않는다."""
     from fastapi.testclient import TestClient
     from src.storage import s3_client
+    from src.api.auth import User, require_admin
     monkeypatch.setattr(s3_client, "upload_bytes", lambda *a, **k: pytest.fail("S3에 올렸다"))
+    monkeypatch.setitem(app.dependency_overrides, require_admin,
+                        lambda: User("admin", "관리자", "admin", "operator", "운영기관"))
     r = TestClient(app).post("/v1/console/structured/uploads",
                              files={"metadata": ("m.json", b"not json", "application/json"),
                                     "files": ("d.csv", b"a,b\n1,2\n", "text/csv")})

@@ -115,7 +115,9 @@ class TestCatalogExclude:
 
         monkeypatch.setattr(console, "get_conn", lambda: Conn())
         try:
-            console.catalog(exclude_source_type="external_catalog, ", sort="created_at", limit=6, offset=0)
+            console.catalog(exclude_source_type="external_catalog, ", sort="created_at", limit=6, offset=0,
+                            q=None, source_type=None, publisher=None, category=None, origin=None,
+                            party=None, date_from=None, date_to=None, ids=None, user=None)
         except Exception:
             pass  # 결과 가공은 이 테스트의 관심이 아니다
         sql, params = seen["calls"][0]

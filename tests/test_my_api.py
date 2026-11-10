@@ -9,7 +9,8 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.routing import Match
 
-from src.api import manage, my
+from src.api import auth, manage, my
+from src.api.auth import User
 from src.api.main import app
 from src.database import category
 
@@ -38,8 +39,20 @@ def test_라우팅(path, method, expected):
     assert _endpoint(path, method) == expected
 
 
-@pytest.mark.parametrize("headers", [{}, {"X-User-Id": ""}, {"X-User-Id": "a b"}, {"X-User-Id": "x" * 80}])
-def test_사용자_식별이_없으면_401(headers):
+@pytest.fixture(autouse=True)
+def _as_user(monkeypatch, request):
+    """기본은 demo-user-0001로 로그인한 상태. `anonymous` 표시가 붙은 테스트는 로그인하지 않는다."""
+    if "anonymous" not in request.keywords:
+        monkeypatch.setitem(app.dependency_overrides, auth.current_user,
+                            lambda: User("demo-user-0001", "사용자1", "user", "org-a", "기관 A"))
+
+
+@pytest.mark.anonymous
+@pytest.mark.parametrize("headers", [{}, {"X-User-Id": "demo-user-0001"}, {"Authorization": "Bearer x.y.z"},
+                                     {"Authorization": "Basic abc"}])
+def test_로그인하지_않으면_401(headers, monkeypatch):
+    """예전처럼 X-User-Id 헤더만 보내도 통하면 안 된다."""
+    monkeypatch.setenv("AUTH_SIGNING_KEY", "k" * 40)
     r = TestClient(app).get("/v1/my/datasets", headers=headers)
     assert r.status_code == 401
 
@@ -52,8 +65,7 @@ def test_사용자_등록은_origin_user와_내_ID로(monkeypatch):
         return {"dataset_id": "urn:x", "status": "pending"}
 
     monkeypatch.setattr(manage, "register_as", fake)
-    r = TestClient(app).post("/v1/my/datasets", json={"source_type": "blog", "origin": "admin"},
-                             headers={"X-User-Id": "demo-user-0001"})
+    r = TestClient(app).post("/v1/my/datasets", json={"source_type": "blog", "origin": "admin"})
     assert r.status_code == 200
     # 요청 본문의 origin은 무시한다 — 사용자가 관리자 등록을 할 수 없다
     assert seen == {"origin": "user", "owner_id": "demo-user-0001"}
@@ -137,16 +149,14 @@ def _client(monkeypatch, cur):
 def test_남의_데이터셋은_403이고_아무것도_안_바꾼다(monkeypatch):
     cur = FakeCur(owner="demo-user-0002")
     c, conn = _client(monkeypatch, cur)
-    r = c.put(f"/v1/my/datasets/{URN}/category", json={"category": ["기술 > 전기·전자"]},
-              headers={"X-User-Id": "demo-user-0001"})
+    r = c.put(f"/v1/my/datasets/{URN}/category", json={"category": ["기술 > 전기·전자"]})
     assert r.status_code == 403
     assert not any(s.startswith("UPDATE") for s, _ in cur.sql) and not conn.committed
 
 
 def test_없는_데이터셋은_404(monkeypatch):
     c, _ = _client(monkeypatch, FakeCur(owner=None))
-    r = c.put(f"/v1/my/datasets/{URN}/visibility", json={"visibility": "PUBLIC"},
-              headers={"X-User-Id": "demo-user-0001"})
+    r = c.put(f"/v1/my/datasets/{URN}/visibility", json={"visibility": "PUBLIC"})
     assert r.status_code == 404
 
 
@@ -155,8 +165,7 @@ def test_확정하면_보여준_추천과_고른_순위가_남는다(monkeypatch
                   suggestions=S("기술 > 원자력", "기술 > 전기·전자", "과학 > 대기과학"))
     c, conn = _client(monkeypatch, cur)
     r = c.put(f"/v1/my/datasets/{URN}/category",
-              json={"category": ["기술 > 전기·전자", "기술 > 에너지·자원"]},
-              headers={"X-User-Id": "demo-user-0001"})
+              json={"category": ["기술 > 전기·전자", "기술 > 에너지·자원"]})
     assert r.status_code == 200, r.text
     # 2위를 골랐고, 두 번째 값은 추천 밖이다
     assert r.json()["chosen_ranks"] == [2, None]
@@ -169,15 +178,13 @@ def test_확정하면_보여준_추천과_고른_순위가_남는다(monkeypatch
 
 def test_분류표에_없는_값은_거절(monkeypatch):
     c, conn = _client(monkeypatch, FakeCur(owner="demo-user-0001"))
-    r = c.put(f"/v1/my/datasets/{URN}/category", json={"category": ["아무거나"]},
-              headers={"X-User-Id": "demo-user-0001"})
+    r = c.put(f"/v1/my/datasets/{URN}/category", json={"category": ["아무거나"]})
     assert r.status_code == 400 and not conn.committed
 
 
 def test_유지는_지금_값이_있어야_한다(monkeypatch):
     c, _ = _client(monkeypatch, FakeCur(owner="demo-user-0001", category=[]))
-    r = c.put(f"/v1/my/datasets/{URN}/category", json={"keep": True},
-              headers={"X-User-Id": "demo-user-0001"})
+    r = c.put(f"/v1/my/datasets/{URN}/category", json={"keep": True})
     assert r.status_code == 400
 
 

@@ -1,0 +1,19 @@
+# 시제품 로그인 계정 (ADR-021) — 케이웨어 K4 인증이 오면 버린다.
+#
+# 이 파일은 **예시**다. 실제 파일은 configs/auth_users.local.yaml이고 git·Docker 이미지에서 빠진다.
+# 비밀번호 해시는 직접 쓰지 말고 아래 스크립트로 만든다(입력은 화면에 보이지 않는다):
+#   PYTHONPATH=. .venv/bin/python scripts/auth_setup_users.py
+#
+# 기관(org)은 '기관 내부(ORG)' 공개 범위 판정에 쓴다 — 같은 기관 사용자끼리 서로의 ORG 데이터를 본다.
+# demo-user-000N은 DB에 이미 등록자(owner_id)로 들어 있는 ID다. 바꾸면 기존 데이터의 주인이 없어진다.
+orgs:
+  operator: 운영기관(모비젠)
+  org-a: 시제품 기관 A
+  org-b: 시제품 기관 B
+users:
+  - {id: admin,          name: 총괄 관리자, role: admin, org: operator, password_hash: null}
+  - {id: demo-user-0001, name: 시제품 사용자 1, role: user, org: org-a, password_hash: null}
+  - {id: demo-user-0002, name: 시제품 사용자 2, role: user, org: org-a, password_hash: null}
+  - {id: demo-user-0003, name: 시제품 사용자 3, role: user, org: org-a, password_hash: null}
+  - {id: demo-user-0004, name: 시제품 사용자 4, role: user, org: org-b, password_hash: null}
+  - {id: demo-user-0005, name: 시제품 사용자 5, role: user, org: org-b, password_hash: null}

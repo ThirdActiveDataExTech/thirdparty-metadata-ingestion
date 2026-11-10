@@ -65,3 +65,6 @@ perf_eval/video_metadata_extraction/data/obj/_oi_cache/
 # 협력사 제안서 — 협의 전 우리 쪽 입장이 담긴다. correspondence/ 와 같은 이유로 제외.
 # ⚠️ 자리를 옮기지 않는다 — sql/*_vec.sql 4종과 ADR 2건이 이 경로를 참조한다.
 /docs/database/vec_schema_unification_proposal.md
+
+# 시제품 로그인 계정(비밀번호 해시) — ADR-021
+configs/auth_users.local.yaml

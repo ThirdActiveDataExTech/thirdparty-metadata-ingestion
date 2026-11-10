@@ -14,13 +14,10 @@
    (`needs_review` 미확정 / `changed` 추천이 바뀜 / `confirmed`).
 4. `PUT /datasets/{id}/category`로 유지 또는 변경 — 이것도 이력에 남는다.
 
-## 사용자 식별 — ⚠️ 시제품
+## 사용자 식별
 
-인증(K4, 케이웨어)이 아직 없다. 그래서 `X-User-Id` 헤더를 **그대로 믿는다.**
-헤더만 바꾸면 남의 데이터셋을 고칠 수 있다는 뜻이다. 그래서
-
-- 이 라우터는 main.py와 같이 **로컬에서만** 띄운다(외부 공개 금지)
-- K4 인증이 붙으면 `current_user`만 토큰 검증으로 바꾼다. 나머지는 그대로 쓴다
+시제품 로그인 토큰(`src/api/auth.py`, ADR-021)의 사용자다. 2026-11-10 전에는 `X-User-Id` 헤더를
+그대로 믿었다 — 헤더만 바꾸면 남의 데이터셋을 고칠 수 있었다. K4 인증이 오면 auth.py만 바뀐다.
 
 ## 사용자에게 보이지 않는 것
 
@@ -30,19 +27,17 @@
 """
 
 import json
-import re
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Body, Depends, Header, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 
 from src.api import manage
+from src.api.auth import User, current_user as _current_user
 from src.common.category_taxonomy import DECISION_FEATURE
 from src.common.error_kind import for_user
 from src.database.db import get_conn
 
 router = APIRouter(prefix="/v1/my", tags=["내 데이터 (사용자)"])
-
-_UID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{2,63}$")
 
 #: 원천 약관상 외부 반출(HF·외부 LLM 내보내기)이 안 되는 원천(결정 7).
 #: 지금 사용자가 등록할 수 있는 원천은 전부 여기에 든다.
@@ -58,10 +53,9 @@ NO_EXPORT = {
 OVERDUE_HOURS = 1
 
 
-def current_user(x_user_id: Optional[str] = Header(None, description="시제품 사용자 ID — K4 인증 전 임시")) -> str:
-    if not x_user_id or not _UID.match(x_user_id):
-        raise HTTPException(401, "사용자 식별이 필요하다 (시제품: X-User-Id 헤더)")
-    return x_user_id
+def current_user(user: User = Depends(_current_user)) -> str:
+    """로그인한 사용자 ID. 관리자도 '내 데이터'는 자기 것만 본다(owner_id 기준)."""
+    return user.id
 
 
 def _own(cur, dataset_id: str, uid: str) -> List[str]:

@@ -36,10 +36,12 @@ from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional
 
 import anyio.to_thread
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse, RedirectResponse
 
-from src.api import console, manage, my, schemas, structured
+from src.api import auth, console, manage, my, schemas, structured
+from src.api.access import ensure_visible, item_dataset_map, visible_clause, visible_ids
+from src.api.auth import User, optional_user
 from src.common.category_taxonomy import PRIVATE_FEATURES
 from src.common.config import get_env
 from src.database.db import get_conn
@@ -78,6 +80,7 @@ app = FastAPI(
 # ⚠️ manage를 **먼저** 넣는다. console의 상세 `GET /datasets/{dataset_id:path}`는 슬래시까지
 # 삼키므로, 뒤에 오는 `…/trend`·`…/package`·`…/run`을 식별자의 일부로 읽는다
 # (main.py `/jsonld`가 그렇게 죽어 있었다 — tests/test_api_routing.py).
+app.include_router(auth.router)
 app.include_router(manage.router)
 app.include_router(my.router)
 app.include_router(structured.router)
@@ -90,11 +93,9 @@ def _root():
     return RedirectResponse("/docs")
 
 
-#: 기본으로 내보낼 공개 범위.
-#: 2026-11-06 기준 PUBLIC 40건(외부 연합 30 + 비정형 10) · ORG 15건이다(NEXT_STEPS D1 결정 7).
-#: 아직 인증이 없어 ORG까지 허용하고, **인증이 붙는 D1에서 PUBLIC만으로 좁혀야 한다**.
-#: 여기를 그대로 두고 외부에 열면 조직 내부용 데이터가 나간다.
-DEFAULT_VISIBILITY = ("PUBLIC", "ORG")
+#: 공개 범위 — 2026-11-10 시제품 로그인(ADR-021)으로 **비로그인은 PUBLIC만** 본다.
+#: 그 전에는 인증이 없어 ORG까지 내보냈다(2026-11-06 기준 PUBLIC 40 · ORG 15).
+#: 로그인하면 기관·소유자 기준으로 더 본다 — 규칙은 src/api/access.py 한 곳.
 
 _COLS = """
     d.dataset_id, d.title, d.description, d.publisher, d.source_type, d.source,
@@ -148,11 +149,12 @@ def list_datasets(
     q: Optional[str] = Query(None, description="제목·설명 부분 일치"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    user: Optional[User] = Depends(optional_user),
 ):
     """카탈로그 목록. 외부 포털에서 수집한 것(`origin=external`)도 함께 나온다."""
-    where = ["d.visibility = ANY(%(vis)s)"]
-    params: Dict[str, Any] = {"vis": list(DEFAULT_VISIBILITY),
-                              "limit": limit, "offset": offset}
+    vis, vparams = visible_clause(user, "d.")
+    where = [vis]
+    params: Dict[str, Any] = {"limit": limit, "offset": offset, **vparams}
     if source_type:
         where.append("d.source_type = %(source_type)s")
         params["source_type"] = source_type
@@ -184,13 +186,9 @@ def list_datasets(
 # 2026-11-04 포털을 붙이다 발견했다 — 그 전까지 이 엔드포인트는 한 번도 닿은 적이 없고,
 # 상세 응답의 `downloads.jsonld`는 죽은 링크였다.
 @app.get("/v1/datasets/{dataset_id:path}/jsonld", tags=["카탈로그"])
-def get_jsonld(dataset_id: str):
+def get_jsonld(dataset_id: str, user: Optional[User] = Depends(optional_user)):
     """DCAT JSON-LD. 오브젝트 스토리지에 내보낸 것과 같은 형식이다."""
-    cur = get_conn().cursor()
-    cur.execute("SELECT 1 FROM dcat_dataset WHERE dataset_id = %s AND visibility = ANY(%s)",
-                (dataset_id, list(DEFAULT_VISIBILITY)))
-    if not cur.fetchone():
-        raise HTTPException(404, f"없는 데이터셋: {dataset_id}")
+    ensure_visible(get_conn().cursor(), dataset_id, user)
     # `except AttributeError`로 501을 내던 분기를 걷어냈다. 그게 존재하지 않는 함수를
     # 부르는 프로그래밍 오류를 "미지원"으로 보이게 해, 모든 요청이 실패하는데도 몰랐다.
     try:
@@ -204,17 +202,18 @@ def get_jsonld(dataset_id: str):
 
 @app.get("/v1/datasets/{dataset_id:path}", response_model=schemas.DatasetDetail,
          tags=["카탈로그"])
-def get_dataset(dataset_id: str):
+def get_dataset(dataset_id: str, user: Optional[User] = Depends(optional_user)):
     """데이터셋 상세. B1 특징과 B2 관계를 함께 돌려준다.
 
     `{dataset_id:path}`인 이유 — 식별자가 URN(`urn:naver:news_dataset_38b665`)이라
     콜론이 들어간다. 기본 경로 변환기는 콜론에서 끊는다.
     """
     cur = get_conn().cursor()
+    vis, vparams = visible_clause(user, "d.")
     cur.execute(
         f"SELECT {_COLS}, d.accrual_periodicity, d.language, d.spatial, d.rights "
-        f"FROM dcat_dataset d WHERE d.dataset_id = %s AND d.visibility = ANY(%s)",
-        (dataset_id, list(DEFAULT_VISIBILITY)))
+        f"FROM dcat_dataset d WHERE d.dataset_id = %(_id)s AND {vis}",
+        {**vparams, "_id": dataset_id})
     rows = _rows(cur)
     if not rows:
         raise HTTPException(404, f"없는 데이터셋: {dataset_id}")
@@ -231,9 +230,11 @@ def get_dataset(dataset_id: str):
         "FROM dcat_dataset_relation r JOIN dcat_dataset t ON t.dataset_id = r.target_dataset_id "
         "WHERE r.source_dataset_id = %s AND r.status <> 'REJECTED' "
         "ORDER BY r.score DESC LIMIT 10", (dataset_id,))
+    rel_rows = cur.fetchall()
+    ok = visible_ids(cur, [r[0] for r in rel_rows], user)
     relations = [{"dataset_id": a, "title": b, "relation_type": c,
                   "score": round(float(d), 4), "evidence": e}
-                 for a, b, c, d, e in cur.fetchall()]
+                 for a, b, c, d, e in rel_rows if a in ok]
 
     detail = schemas.DatasetDetail(
         **_summary(row).model_dump(),
@@ -251,6 +252,7 @@ def discover(
                          description="하려는 일을 자연어로. 예: 암 환자 교육 자료를 만들고 싶다"),
     limit: int = Query(10, ge=1, le=30),
     seeds: int = Query(5, ge=1, le=20, description="씨앗으로 쓸 검색 결과 수"),
+    user: Optional[User] = Depends(optional_user),
 ):
     """활용 목적으로 **데이터셋 묶음**을 만든다 (C2).
 
@@ -265,7 +267,12 @@ def discover(
     """
     from src.search import discovery as disc
 
-    r = disc.discover(purpose, top_k=limit, seeds=seeds)
+    r = disc.discover(purpose, top_k=limit * 2, seeds=seeds)
+    # 볼 수 없는 데이터셋은 씨앗·묶음에서 뺀다(넉넉히 받아 limit을 채운다)
+    ok = visible_ids(get_conn().cursor(),
+                     [x["dataset_id"] for x in r["seeds"]] + [b["dataset_id"] for b in r["bundle"]], user)
+    r["seeds"] = [x for x in r["seeds"] if x["dataset_id"] in ok]
+    r["bundle"] = [b for b in r["bundle"] if b["dataset_id"] in ok][:limit]
     return schemas.DiscoverResponse(
         purpose=r["purpose"], seeds=r["seeds"], note=r.get("note"),
         bundle=[
@@ -287,6 +294,7 @@ def search(
     source: str = Query("video", description="video · news · blog · dataset"),
     limit: int = Query(10, ge=1, le=50),
     explain: bool = Query(False, description="질의 토큰과 최희귀어 판정을 함께 돌려준다"),
+    user: Optional[User] = Depends(optional_user),
 ):
     """하이브리드 검색 — 벡터 + 키워드를 RRF로 결합한다(ADR-010).
 
@@ -299,10 +307,15 @@ def search(
         raise HTTPException(400, f"알 수 없는 source: {source} "
                                  f"(가능: {sorted(hybrid.SOURCES)})")
     try:
-        rows = hybrid.search(q, source, limit)
+        rows = hybrid.search(q, source, limit * 2)
     except tokenize.TokenizerMismatch as e:
         # 조용히 빈 결과를 주면 "결과가 없다"로 오해한다. 분명히 알린다
         raise HTTPException(503, f"검색 색인이 현재 토크나이저와 맞지 않는다: {e}")
+    # 볼 수 없는 데이터셋의 결과는 뺀다(넉넉히 받아 limit을 채운다)
+    cur0 = get_conn().cursor()
+    owner = item_dataset_map(cur0, source, [r["id"] for r in rows])
+    ok = visible_ids(cur0, owner.values(), user)
+    rows = [r for r in rows if owner.get(r["id"]) in ok][:limit]
 
     ai: Dict[Any, Dict[str, Any]] = {}
     if source == "video" and rows:

@@ -12,3 +12,6 @@ k8s/
 yolov8x.pt
 .env
 .env.example
+
+# 시제품 로그인 계정(비밀번호 해시) — 이미지에 굽지 않는다. 클러스터에서는 Secret으로 마운트
+configs/auth_users.local.yaml

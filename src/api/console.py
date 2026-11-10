@@ -14,12 +14,14 @@
 
 ---
 
-## 권한을 보지 않는다
+## 권한 (2026-11-10, 시제품 로그인 — ADR-021)
 
-`/v1/*` 공개 API는 `visibility`로 거르지만(main.py), **콘솔은 거르지 않는다.**
-총괄 관리자 시점으로 전부 본다. 권한 관리는 케이웨어 쪽에서 붙인다.
+- 관리자 화면 전용(수집 운영·이력·관계 검토·라벨링·특징 원본)은 `require_admin`
+- 포털 사용자 화면이 쓰는 것(목록·필터·통계·검색·상세·미리보기·관계 지도·수집 상태)은
+  로그인 없이도 열리되 **공개 범위로 거른다**(`src/api/access.py`)
+- `/overview`는 건수 집계뿐이라 거르지 않는다(홈 위젯)
 
-⚠️ 그래서 **외부에 열면 안 된다.** 로컬에서만 띄운다.
+⚠️ 인증이 시제품이라 **외부에 열면 안 된다.** 로컬에서만 띄운다.
 
 ## 정형은 비워 둔다
 
@@ -34,8 +36,10 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
+from src.api.access import ensure_visible, item_dataset_map, visible_clause, visible_ids
+from src.api.auth import User, optional_user, require_admin
 from src.common import config
 from src.common.category_taxonomy import PRIVATE_FEATURES
 from src.common.error_kind import classify_error
@@ -152,7 +156,7 @@ def _has_drift_columns(cur) -> bool:
     return _HAS_DRIFT
 
 
-@router.get("/registry")
+@router.get("/registry", dependencies=[Depends(require_admin)])
 def registry():
     """데이터셋별 수집 운영 현황. 원천 스키마 드리프트가 있으면 함께 보여준다."""
     cur = get_conn().cursor()
@@ -167,7 +171,7 @@ def registry():
     return {"drift_columns": drift, "items": _rows(cur)}
 
 
-@router.get("/runs")
+@router.get("/runs", dependencies=[Depends(require_admin)])
 def runs(limit: int = Query(50, le=300)):
     """수집 실행 이력(PROV-O). 와이즈넛 화면1의 '실행 이력'."""
     cur = get_conn().cursor()
@@ -181,7 +185,7 @@ def runs(limit: int = Query(50, le=300)):
 
 # ── 화면 4. 데이터셋 상세 ───────────────────────────────────────────────────
 
-@router.get("/datasets/{dataset_id:path}/features")
+@router.get("/datasets/{dataset_id:path}/features", dependencies=[Depends(require_admin)])
 def features(dataset_id: str):
     """B1 특징 추출 결과 전부. 데이터셋이 '무엇에 관한 것인가'의 실제 근거다."""
     cur = get_conn().cursor()
@@ -192,13 +196,15 @@ def features(dataset_id: str):
 
 
 @router.get("/datasets/{dataset_id:path}/items")
-def items(dataset_id: str, limit: int = Query(PREVIEW_LIMIT, le=100)):
+def items(dataset_id: str, limit: int = Query(PREVIEW_LIMIT, le=100),
+          user: Optional[User] = Depends(optional_user)):
     """아이템 미리보기 — 와이즈넛 화면4의 '데이터 미리보기'.
 
     어느 테이블을 볼지는 **`data_registry.pg_meta_table`이 이미 알고 있다.**
     소스별 분기를 코드에 또 쓰지 않는다. 소스가 늘어도 이 함수는 그대로다.
     """
     cur = get_conn().cursor()
+    ensure_visible(cur, dataset_id, user)
     cur.execute("SELECT pg_meta_table FROM data_registry WHERE dataset_id=%s", (dataset_id,))
     row = cur.fetchone()
     if row is None:
@@ -226,13 +232,15 @@ def items(dataset_id: str, limit: int = Query(PREVIEW_LIMIT, le=100)):
 
 @router.get("/datasets/{dataset_id:path}/graph")
 def graph(dataset_id: str, hops: int = Query(2, ge=1, le=3),
-          per_node: int = Query(5, le=20), include_pending: bool = True):
+          per_node: int = Query(5, le=20), include_pending: bool = True,
+          user: Optional[User] = Depends(optional_user)):
     """기준 데이터셋에서 이어지는 관계 그래프.
 
     **목록으로 표현할 수 없는 다단계 연결이 이 화면의 존재 이유다**(와이즈넛 §5.2).
     단계 수(`hop`)를 함께 돌려주므로 화면이 거리로 그릴 수 있다.
     """
     cur = get_conn().cursor()
+    ensure_visible(cur, dataset_id, user)
     allowed = "('PENDING','APPROVED')" if include_pending else "('APPROVED')"
     seen = {dataset_id: 0}
     edges: List[Dict[str, Any]] = []
@@ -250,7 +258,12 @@ def graph(dataset_id: str, hops: int = Query(2, ge=1, le=3),
             f"      WHERE source_dataset_id = ANY(%s) AND status IN {allowed}) t "
             f"WHERE rn <= %s", (frontier, per_node))
         nxt = []
-        for r in _rows(cur):
+        hop_rows = _rows(cur)
+        # 볼 수 없는 데이터셋으로 가는 간선은 그리지 않고, 그 너머로도 건너가지 않는다
+        ok = visible_ids(cur, [r["target_dataset_id"] for r in hop_rows], user)
+        for r in hop_rows:
+            if r["target_dataset_id"] not in ok:
+                continue
             r["evidence"] = _jsonb(r["evidence"])
             r["hop"] = hop
             edges.append(r)
@@ -268,7 +281,7 @@ def graph(dataset_id: str, hops: int = Query(2, ge=1, le=3),
 
 # ── 화면 2. 검토 (관계 승인/거부) ───────────────────────────────────────────
 
-@router.get("/review/relations")
+@router.get("/review/relations", dependencies=[Depends(require_admin)])
 def review_relations(status: str = Query("PENDING"), limit: int = Query(50, le=1000)):
     """사람이 판단할 관계 목록. `evidence`를 그대로 실어 보낸다 —
     근거 없이 승인/거부를 누르게 하면 검토가 아니라 요식이 된다."""
@@ -285,7 +298,7 @@ def review_relations(status: str = Query("PENDING"), limit: int = Query(50, le=1
     return {"items": [{**r, "evidence": _jsonb(r["evidence"])} for r in _rows(cur)]}
 
 
-@router.post("/review/relations")
+@router.post("/review/relations", dependencies=[Depends(require_admin)])
 def decide_relation(payload: Dict[str, Any] = Body(...)):
     """관계 하나를 승인/거부한다. **콘솔에서 유일하게 쓰는 경로다.**
 
@@ -324,7 +337,7 @@ def _label_progress() -> Dict[str, int]:
     return {"total": total, "done": done}
 
 
-@router.get("/labeling")
+@router.get("/labeling", dependencies=[Depends(require_admin)])
 def labeling():
     """채점 대상 전부와 진행률. 지금은 JSON 파일을 손으로 고쳐야 한다 —
     그래서 393건이 두 달째 그대로다."""
@@ -332,7 +345,7 @@ def labeling():
     return {"file": str(LABEL_POOL), "progress": _label_progress(), "queries": pool}
 
 
-@router.post("/labeling")
+@router.post("/labeling", dependencies=[Depends(require_admin)])
 def save_label(payload: Dict[str, Any] = Body(...)):
     """한 건 채점. 파일에 바로 쓴다 — 중간 저장 장치를 따로 두면
     브라우저를 닫는 순간 날아간다."""
@@ -396,7 +409,7 @@ def catalog(q: Optional[str] = None, source_type: Optional[str] = None,
             origin: Optional[str] = None, party: Optional[str] = None, date_from: Optional[str] = None,
             date_to: Optional[str] = None, ids: Optional[str] = None,
             sort: str = Query("updated_at"), limit: int = Query(20, ge=1, le=200),
-            offset: int = Query(0, ge=0)):
+            offset: int = Query(0, ge=0), user: Optional[User] = Depends(optional_user)):
     """포털 카탈로그 — 조건 검색(키워드검색 탭)과 목록·신규데이터가 함께 쓴다.
 
     `category`는 **대분류 접두**로 거른다(`기술` → `기술 > 전기·전자` 등). 분류표가
@@ -407,7 +420,8 @@ def catalog(q: Optional[str] = None, source_type: Optional[str] = None,
     """
     if sort not in _SORTS:
         raise HTTPException(400, f"sort는 {sorted(_SORTS)} 중 하나다")
-    where, params = ["TRUE"], {"limit": limit, "offset": offset}
+    vis, vparams = visible_clause(user)
+    where, params = [vis], {"limit": limit, "offset": offset, **vparams}
     if q:
         where.append("(title ILIKE %(q)s OR description ILIKE %(q)s "
                      "OR keywords::text ILIKE %(q)s)")
@@ -450,53 +464,56 @@ def catalog(q: Optional[str] = None, source_type: Optional[str] = None,
 
 
 @router.get("/facets")
-def facets():
+def facets(user: Optional[User] = Depends(optional_user)):
     """필터 선택지와 건수. 화면이 선택지를 하드코딩하면 데이터와 어긋난다 —
     목업의 10개 분류가 실제 분류표(대분류 7)와 달랐던 것처럼."""
     cur = get_conn().cursor()
+    vis, vp = visible_clause(user)
     out: Dict[str, Any] = {}
     for key, col in (("source_types", "source_type"), ("publishers", "publisher"),
                      ("sources", "source"), ("origins", "dataset_origin"),
                      ("parties", "coalesce(party, 'none')")):
         cur.execute(f"SELECT {col} AS value, count(*) AS count FROM dcat_dataset "
-                    f"WHERE {col} IS NOT NULL GROUP BY 1 ORDER BY 2 DESC, 1")
+                    f"WHERE {col} IS NOT NULL AND {vis} GROUP BY 1 ORDER BY 2 DESC, 1", vp)
         out[key] = _rows(cur)
-    cur.execute("""SELECT split_part(c, ' > ', 1) AS value, count(DISTINCT dataset_id) AS count
-                   FROM dcat_dataset, jsonb_array_elements_text(category) c
-                   GROUP BY 1 ORDER BY 2 DESC, 1""")
+    cur.execute(f"""SELECT split_part(c, ' > ', 1) AS value, count(DISTINCT dataset_id) AS count
+                   FROM dcat_dataset, jsonb_array_elements_text(category) c WHERE {vis}
+                   GROUP BY 1 ORDER BY 2 DESC, 1""", vp)
     out["categories"] = _rows(cur)
     # 중분류 건수 — 검색 화면의 카테고리 트리(대분류 → 중분류)가 쓴다
-    cur.execute("""SELECT c AS value, count(DISTINCT dataset_id) AS count
-                   FROM dcat_dataset, jsonb_array_elements_text(category) c
-                   GROUP BY 1 ORDER BY 1""")
+    cur.execute(f"""SELECT c AS value, count(DISTINCT dataset_id) AS count
+                   FROM dcat_dataset, jsonb_array_elements_text(category) c WHERE {vis}
+                   GROUP BY 1 ORDER BY 1""", vp)
     out["subcategories"] = _rows(cur)
     return out
 
 
 @router.get("/stats")
-def stats():
-    """현황 화면·메인 통계. 전부 실측이다."""
+def stats(user: Optional[User] = Depends(optional_user)):
+    """현황 화면·메인 통계. 전부 실측이다. 볼 수 있는 데이터셋 기준."""
     cur = get_conn().cursor()
-    cur.execute("""SELECT count(*) AS datasets, coalesce(sum(item_count),0) AS items,
+    vis, vp = visible_clause(user)
+    vis_d, vp_d = visible_clause(user, "d.")
+    cur.execute(f"""SELECT count(*) AS datasets, coalesce(sum(item_count),0) AS items,
                           count(DISTINCT source) AS platforms
-                   FROM dcat_dataset""")
+                   FROM dcat_dataset WHERE {vis}""", vp)
     totals = _rows(cur)[0]
     cur.execute("SELECT count(*) FROM dcat_dataset_relation WHERE status <> 'REJECTED'")
     totals["relations"] = cur.fetchone()[0]
-    cur.execute("""SELECT split_part(c, ' > ', 1) AS category,
+    cur.execute(f"""SELECT split_part(c, ' > ', 1) AS category,
                           count(DISTINCT d.dataset_id) AS datasets,
                           coalesce(sum(d.item_count),0) AS items
-                   FROM dcat_dataset d, jsonb_array_elements_text(d.category) c
-                   GROUP BY 1 ORDER BY 3 DESC""")
+                   FROM dcat_dataset d, jsonb_array_elements_text(d.category) c WHERE {vis_d}
+                   GROUP BY 1 ORDER BY 3 DESC""", vp_d)
     by_category = _rows(cur)
-    cur.execute("""SELECT source AS platform, count(*) AS datasets,
+    cur.execute(f"""SELECT source AS platform, count(*) AS datasets,
                           coalesce(sum(item_count),0) AS items
-                   FROM dcat_dataset GROUP BY 1 ORDER BY 3 DESC""")
+                   FROM dcat_dataset WHERE {vis} GROUP BY 1 ORDER BY 3 DESC""", vp)
     by_platform = _rows(cur)
     # 조회수를 기록하지 않는다 — '인기'를 만들어 낼 수 없다. 아이템이 많은 순으로
     # 대신하고, 화면에 그렇게 적는다(없는 지표를 있는 척하지 않는다).
-    cur.execute("""SELECT dataset_id, title, source_type, item_count, created_at
-                   FROM dcat_dataset ORDER BY item_count DESC NULLS LAST LIMIT 10""")
+    cur.execute(f"""SELECT dataset_id, title, source_type, item_count, created_at
+                   FROM dcat_dataset WHERE {vis} ORDER BY item_count DESC NULLS LAST LIMIT 10""", vp)
     top = _rows(cur)
     return {"totals": totals, "by_category": by_category, "by_platform": by_platform,
             "top_by_items": top, "view_tracking": False}
@@ -516,7 +533,7 @@ _ITEM_HYDRATE = {
 
 @router.get("/search/items")
 def search_items(q: str = Query(..., min_length=1), source: str = Query("video"),
-                 limit: int = Query(20, ge=1, le=50)):
+                 limit: int = Query(20, ge=1, le=50), user: Optional[User] = Depends(optional_user)):
     """콘텐츠(아이템) 검색 — 영상·기사·글 단위. **C1이 실제로 만든 검색은 이쪽이다.**
 
     목업은 데이터셋만 찾았다. 하이브리드 검색과 평가셋은 아이템 단위로 만들어졌고,
@@ -525,9 +542,13 @@ def search_items(q: str = Query(..., min_length=1), source: str = Query("video")
     if source not in _ITEM_HYDRATE:
         raise HTTPException(400, f"source는 {sorted(_ITEM_HYDRATE)} 중 하나다")
     from src.search import hybrid
-    hits = hybrid.search(q, source, top_k=limit)
+    # 볼 수 없는 데이터셋의 아이템을 빼고도 limit을 채우려고 넉넉히 받는다(RRF 순위라 위쪽은 같다)
+    hits = hybrid.search(q, source, top_k=limit * 2)
     table, cols = _ITEM_HYDRATE[source]
     cur = get_conn().cursor()
+    owner = item_dataset_map(cur, source, [h["id"] for h in hits])
+    ok = visible_ids(cur, owner.values(), user)
+    hits = [h for h in hits if owner.get(h["id"]) in ok][:limit]
     extra: Dict[Any, Dict[str, Any]] = {}
     if hits:
         cur.execute(f"SELECT id, {cols} FROM {table} WHERE id = ANY(%s)",
@@ -562,9 +583,11 @@ def search_items(q: str = Query(..., min_length=1), source: str = Query("video")
 
 
 @router.get("/datasets/{dataset_id:path}/status")
-def dataset_status(dataset_id: str):
-    """한 데이터셋의 수집 운영 상태와 최근 실행 이력 — 상세 화면의 '수집 정보'."""
+def dataset_status(dataset_id: str, user: Optional[User] = Depends(optional_user)):
+    """한 데이터셋의 수집 운영 상태와 최근 실행 이력 — 상세 화면의 '수집 정보'.
+    원문 오류는 관리자에게만 준다(사용자에게는 원인 분류의 안내 문구만)."""
     cur = get_conn().cursor()
+    ensure_visible(cur, dataset_id, user)
     cur.execute("""SELECT status, item_count, row_count, last_collected_at, next_collect_at,
                           last_error, pg_meta_table, s3_raw_prefix
                    FROM data_registry WHERE dataset_id=%s""", (dataset_id,))
@@ -576,6 +599,9 @@ def dataset_status(dataset_id: str):
     if reg:
         reg[0]["last_error"] = config.mask_secrets(reg[0]["last_error"] or "") or None
         reg[0]["cause"] = classify_error(reg[0]["last_error"]) if reg[0]["status"] == "error" else None
+        if not (user and user.is_admin):
+            reg[0]["last_error"] = None
+            reg[0]["s3_raw_prefix"] = None      # 내부 저장 경로
     return {"registry": reg[0] if reg else None, "runs": _rows(cur)}
 
 
@@ -583,9 +609,10 @@ def dataset_status(dataset_id: str):
 # 앞에 있으면 `/features`·`/items`·`/graph`·`/status`를 식별자의 일부로 읽는다.
 # main.py의 `/jsonld`가 바로 그렇게 죽어 있었다(2026-11-04).
 @router.get("/datasets/{dataset_id:path}")
-def catalog_detail(dataset_id: str):
+def catalog_detail(dataset_id: str, user: Optional[User] = Depends(optional_user)):
     """포털 상세 — 21개 메타데이터 + 공개 범위 + B1 특징 + 관계 + 수집 상태."""
     cur = get_conn().cursor()
+    ensure_visible(cur, dataset_id, user)
     cur.execute(f"SELECT {_CATALOG_COLS} FROM dcat_dataset WHERE dataset_id=%s", (dataset_id,))
     rows = _rows(cur)
     if not rows:
@@ -602,6 +629,8 @@ def catalog_detail(dataset_id: str):
                    JOIN dcat_dataset t ON t.dataset_id = r.target_dataset_id
                    WHERE r.source_dataset_id=%s AND r.status <> 'REJECTED'
                    ORDER BY r.relation_type, r.score DESC""", (dataset_id,))
+    rels = _rows(cur)
+    ok = visible_ids(cur, [r["dataset_id"] for r in rels], user)
     out["relations"] = [{**r, "score": float(r["score"]), "evidence": _jsonb(r["evidence"])}
-                        for r in _rows(cur)]
+                        for r in rels if r["dataset_id"] in ok]
     return out

@@ -12,8 +12,10 @@ CLI 등록과 화면 등록의 결과가 조용히 달라진다.
 
 ## 권한
 
-콘솔과 같이 **총괄 관리자 시점**이다. `dataset_origin`은 요청으로 받지 않고
-서버가 정한다(`admin`) — 사용자가 보낸 값을 믿으면 아무나 관리자 등록이 된다.
+등록·수정·삭제·수집 실행·파이프라인·평가·연합은 **관리자만**(`require_admin`, 시제품 로그인 —
+ADR-021). 사용자 등록은 `/v1/my`(my.py)가 같은 `register_as`를 부른다.
+`dataset_origin`은 요청으로 받지 않고 서버가 정한다 — 사용자가 보낸 값을 믿으면 아무나 관리자 등록이 된다.
+추이(`/trend`)와 신뢰 패키지(`/package`)는 사용자 상세에서도 쓰므로 공개 범위로만 거른다.
 
 ## 오래 걸리는 일은 별도 프로세스로
 
@@ -46,9 +48,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import requests
-from fastapi import APIRouter, BackgroundTasks, Body, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 
+from src.api.access import ensure_visible
+from src.api.auth import User, optional_user, require_admin
 from src.common import config
 from src.common.category_taxonomy import MAX_PER_DATASET, is_valid
 from src.database.db import get_conn
@@ -194,7 +198,7 @@ def _duplicates(source_type: str, subjects: Any) -> List[Dict[str, Any]]:
     return _rows(cur)
 
 
-@router.post("/datasets/check")
+@router.post("/datasets/check", dependencies=[Depends(require_admin)])
 def check_registration(body: Dict[str, Any] = Body(...)):
     """등록 전 확인 — 입력 해석·중복 경고. **아무것도 쓰지 않는다.**
 
@@ -244,7 +248,7 @@ def _store_credentials(dataset_id: str, creds: Dict[str, str]) -> List[str]:
     return sorted(creds)
 
 
-@router.post("/datasets")
+@router.post("/datasets", dependencies=[Depends(require_admin)])
 def register(body: Dict[str, Any] = Body(...)):
     """데이터셋 등록(관리자). 등록만 하고 **수집은 하지 않는다** — `status='pending'`.
 
@@ -348,8 +352,8 @@ def register_as(body: Dict[str, Any], origin: str, owner_id: Optional[str]) -> D
 
 # ── 수정 ──────────────────────────────────────────────────────────────────
 
-@router.patch("/datasets/{dataset_id:path}")
-def update(dataset_id: str, body: Dict[str, Any] = Body(...)):
+@router.patch("/datasets/{dataset_id:path}", dependencies=[Depends(require_admin)])
+def update(dataset_id: str, body: Dict[str, Any] = Body(...), admin: User = Depends(require_admin)):
     """등록 후 바꿀 수 있는 것만 받는다. 수집 대상(subjects)은 바꾸지 않는다 —
     바꾸면 이미 쌓인 아이템과 조건이 어긋난다. 그건 새 데이터셋이다."""
     sets, params = [], []
@@ -393,14 +397,14 @@ def update(dataset_id: str, body: Dict[str, Any] = Body(...)):
         # 관리자 상세의 '분류 확정' — 그때 저장돼 있던 최신 추천을 보여 준 것으로 기록한다
         from src.database.category import record_decision
         record_decision(cur, dataset_id, previous=prev[0] or [], chosen=cats, shown=None,
-                        actor="admin", role="admin")
+                        actor=admin.id, role="admin")
     conn.commit()
     return {"dataset_id": dataset_id, "updated": [s.split("=")[0] for s in sets]}
 
 
 # ── 삭제 ──────────────────────────────────────────────────────────────────
 
-@router.delete("/datasets/{dataset_id:path}")
+@router.delete("/datasets/{dataset_id:path}", dependencies=[Depends(require_admin)])
 def delete(dataset_id: str, confirm: str = Query(..., description="실수 방지 — dataset_id를 한 번 더")):
     """데이터셋 삭제 — **되돌릴 수 없다.** 아이템·벡터·관계·특징·자격증명이 연쇄 삭제된다.
 
@@ -470,7 +474,7 @@ def _run_state(key: str) -> Dict[str, Any]:
             "started_at": r["started_at"], "log_tail": tail}
 
 
-@router.post("/datasets/{dataset_id:path}/run")
+@router.post("/datasets/{dataset_id:path}/run", dependencies=[Depends(require_admin)])
 def run_now(dataset_id: str):
     """지금 수집. `python -m src.main run`을 자식 프로세스로 띄운다 — 스케줄러와 같은 경로다."""
     cur = get_conn().cursor()
@@ -480,7 +484,7 @@ def run_now(dataset_id: str):
     return _spawn(f"run:{dataset_id}", [sys.executable, "-m", "src.main", "run", dataset_id])
 
 
-@router.get("/datasets/{dataset_id:path}/run")
+@router.get("/datasets/{dataset_id:path}/run", dependencies=[Depends(require_admin)])
 def run_status(dataset_id: str):
     return _run_state(f"run:{dataset_id}")
 
@@ -500,13 +504,14 @@ _PERIODIC = {
 
 
 @router.get("/datasets/{dataset_id:path}/trend")
-def trend(dataset_id: str):
+def trend(dataset_id: str, user: Optional[User] = Depends(optional_user)):
     """수집 추이 — 와이즈넛 화면4 '파일 시점 비교'의 비정형판.
 
     발견형은 **관측일이 짧다**(2026-11-02 실측 1일). 짧으면 짧은 대로 보여 준다 —
     그게 B2 시계열 공변동이 아직 정의되지 않는 이유이기도 하다.
     """
     cur = get_conn().cursor()
+    ensure_visible(cur, dataset_id, user)
     cur.execute("SELECT source_type FROM dcat_dataset WHERE dataset_id=%s", (dataset_id,))
     row = cur.fetchone()
     if not row:
@@ -535,7 +540,7 @@ def trend(dataset_id: str):
 # ── 신뢰 패키지 (C5) ──────────────────────────────────────────────────────
 
 @router.get("/datasets/{dataset_id:path}/package")
-def package(dataset_id: str, background: BackgroundTasks):
+def package(dataset_id: str, background: BackgroundTasks, user: Optional[User] = Depends(optional_user)):
     """아이템 CSV + JSON-LD를 서명된 zip으로 묶어 내려준다(manifest + SHA-256 + HMAC).
 
     받는 쪽은 `scripts/package_dataset.py verify`로 DB·네트워크 없이 검증한다.
@@ -550,6 +555,7 @@ def package(dataset_id: str, background: BackgroundTasks):
     from src.packaging import builder
     from src.storage import jsonld_export
     cur = get_conn().cursor()
+    ensure_visible(cur, dataset_id, user)
     cur.execute("SELECT pg_meta_table FROM data_registry WHERE dataset_id=%s", (dataset_id,))
     row = cur.fetchone()
     work = Path(tempfile.mkdtemp(prefix="pkg-"))
@@ -577,7 +583,7 @@ def package(dataset_id: str, background: BackgroundTasks):
 
 # ── 파이프라인 (C3) ───────────────────────────────────────────────────────
 
-@router.get("/pipelines")
+@router.get("/pipelines", dependencies=[Depends(require_admin)])
 def pipelines():
     from src.pipeline_engine import runner
     out = []
@@ -589,7 +595,7 @@ def pipelines():
     return {"items": out, "state": {i["name"]: _run_state(f"pipeline:{i['name']}") for i in out}}
 
 
-@router.post("/pipelines/{name}/run")
+@router.post("/pipelines/{name}/run", dependencies=[Depends(require_admin)])
 def run_pipeline(name: str, dry_run: bool = True, limit: Optional[int] = Query(None, ge=1, le=500)):
     """파이프라인 실행. 기본은 **dry-run**(수집·정규화까지, DB에 쓰지 않음)."""
     from src.pipeline_engine import runner
@@ -603,27 +609,27 @@ def run_pipeline(name: str, dry_run: bool = True, limit: Optional[int] = Query(N
     return _spawn(f"pipeline:{name}", cmd)
 
 
-@router.get("/pipelines/{name}/run")
+@router.get("/pipelines/{name}/run", dependencies=[Depends(require_admin)])
 def pipeline_status(name: str):
     return _run_state(f"pipeline:{name}")
 
 
 # ── 검색 성능 측정 (C1 평가) ───────────────────────────────────────────────
 
-@router.post("/eval/run")
+@router.post("/eval/run", dependencies=[Depends(require_admin)])
 def run_eval(source: str = Query("video")):
     """평가셋으로 검색 설정들을 측정한다(Recall·MRR·nDCG). 모델을 올리므로 자식 프로세스."""
     return _spawn(f"eval:{source}", [sys.executable, "scripts/eval_search.py", "--source", source, "run"])
 
 
-@router.get("/eval/run")
+@router.get("/eval/run", dependencies=[Depends(require_admin)])
 def eval_status(source: str = Query("video")):
     return _run_state(f"eval:{source}")
 
 
 # ── 외부 포털 연합 (C6) ───────────────────────────────────────────────────
 
-@router.get("/federation")
+@router.get("/federation", dependencies=[Depends(require_admin)])
 def federation():
     cur = get_conn().cursor()
     cur.execute("""SELECT source, count(*) AS datasets, max(updated_at) AS last_update
@@ -631,7 +637,7 @@ def federation():
     return {"portals": _rows(cur), "state": _run_state("federation:ckan")}
 
 
-@router.post("/federation/ckan/run")
+@router.post("/federation/ckan/run", dependencies=[Depends(require_admin)])
 def run_federation(portal: str = Query("https://open.canada.ca/data"),
                    query: str = Query("*:*"), max_records: int = Query(30, ge=1, le=500)):
     """CKAN 포털에서 메타데이터를 다시 받아 온다. 원본 파일은 복사하지 않는다."""
