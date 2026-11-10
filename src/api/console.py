@@ -32,13 +32,15 @@
 
 import json
 import logging
+import os
 import re
+import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
-from src.api.access import ensure_visible, item_dataset_map, visible_clause, visible_ids
+from src.api.access import ensure_visible, visible_clause, visible_ids
 from src.api.auth import User, optional_user, require_admin
 from src.common import config
 from src.common.category_taxonomy import PRIVATE_FEATURES
@@ -50,7 +52,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/v1/console", tags=["내부 콘솔"])
 
 #: 평가셋 라벨링 대상. C1 완료 판정이 여기 막혀 있다(대기 #1).
-LABEL_POOL = Path("eval/search/video/pool_for_labeling.json")
+#: `LABEL_POOL_PATH`로 바꿀 수 있다 — 클러스터에서 영구 볼륨에 둘 때 쓴다(아래 `_pool_storage`).
+LABEL_POOL = Path(os.environ.get("LABEL_POOL_PATH") or "eval/search/video/pool_for_labeling.json")
 
 #: 테이블명을 DB에서 읽어 쓰므로(아래 `items`) 모양을 한 번 더 확인한다.
 _IDENT = re.compile(r"^[a-z][a-z0-9_]*$")
@@ -322,14 +325,28 @@ def decide_relation(payload: Dict[str, Any] = Body(...)):
 
 # ── 평가셋 라벨링 (C1 완료 판정이 여기 막혀 있다) ───────────────────────────
 
+#: 읽고-고치고-쓰기를 한 번에 하나만. 키보드로 빠르게 누르면 요청이 겹치고,
+#: 겹친 두 저장 중 하나가 다른 하나를 덮어 **채점이 조용히 사라진다**.
+_POOL_LOCK = threading.Lock()
+
+#: 채점 판단용 요약 길이. 길면 393건을 훑는 속도가 떨어진다.
+CONTEXT_SNIPPET = 200
+
+
 def _load_pool() -> List[Dict[str, Any]]:
     if not LABEL_POOL.is_file():
         return []
     return json.loads(LABEL_POOL.read_text(encoding="utf-8"))
 
 
-def _label_progress() -> Dict[str, int]:
-    pool = _load_pool()
+def _write_pool(pool: List[Dict[str, Any]]) -> None:
+    """임시 파일에 쓰고 바꿔 끼운다 — 쓰는 도중 죽어도 원본이 반쯤 잘리지 않는다."""
+    tmp = LABEL_POOL.with_name(LABEL_POOL.name + ".tmp")
+    tmp.write_text(json.dumps(pool, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(tmp, LABEL_POOL)
+
+
+def _progress_of(pool: List[Dict[str, Any]]) -> Dict[str, int]:
     total = done = 0
     for q in pool:
         for c in q.get("candidates", []):
@@ -339,12 +356,94 @@ def _label_progress() -> Dict[str, int]:
     return {"total": total, "done": done}
 
 
+def _label_progress() -> Dict[str, int]:
+    return _progress_of(_load_pool())
+
+
+def _pool_storage() -> Dict[str, Any]:
+    """저장 위치가 오래 남는지. 채점 결과는 이 파일 하나뿐이라 화면이 미리 알려야 한다.
+
+    - `LABEL_POOL_PERSISTENT=1|0`이 있으면 그대로 따른다(영구 볼륨을 붙였을 때 1)
+    - 없으면 k8s 파드 안(`KUBERNETES_SERVICE_HOST`)은 **컨테이너 파일시스템**이라
+      파드가 다시 뜨면 사라진다고 본다. 로컬 실행은 작업 사본(레포)에 남는다.
+    """
+    flag = os.environ.get("LABEL_POOL_PERSISTENT", "").strip().lower()
+    in_pod = bool(os.environ.get("KUBERNETES_SERVICE_HOST"))
+    if flag in ("1", "true", "yes"):
+        persistent, reason = True, "env"
+    elif flag in ("0", "false", "no"):
+        persistent, reason = False, "env"
+    else:
+        persistent, reason = not in_pod, ("pod" if in_pod else "local")
+    target = LABEL_POOL if LABEL_POOL.exists() else LABEL_POOL.parent
+    return {"path": str(LABEL_POOL.resolve()), "writable": os.access(target, os.W_OK),
+            "persistent": persistent, "reason": reason}
+
+
+def _trim(text: Optional[str], n: int = CONTEXT_SNIPPET) -> Optional[str]:
+    if not text:
+        return None
+    t = re.sub(r"\s+", " ", text).strip()
+    return t if len(t) <= n else t[:n].rstrip() + "…"
+
+
+def _video_context(doc_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+    """후보 판단에 필요한 맥락을 **한 번의 조회로** 붙인다. `doc_id` = `meta_video.id`.
+
+    요약은 AI 요약(자막·설명 기반)을 먼저, 없으면 설명을 쓴다. 숫자가 아닌 id는 건너뛴다.
+    """
+    ids = sorted({int(d) for d in doc_ids if str(d).isdigit()})
+    if not ids:
+        return {}
+    cur = get_conn().cursor()
+    cur.execute("""SELECT m.id, m.video_id, m.channel_title, m.published_at,
+                          m.duration_seconds, m.description, m.thumbnail_url,
+                          m.has_transcript, m.is_removed,
+                          a.ai_summary, a.ai_keywords
+                   FROM meta_video m
+                   LEFT JOIN meta_video_ai a ON a.meta_id = m.id AND a.status = 'ok'
+                   WHERE m.id = ANY(%s)""", (ids,))
+    out: Dict[str, Dict[str, Any]] = {}
+    for r in _rows(cur):
+        summary = _trim(r.get("ai_summary"))
+        pub = r.get("published_at")
+        vid = r.get("video_id")
+        out[str(r["id"])] = {
+            "channel": r.get("channel_title"),
+            "published_at": pub.date().isoformat() if hasattr(pub, "date") else pub,
+            "duration_seconds": r.get("duration_seconds"),
+            "snippet": summary or _trim(r.get("description")),
+            "snippet_source": "ai_summary" if summary else ("description" if r.get("description") else None),
+            "keywords": list(r.get("ai_keywords") or [])[:6],
+            "has_transcript": bool(r.get("has_transcript")),
+            "removed": bool(r.get("is_removed")),
+            "thumbnail_url": r.get("thumbnail_url"),
+            "url": f"https://www.youtube.com/watch?v={vid}" if vid else None,
+        }
+    return out
+
+
 @router.get("/labeling", dependencies=[Depends(require_admin)])
 def labeling():
-    """채점 대상 전부와 진행률. 지금은 JSON 파일을 손으로 고쳐야 한다 —
-    그래서 393건이 두 달째 그대로다."""
+    """채점 대상 전부와 진행률. 후보마다 채널·요약·길이·게시일·원본 링크를 붙인다 —
+    제목과 번호만으로는 원본을 열어 보지 않고 판단할 수 없었다.
+
+    맥락은 덧붙임이다. DB가 안 되면 맥락 없이(`context_error`) 채점은 계속할 수 있게 둔다.
+    """
     pool = _load_pool()
-    return {"file": str(LABEL_POOL), "progress": _label_progress(), "queries": pool}
+    context_error = None
+    try:
+        ctx = _video_context([c.get("doc_id") for q in pool for c in q.get("candidates", [])])
+    except Exception as e:  # noqa: BLE001 — 맥락 실패로 채점 화면 전체를 막지 않는다
+        logger.warning("라벨링 맥락 조회 실패: %s", e)
+        ctx, context_error = {}, "후보 맥락(채널·요약)을 불러오지 못했습니다"
+    for q in pool:
+        for c in q.get("candidates", []):
+            extra = ctx.get(str(c.get("doc_id")))
+            if extra:
+                c.update({k: v for k, v in extra.items() if k not in ("doc_id", "title", "grade")})
+    return {"file": str(LABEL_POOL), "progress": _progress_of(pool), "queries": pool,
+            "storage": _pool_storage(), "context_error": context_error}
 
 
 @router.post("/labeling", dependencies=[Depends(require_admin)])
@@ -352,19 +451,19 @@ def save_label(payload: Dict[str, Any] = Body(...)):
     """한 건 채점. 파일에 바로 쓴다 — 중간 저장 장치를 따로 두면
     브라우저를 닫는 순간 날아간다."""
     query_id, doc_id, grade = payload.get("query_id"), payload.get("doc_id"), payload.get("grade")
-    if grade not in (0, 1, 2, None):
+    if grade not in (0, 1, 2, None) or isinstance(grade, bool):
         raise HTTPException(400, "등급은 0·1·2 또는 미채점(null)이어야 합니다")
-    pool = _load_pool()
-    for q in pool:
-        if q.get("query_id") != query_id:
-            continue
-        for c in q.get("candidates", []):
-            if str(c.get("doc_id")) == str(doc_id):
-                c["grade"] = grade
-                LABEL_POOL.write_text(
-                    json.dumps(pool, ensure_ascii=False, indent=2), encoding="utf-8")
-                return {"query_id": query_id, "doc_id": doc_id, "grade": grade,
-                        "progress": _label_progress()}
+    with _POOL_LOCK:
+        pool = _load_pool()
+        for q in pool:
+            if q.get("query_id") != query_id:
+                continue
+            for c in q.get("candidates", []):
+                if str(c.get("doc_id")) == str(doc_id):
+                    c["grade"] = grade
+                    _write_pool(pool)
+                    return {"query_id": query_id, "doc_id": doc_id, "grade": grade,
+                            "progress": _progress_of(pool)}
     raise HTTPException(404, "해당 질의·문서 조합을 찾을 수 없습니다")
 
 
@@ -548,20 +647,22 @@ def search_items(q: str = Query(..., min_length=1), source: str = Query("video")
     hits = hybrid.search(q, source, top_k=limit * 2)
     table, cols = _ITEM_HYDRATE[source]
     cur = get_conn().cursor()
-    owner = item_dataset_map(cur, source, [h["id"] for h in hits])
-    ok = visible_ids(cur, owner.values(), user)
-    hits = [h for h in hits if owner.get(h["id"]) in ok][:limit]
+    # 왕복을 줄인다(2026-11-10) — 예전엔 소유 데이터셋 조회 → 공개 범위 → 원본 → 데이터셋
+    # 제목으로 4번 오갔다. 원본 행에 dataset_id가 있으므로 원본을 먼저 한 번에 읽고,
+    # 공개 범위 판정과 제목은 같은 조건(visible_clause)으로 한 번에 얻는다.
     extra: Dict[Any, Dict[str, Any]] = {}
+    titles: Dict[str, Any] = {}
     if hits:
         cur.execute(f"SELECT id, {cols} FROM {table} WHERE id = ANY(%s)",
                     ([h["id"] for h in hits],))
         extra = {r["id"]: r for r in _rows(cur)}
-        ds_ids = sorted({r["dataset_id"] for r in extra.values()})
-        cur.execute("SELECT dataset_id, title FROM dcat_dataset WHERE dataset_id = ANY(%s)",
-                    (ds_ids,))
-        titles = dict(cur.fetchall())
-    else:
-        titles = {}
+        ds_ids = sorted({r["dataset_id"] for r in extra.values() if r.get("dataset_id")})
+        if ds_ids:
+            cond, vp = visible_clause(user)
+            cur.execute(f"SELECT dataset_id, title FROM dcat_dataset "
+                        f"WHERE dataset_id = ANY(%(_ids)s) AND {cond}", {**vp, "_ids": ds_ids})
+            titles = dict(cur.fetchall())          # 볼 수 있는 데이터셋만 들어온다
+    hits = [h for h in hits if extra.get(h["id"], {}).get("dataset_id") in titles][:limit]
     ai: Dict[Any, Dict[str, Any]] = {}
     if source == "video" and hits:
         cur.execute("SELECT meta_id, ai_summary, ai_keywords FROM meta_video_ai "

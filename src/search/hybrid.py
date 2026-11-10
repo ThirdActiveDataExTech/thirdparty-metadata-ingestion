@@ -30,6 +30,8 @@ k ∈ {10,20,30,60} 스윕을 평가 항목에 포함하도록 정해 뒀다 —
 
 import logging
 import math
+import threading
+import time
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from src.database.db import get_conn
@@ -72,6 +74,90 @@ DEFAULT_CANDIDATES = 200
 #: **known-item 점수에 맞춰 고른 값이 아니다** — 진단에서 바로 나온 처방이다.
 DEFAULT_SCORE_MODE = "idf_sum"
 
+#: 벡터 채널이 **청크 단위로** 먼저 가져올 최근접 수 = `candidates` × 이 값.
+#:
+#: 2026-11-10 지연 실측(`반도체`, limit 30): blog 31.5초 · news 11.7초 · video 4.3초.
+#: 거의 전부가 벡터 채널이었다 — 예전 SQL은 `GROUP BY 원본 → MAX(코사인)`을 먼저 하고
+#: 정렬해서 **모든 청크의 거리를 계산**했다(blog 25.3만 청크, 벡터가 TOAST에 있어 1.1GB 읽기).
+#: 이 모양으로는 HNSW 색인이 생겨도 쓰이지 않는다. 색인은 `ORDER BY 거리 LIMIT n`일 때만 탄다.
+#:
+#: 그래서 순서를 바꿨다 — 청크를 거리순으로 n개 받은 뒤 원본으로 묶어 최대값을 낸다.
+#: **정확 검색(색인 없음)에서는 결과가 예전과 같다.** 원본 점수가 청크 최대값이므로
+#: "원본 상위 N건"은 "청크를 거리순으로 훑다 처음 만나는 서로 다른 원본 N건"과 같기
+#: 때문이다. 단, 앞 n개 청크에 서로 다른 원본이 `candidates`개 미만이면 벡터 채널 후보가
+#: 그만큼 얕아진다(꼬리만 영향). 실측 — 원본 200건을 채우는 데 필요한 청크 수는
+#: 질의 4건×3소스에서 221~585개였다. ×5(=1,000개)는 최댓값의 1.7배 여유다.
+#: (2026-11-10 원격 실측: 색인 없이, 동점을 키로 가른 상태에서 예전 SQL과 새 SQL의
+#:  결과가 video·news·blog 모두 동일)
+VEC_CHUNK_FACTOR = 5
+
+#: HNSW 탐색 설정 — 색인이 있을 때만 의미가 있다(sql/migration_2026_11_10_vec_hnsw.sql).
+#: 색인이 없으면 PostgreSQL이 무시한다(정확 검색 그대로).
+#:
+#: - `iterative_scan = relaxed_order`: 기본 탐색은 ef_search(40)개까지만 돌려줘서
+#:   LIMIT 1,000을 못 채운다. 반복 탐색은 LIMIT이 찰 때까지 그래프를 더 넓힌다.
+#:   순서가 조금 어긋날 수 있지만 바깥에서 원본별 최대값으로 다시 정렬하므로 무관하다.
+#: - 값은 로컬 재현(실데이터 벡터 + 같은 색인)에서 recall과 지연을 보고 정했다.
+#:   ef_search는 40~1,000 사이에서 recall·지연 차이가 거의 없었다(반복 탐색이 지배).
+#: ⚠️ 색인이 생기면 **순위가 조금 바뀐다**(근사 검색). blog 질의 10건에서 RRF 최종 상위 30건
+#:   일치율 평균 0.983(최저 0.90). 수치와 색인 파라미터 근거는 마이그레이션 파일 머리말.
+HNSW_EF_SEARCH = 200
+HNSW_ITERATIVE_SCAN = "relaxed_order"
+HNSW_MAX_SCAN_TUPLES = 20000
+
+#: 토크나이저 버전 대조 결과를 이 시간(초) 동안 재사용한다.
+#: 대조 SQL(`SELECT DISTINCT tokenizer_ver`)은 테이블 전체를 훑어 blog에서 1.6초였고,
+#: 아이템 검색 한 번에 두 번(검색 + 최희귀어) 돌았다. **통과만** 기억한다 — 불일치는
+#: 매번 다시 확인해 그때마다 예외를 낸다. 재색인 직후 최대 이 시간만큼 늦게 잡힌다.
+TOKENIZER_CHECK_TTL = 300.0
+
+#: 토큰 문서빈도(전체 청크 수 N, 토큰별 df) 재사용 시간(초).
+#: 아이템 검색은 같은 질의로 IDF(검색)와 최희귀어(판정)를 연달아 센다 — 같은 값을
+#: 두 번 세지 않게 한다. 수집 중이면 이 시간 동안 N·df가 조금 낡을 수 있다
+#: (IDF = ln(N/df)라 순위 영향은 무시할 수준).
+TOKEN_STATS_TTL = 30.0
+
+_cache_lock = threading.Lock()
+_tokenizer_ok: Dict[str, float] = {}                       # 테이블 → 통과 시각
+_token_stats: Dict[Tuple[str, Tuple[str, ...]], Tuple[float, int, Dict[str, int]]] = {}
+
+
+def clear_caches() -> None:
+    """프로세스 안의 검색 캐시를 비운다(테스트·재색인 직후용)."""
+    with _cache_lock:
+        _tokenizer_ok.clear()
+        _token_stats.clear()
+
+
+def token_stats(cur, table: str, terms: Sequence[str]) -> Tuple[int, Dict[str, int]]:
+    """(df 기준 전체 청크 수 N, 토큰별 df)를 **한 번의 왕복으로** 센다.
+
+    `token_idf`(검색)와 `rarest_token_df`(결과 없음 판정)가 같이 쓴다.
+    `TOKEN_STATS_TTL` 동안 같은 (테이블, 토큰들)이면 다시 세지 않는다.
+    """
+    terms = tuple(dict.fromkeys(t for t in terms if t))
+    if not terms:
+        return 0, {}
+    key = (table, terms)
+    now = time.monotonic()
+    hit = _token_stats.get(key)
+    if hit is not None and now - hit[0] < TOKEN_STATS_TTL:
+        return hit[1], dict(hit[2])
+    cur.execute(f"SELECT count(*) FROM {table} WHERE tsv <> ''")
+    total = cur.fetchone()[0] or 0
+    cur.execute(
+        f"SELECT t.term, "
+        f"       (SELECT count(*) FROM {table} v WHERE v.tsv @@ to_tsquery('simple', t.term)) "
+        f"FROM unnest(%s::text[]) AS t(term)",
+        (list(terms),),
+    )
+    dfs = {term: df for term, df in cur.fetchall()}
+    with _cache_lock:
+        if len(_token_stats) > 512:                      # 질의가 쌓여도 메모리가 늘지 않게
+            _token_stats.clear()
+        _token_stats[key] = (now, total, dict(dfs))
+    return total, dfs
+
 
 def token_idf(cur, table: str, terms: Sequence[str]) -> Dict[str, float]:
     """질의 토큰별 IDF. `ln(N / df)` — 드물수록 크다.
@@ -86,19 +172,12 @@ def token_idf(cur, table: str, terms: Sequence[str]) -> Dict[str, float]:
     df가 0인 토큰(코퍼스에 없는 말)은 IDF가 무한대가 되므로 N을 쓴다 —
     "가장 드문 것보다도 드물다"로 두면 된다. 어차피 매칭되지 않아 점수에 안 들어간다.
     """
-    terms = list(dict.fromkeys(t for t in terms if t))
-    if not terms:
+    total, dfs = token_stats(cur, table, terms)
+    if not dfs:
         return {}
-    cur.execute(f"SELECT count(*) FROM {table} WHERE tsv <> ''")
-    total = cur.fetchone()[0] or 1
-    cur.execute(
-        f"SELECT t.term, "
-        f"       (SELECT count(*) FROM {table} v WHERE v.tsv @@ to_tsquery('simple', t.term)) "
-        f"FROM unnest(%s::text[]) AS t(term)",
-        (terms,),
-    )
+    total = total or 1
     out = {}
-    for term, df in cur.fetchall():
+    for term, df in dfs.items():
         out[term] = math.log(total / df) if df else math.log(total)
     return out
 
@@ -126,24 +205,46 @@ def _assert_tokenizer(cur, table: str) -> None:
     불일치는 오류를 내지 않고 **리콜만 조용히 0으로 만든다.** ADR-010이
     "불일치 시 기동 실패시킨다"고 정해 둔 이유다.
     """
+    passed = _tokenizer_ok.get(table)
+    if passed is not None and time.monotonic() - passed < TOKENIZER_CHECK_TTL:
+        return
     cur.execute(
         f"SELECT DISTINCT tokenizer_ver FROM {table} WHERE tokenizer_ver IS NOT NULL"
     )
-    tokenize.assert_tokenizer_match(r[0] for r in cur.fetchall())
+    tokenize.assert_tokenizer_match(r[0] for r in cur.fetchall())   # 불일치면 여기서 예외
+    with _cache_lock:
+        _tokenizer_ok[table] = time.monotonic()
 
+
+#: HNSW 탐색 설정. 같은 트랜잭션에서만 유효하다(SET LOCAL) — 본 검색과 한 번에 보낸다.
+_HNSW_SETTINGS = (
+    "SET LOCAL hnsw.ef_search = {ef};\n"
+    "SET LOCAL hnsw.iterative_scan = {mode};\n"
+    "SET LOCAL hnsw.max_scan_tuples = {max_tuples};\n"
+)
 
 _SQL = """
-WITH vec AS (
-    -- 벡터 채널: 청크 최대 코사인으로 원본 1건 점수를 정한다
+WITH vec_chunks AS (
+    -- 벡터 채널 1단계: 청크를 거리순으로 chunk_cand개. `ORDER BY 거리 LIMIT`
+    -- 모양이어야 HNSW 색인이 쓰인다(색인이 없으면 정확 검색 + top-N 정렬).
     SELECT v.{vkey} AS k,
-           MAX(1 - (v.embedding <=> %(qvec)s::vector)) AS score
+           v.embedding <=> %(qvec)s::vector AS dist
     FROM   {vec} v
-    GROUP  BY v.{vkey}
-    ORDER  BY score DESC
+    ORDER  BY v.embedding <=> %(qvec)s::vector
+    LIMIT  %(chunk_cand)s
+),
+vec AS (
+    -- 2단계: 청크 최대 코사인으로 원본 1건 점수를 정한다(예전과 같은 식)
+    -- 동점은 키로 가른다. 중복 청크(같은 문구) 때문에 점수가 정확히 같은 원본이
+    -- 수십 건씩 나온다(video 63건 동점 실측). 예전엔 실행 계획에 따라 순서가 달라졌다
+    SELECT k, MAX(1 - dist) AS score
+    FROM   vec_chunks
+    GROUP  BY k
+    ORDER  BY score DESC, k
     LIMIT  %(cand)s
 ),
 vec_rank AS (
-    SELECT k, score, ROW_NUMBER() OVER (ORDER BY score DESC) AS rnk FROM vec
+    SELECT k, score, ROW_NUMBER() OVER (ORDER BY score DESC, k) AS rnk FROM vec
 ),
 kw AS (
     -- 키워드 채널: {score_sql_comment}
@@ -216,6 +317,7 @@ def search(query: str, source: str = "news", top_k: int = 10,
     params: Dict[str, Any] = {
         "qvec": str(embedder.encode_query(query)),   # ← `query: ` 프리픽스가 붙는다
         "tsq": tsq, "cand": candidates, "rrf_k": rrf_k, "top": top_k,
+        "chunk_cand": candidates * VEC_CHUNK_FACTOR,
     }
     if score_mode == "idf_sum":
         # 토큰 순서를 고정해 두 배열이 짝을 이루게 한다 — 어긋나면 엉뚱한
@@ -228,7 +330,9 @@ def search(query: str, source: str = "news", top_k: int = 10,
             params["terms"], params["idfs"] = [""], [0.0]
 
     cur.execute(
-        _SQL.format(vec=vec, base=base, vkey=vkey, bkey=bkey,
+        _HNSW_SETTINGS.format(ef=int(HNSW_EF_SEARCH), mode=HNSW_ITERATIVE_SCAN,
+                              max_tuples=int(HNSW_MAX_SCAN_TUPLES))
+        + _SQL.format(vec=vec, base=base, vkey=vkey, bkey=bkey,
                     title_col=title_col, sub_col=sub_col,
                     score_expr=score_expr, score_sql_comment=score_desc),
         params,
@@ -260,16 +364,10 @@ def rarest_token_df(query: str, source: str = "news") -> Optional[Dict[str, Any]
     conn = get_conn()
     cur = conn.cursor()
     _assert_tokenizer(cur, vec)
-    cur.execute(f"SELECT count(*) FROM {vec} WHERE tsv <> ''")
-    total = cur.fetchone()[0] or 0
-
-    dfs = {}
-    for t in dict.fromkeys(toks):                  # 중복 제거, 순서 유지
-        cur.execute(
-            f"SELECT count(*) FROM {vec} WHERE tsv @@ to_tsquery('simple', %s)", (t,)
-        )
-        dfs[t] = cur.fetchone()[0]
+    # 토큰마다 왕복하지 않고 한 번에 센다. 직전 search()가 센 값이 있으면 재사용한다
+    total, counted = token_stats(cur, vec, toks)
     cur.close()
+    dfs = {t: counted.get(t, 0) for t in dict.fromkeys(toks)}   # 중복 제거, 순서 유지
 
     rarest = min(dfs, key=lambda t: dfs[t])
     return {

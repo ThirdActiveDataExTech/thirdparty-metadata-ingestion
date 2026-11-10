@@ -73,6 +73,14 @@ class _FakeConn:
         return self.cur
 
 
+@pytest.fixture(autouse=True)
+def _fresh_caches():
+    """토크나이저 대조·문서빈도 캐시가 테스트 사이로 새지 않게 한다."""
+    hybrid.clear_caches()
+    yield
+    hybrid.clear_caches()
+
+
 @pytest.fixture
 def patched(monkeypatch):
     def _apply(versions=None):
@@ -219,3 +227,129 @@ class TestResultShape:
         patched()
         row = hybrid.search("반도체", "news")[0]
         assert set(row) >= {"vec_rank", "kw_rank", "vec_score", "kw_score", "rrf"}
+
+
+class TestVectorChannelUsesIndex:
+    """2026-11-10 지연(blog 31초)의 원인 — 벡터 채널이 모든 청크의 거리를 계산했다.
+
+    `GROUP BY 원본 → MAX → ORDER BY`를 먼저 하면 HNSW 색인이 있어도 쓰이지 않는다.
+    색인은 `ORDER BY embedding <=> q LIMIT n` 모양일 때만 탄다.
+    """
+
+    def _vec_chunks_cte(self, sql):
+        start = sql.index("vec_chunks AS (")
+        return sql[start:sql.index("),", start)]
+
+    def test_청크_단계가_거리순_LIMIT_모양이다(self, patched):
+        conn = patched()
+        hybrid.search("반도체", "blog")
+        sql, _ = conn.cur.search_calls[-1]
+        cte = self._vec_chunks_cte(sql)
+        assert "ORDER  BY v.embedding <=> %(qvec)s::vector" in cte
+        assert "LIMIT  %(chunk_cand)s" in cte
+        assert "GROUP" not in cte                  # 묶기는 색인 탐색 **뒤**에 한다
+
+    def test_원본_점수는_여전히_청크_최대값이다(self, patched):
+        # 집계 단위(최대값)가 바뀌면 순위 의미가 바뀐다 — 평균 등으로 새지 않게
+        conn = patched()
+        hybrid.search("반도체", "blog")
+        sql, _ = conn.cur.search_calls[-1]
+        assert "MAX(1 - dist) AS score" in sql
+        assert "LIMIT  %(cand)s" in sql
+
+    def test_청크_후보가_원본_후보보다_넉넉하다(self, patched):
+        # 원본 200건을 채우는 데 실측 221~585 청크가 필요했다
+        conn = patched()
+        hybrid.search("반도체", "blog", candidates=200)
+        _, params = conn.cur.search_calls[-1]
+        assert params["chunk_cand"] == 200 * hybrid.VEC_CHUNK_FACTOR
+        assert params["chunk_cand"] >= 200 * 3
+
+    def test_HNSW_설정을_같은_트랜잭션에서_보낸다(self, patched):
+        # SET LOCAL은 트랜잭션 안에서만 유효하다. 따로 보내면 사이에 커밋/롤백이
+        # 끼어 기본값(ef_search 40, 반복 탐색 없음)으로 돌아가 후보가 40개로 줄 수 있다
+        conn = patched()
+        hybrid.search("반도체", "blog")
+        sql, _ = conn.cur.search_calls[-1]
+        head = sql[:sql.index("WITH")]
+        assert "SET LOCAL hnsw.iterative_scan = relaxed_order" in head
+        assert f"SET LOCAL hnsw.ef_search = {hybrid.HNSW_EF_SEARCH}" in head
+        assert "SET LOCAL hnsw.max_scan_tuples" in head
+
+
+class TestRoundTrips:
+    """검색 한 번에 DB를 몇 번 오가는가 — 원격 DB라 왕복이 곧 지연이다."""
+
+    def _count(self, conn, marker):
+        return sum(1 for sql, _ in conn.cur.calls if marker in sql)
+
+    def test_토크나이저_대조는_한_번만_한다(self, patched):
+        # blog에서 1.6초짜리 전체 스캔이었다. 아이템 검색은 검색+최희귀어로 두 번 불렀다
+        conn = patched()
+        hybrid.search("반도체", "blog")
+        hybrid.rarest_token_df("반도체", "blog")
+        hybrid.search("메모리", "blog")
+        assert self._count(conn, "DISTINCT tokenizer_ver") == 1
+
+    def test_소스가_다르면_따로_대조한다(self, patched):
+        conn = patched()
+        hybrid.search("반도체", "blog")
+        hybrid.search("반도체", "news")
+        assert self._count(conn, "DISTINCT tokenizer_ver") == 2
+
+    def test_대조_유효시간이_지나면_다시_확인한다(self, patched, monkeypatch):
+        conn = patched()
+        monkeypatch.setattr(hybrid, "TOKENIZER_CHECK_TTL", 0.0)
+        hybrid.search("반도체", "blog")
+        hybrid.search("반도체", "blog")
+        assert self._count(conn, "DISTINCT tokenizer_ver") == 2
+
+    def test_불일치는_기억하지_않고_매번_막는다(self, patched):
+        patched(versions=["kiwi-0.0.1+model-0+pos0"])
+        for _ in range(2):
+            with pytest.raises(tokenize.TokenizerMismatch):
+                hybrid.search("반도체", "news")
+
+    def test_문서빈도는_한_번에_센다(self, patched):
+        # 예전 최희귀어 판정은 토큰마다 한 번씩 왕복했다
+        conn = patched()
+        hybrid.rarest_token_df("반도체 수출 규제가", "news")
+        assert self._count(conn, "AS t(term)") == 1
+        assert self._count(conn, "tsv @@ to_tsquery('simple', %s)") == 0
+
+    def test_검색과_최희귀어가_문서빈도를_같이_쓴다(self, patched):
+        conn = patched()
+        hybrid.search("반도체 수출", "news")
+        hybrid.rarest_token_df("반도체 수출", "news")
+        assert self._count(conn, "AS t(term)") == 1
+        assert self._count(conn, "tsv <> ''") == 1
+
+    def test_최희귀어_판정_결과는_예전과_같은_모양이다(self, patched):
+        conn = patched()
+        conn.cur._df_override = 0
+        r = hybrid.rarest_token_df("반도체 수출", "news")
+        assert r["absent"] is True and r["df"] == 0
+        assert list(r["all_df"]) == ["반도체", "수출"]
+        assert r["df_pct"] == 0.0
+
+    def test_최희귀어는_가장_작은_df를_고른다(self, patched):
+        patched()           # 가짜 커서는 토큰 순서대로 df 1, 2, … 를 준다
+        r = hybrid.rarest_token_df("반도체 수출", "news")
+        assert r["token"] == "반도체" and r["df"] == 1 and r["absent"] is False
+
+    def test_문서빈도_유효시간이_지나면_다시_센다(self, patched, monkeypatch):
+        # 수집 중엔 N·df가 바뀐다 — 오래 들고 있으면 IDF가 낡는다
+        conn = patched()
+        monkeypatch.setattr(hybrid, "TOKEN_STATS_TTL", 0.0)
+        hybrid.search("반도체", "news")
+        hybrid.search("반도체", "news")
+        assert self._count(conn, "AS t(term)") == 2
+
+    def test_벡터_순위의_동점은_키로_가른다(self, patched):
+        # 중복 문구 청크로 점수가 정확히 같은 원본이 수십 건 나온다. 키로 가르지 않으면
+        # 실행 계획(정확 검색 ↔ 색인)에 따라 vec_rank가 달라지고 RRF 합도 달라진다
+        conn = patched()
+        hybrid.search("반도체", "video")
+        sql, _ = conn.cur.search_calls[-1]
+        assert "ORDER  BY score DESC, k" in sql
+        assert "ROW_NUMBER() OVER (ORDER BY score DESC, k)" in sql
