@@ -32,6 +32,7 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from src.common import config
+from src.common.error_kind import classify_error
 from src.database.db import get_conn
 
 router = APIRouter(prefix="/v1/console", tags=["정형 업로드·오류"])
@@ -195,7 +196,19 @@ def errors(days: int = 30):
                    FROM dcat_dataset_draft WHERE status <> ALL(%s) OR mapping_evidence ? 'error'
                    ORDER BY created_at DESC LIMIT 100""", (list(DRAFT_STATUSES),))
     drafts = _rows(cur)
+    # 원인 분류(읽을 때 — src/common/error_kind.py). 원문은 관리자 화면이라 내되 비밀값은 가린다
+    for r in failed_runs:
+        r["error_message"] = config.mask_secrets(r["error_message"] or "") or None
+        r["cause"] = classify_error(r["error_message"])
+    for r in in_error:
+        r["last_error"] = config.mask_secrets(r["last_error"] or "") or None
+        r["cause"] = classify_error(r["last_error"])
+    by_kind: Dict[str, int] = {}
+    for r in failed_runs:
+        if r["cause"]:
+            by_kind[r["cause"]["label"]] = by_kind.get(r["cause"]["label"], 0) + 1
     return {"days": days, "failed_runs": failed_runs, "in_error": in_error, "overdue": overdue,
+            "failed_by_cause": by_kind,
             "failed_drafts": drafts,
             "counts": {"failed_runs": len(failed_runs), "in_error": len(in_error), "overdue": len(overdue),
                        "failed_drafts": len(drafts)}}

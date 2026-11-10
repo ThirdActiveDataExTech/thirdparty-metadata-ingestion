@@ -246,11 +246,32 @@ def _store_credentials(dataset_id: str, creds: Dict[str, str]) -> List[str]:
 
 @router.post("/datasets")
 def register(body: Dict[str, Any] = Body(...)):
-    """데이터셋 등록. 등록만 하고 **수집은 하지 않는다** — `status='pending'`.
+    """데이터셋 등록(관리자). 등록만 하고 **수집은 하지 않는다** — `status='pending'`.
 
     수집은 `POST /datasets/{id}/run`이나 스케줄러가 한다. 등록 직후 화면은
     '등록 완료'와 '수집 완료'를 구분해 보여줘야 한다(등록 시나리오 §6).
     """
+    return register_as(body, origin="admin", owner_id=None)
+
+
+def parse_category(raw: Any) -> List[str]:
+    """분류 입력 검증 — 분류표에 있는 서로 다른 값 1~3개(첫 값이 대표)."""
+    cats = _clean_list(raw)
+    bad = [c for c in cats if not is_valid(c)]
+    if bad:
+        raise HTTPException(400, f"분류표에 없는 값: {bad}")
+    if not 1 <= len(cats) <= MAX_PER_DATASET or len(set(cats)) != len(cats):
+        raise HTTPException(400, f"분류는 서로 다른 값 1~{MAX_PER_DATASET}개다 (첫 값이 대표)")
+    return cats
+
+
+def register_as(body: Dict[str, Any], origin: str, owner_id: Optional[str]) -> Dict[str, Any]:
+    """관리자 등록과 사용자 등록이 **같은 길**을 탄다. 다른 것은 origin·owner_id뿐이다.
+
+    `body.category`(선택): 등록 화면에서 추천을 보고 고른 분류. 고르지 않으면 비워 둔다(ADR-020).
+    `body.shown_suggestions`(선택): 그때 화면에 보여 준 추천 목록 — 확정 이력에 함께 남긴다.
+    """
+    assert origin in ("admin", "user")
     st = body.get("source_type")
     if st not in DISCOVERY | DECLARATIVE:
         raise HTTPException(400, f"source_type은 {sorted(DISCOVERY | DECLARATIVE)} 중 하나다")
@@ -268,6 +289,7 @@ def register(body: Dict[str, Any] = Body(...)):
     unknown = set(creds) - set(CREDENTIALS[st])
     if unknown:
         raise HTTPException(400, f"{st}에 쓰지 않는 자격증명: {sorted(unknown)}")
+    chosen = parse_category(body["category"]) if _clean_list(body.get("category")) else []
     if any(isinstance(v, str) and v.strip() for v in creds.values()) and not config.get_env("ENCRYPTION_KEY"):
         # 등록부터 하고 키 저장에서 실패하면 키 없는 데이터셋이 남는다. 먼저 막는다
         raise HTTPException(400, "서버에 ENCRYPTION_KEY가 없어 API Key를 안전하게 저장할 수 없다. "
@@ -278,12 +300,15 @@ def register(body: Dict[str, Any] = Body(...)):
         raise HTTPException(400, "입력을 확인하라: " + "; ".join(
             f"{p['input']} — {p['reason']}" if p["input"] else p["reason"] for p in pre["problems"]))
     if pre["duplicates"] and not body.get("allow_duplicate"):
+        if origin == "user":
+            # 사용자에게 남의 데이터셋 제목을 알려 주지 않는다(PRIVATE일 수 있다) — my.check가 가린 목록을 본다
+            raise HTTPException(409, f"같은 수집 조건의 데이터셋이 이미 {len(pre['duplicates'])}개 있다")
         raise HTTPException(409, "같은 수집 조건의 데이터셋이 이미 있다: " +
                             ", ".join(d["title"] for d in pre["duplicates"]))
 
     R = _registrar()
     kws = _clean_list(body.get("keywords"))
-    args = Namespace(source_type=st, title=title, description=desc, origin="admin", owner_id=None,
+    args = Namespace(source_type=st, title=title, description=desc, origin=origin, owner_id=owner_id,
                      keywords=",".join(kws) if kws else None, periodicity=period, dataset_id=None,
                      subjects=None, videos=None, categories=None,
                      temporal_start=body.get("temporal_start") or None)
@@ -303,11 +328,21 @@ def register(body: Dict[str, Any] = Body(...)):
         # 등록 스크립트는 입력 오류를 SystemExit로 알린다(CLI용). 사람이 읽을 사유가 담겨 있다
         raise HTTPException(400, str(e).strip())
 
-    cur = get_conn().cursor()
+    conn = get_conn()
+    cur = conn.cursor()
     cur.execute("UPDATE dcat_dataset SET visibility=%s WHERE dataset_id=%s", (visibility, dataset_id))
-    get_conn().commit()
+    if chosen:
+        from src.database.category import record_decision
+        cur.execute("UPDATE dcat_dataset SET category=%s::jsonb WHERE dataset_id=%s",
+                    (json.dumps(chosen, ensure_ascii=False), dataset_id))
+        shown = body.get("shown_suggestions")
+        record_decision(cur, dataset_id, previous=[], chosen=chosen,
+                        shown=shown if isinstance(shown, list) else [],
+                        actor=owner_id or "admin", role=origin)
+    conn.commit()
     stored = _store_credentials(dataset_id, creds)
     return {"dataset_id": dataset_id, "status": "pending", "credentials_stored": stored,
+            "category": chosen, "visibility": visibility,
             "note": "등록만 됐다. 수집은 '지금 수집'이나 스케줄러가 한다"}
 
 
@@ -337,23 +372,28 @@ def update(dataset_id: str, body: Dict[str, Any] = Body(...)):
         if body["visibility"] not in VISIBILITY:
             raise HTTPException(400, f"공개 범위는 {sorted(VISIBILITY)} 중 하나다")
         sets.append("visibility=%s"); params.append(body["visibility"])
+    cats = None
     if "category" in body:
-        cats = _clean_list(body["category"])
-        bad = [c for c in cats if not is_valid(c)]
-        if bad:
-            raise HTTPException(400, f"분류표에 없는 값: {bad}")
-        if not 1 <= len(cats) <= MAX_PER_DATASET or len(set(cats)) != len(cats):
-            raise HTTPException(400, f"분류는 서로 다른 값 1~{MAX_PER_DATASET}개다 (첫 값이 대표)")
+        cats = parse_category(body["category"])
         sets.append("category=%s::jsonb"); params.append(json.dumps(cats, ensure_ascii=False))
     if not sets:
         raise HTTPException(400, "바꿀 항목이 없다")
     conn = get_conn()
     cur = conn.cursor()
+    cur.execute("SELECT category FROM dcat_dataset WHERE dataset_id=%s", (dataset_id,))
+    prev = cur.fetchone()
+    if prev is None:
+        raise HTTPException(404, f"없는 데이터셋: {dataset_id}")
     cur.execute(f"UPDATE dcat_dataset SET {', '.join(sets)}, updated_at=now() "
                 f"WHERE dataset_id=%s RETURNING dataset_id", (*params, dataset_id))
     if cur.fetchone() is None:
         conn.rollback()
         raise HTTPException(404, f"없는 데이터셋: {dataset_id}")
+    if cats is not None:
+        # 관리자 상세의 '분류 확정' — 그때 저장돼 있던 최신 추천을 보여 준 것으로 기록한다
+        from src.database.category import record_decision
+        record_decision(cur, dataset_id, previous=prev[0] or [], chosen=cats, shown=None,
+                        actor="admin", role="admin")
     conn.commit()
     return {"dataset_id": dataset_id, "updated": [s.split("=")[0] for s in sets]}
 

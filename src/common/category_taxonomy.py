@@ -63,3 +63,11 @@ def validate(values: List[str]) -> List[str]:
         if len(out) >= MAX_PER_DATASET:
             break
     return out
+
+
+#: 분류 확정 이력의 meta_feature 이름(src/database/category.py `record_decision`).
+#: **공개 응답에서 뺀다** — 누가(owner_id) 골랐는지가 들어 있다.
+#: meta_feature.scope는 CHECK로 dataset·column만 허용해 따로 둘 수 없다(2026-11-10 확인).
+#: 무거운 category 모듈(임베딩)을 불러오지 않고 API가 쓸 수 있도록 여기 둔다.
+DECISION_FEATURE = "category_decisions"
+PRIVATE_FEATURES = [DECISION_FEATURE]

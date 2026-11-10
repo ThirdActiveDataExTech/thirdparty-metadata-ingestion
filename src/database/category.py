@@ -26,12 +26,13 @@
 
 import json
 import logging
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
 from src.common import config
-from src.common.category_taxonomy import ALL_CATEGORIES, MAX_PER_DATASET, is_valid
+from src.common.category_taxonomy import ALL_CATEGORIES, DECISION_FEATURE, MAX_PER_DATASET, is_valid
 from src.database.db import get_conn
 from src.embedding import embedder
 
@@ -160,3 +161,60 @@ def sync_category(dataset_id: str) -> List[str]:
         return cats
     finally:
         conn.close()
+
+
+# ── 등록 전 추천 · 확정 기록 (ADR-020 §4) ──────────────────────────────────
+
+def suggest_for_text(title: str, description: str = "", keywords: Optional[List[str]] = None
+                     ) -> List[Dict[str, object]]:
+    """등록 **전** 화면용 추천 — 아직 DB에 데이터셋이 없으므로 입력값으로 계산하고 쓰지 않는다.
+
+    `sync_category`와 같은 텍스트 구성(`_dataset_text`)을 쓴다. 다르면 등록 때 본 추천과
+    첫 수집 뒤 추천이 입력이 같아도 달라져 "추천이 바뀌었습니다"가 거짓으로 뜬다.
+    """
+    text = _dataset_text({"title": title, "description": description, "keywords": keywords or []})
+    scored = classify(text, top_n=SUGGEST_N)
+    return [{"category": c, "score": round(sc, 4), "rank": i}
+            for i, (c, sc) in enumerate([(c, s) for c, s in scored if is_valid(c)], 1)]
+
+
+
+
+def latest_suggestions(cur, dataset_id: str) -> List[Dict[str, object]]:
+    cur.execute("SELECT value FROM meta_feature WHERE dataset_id=%s AND scope='dataset' "
+                "AND target='' AND feature_name='suggested_category'", (dataset_id,))
+    row = cur.fetchone()
+    v = row[0] if row else None
+    if isinstance(v, str):
+        v = json.loads(v)
+    return v or []
+
+
+def record_decision(cur, dataset_id: str, previous: List[str], chosen: List[str],
+                    shown: Optional[List[Dict[str, object]]], actor: str, role: str) -> Dict[str, object]:
+    """분류 확정 1건을 이력에 **덧붙인다**(커밋은 호출자가 — 분류 UPDATE와 같은 트랜잭션).
+
+    남기는 것: 그때 보여 준 추천 목록, 고른 값, 이전 값, 누가(역할 포함).
+    이게 있어야 "사람이 추천 몇 위를 골랐나 / 추천 밖에서 골랐나"를 셀 수 있다 —
+    분류기 개선과 D-1(공통 분류를 비정형에 쓸 것인가) 판단의 근거다.
+
+    `shown`이 None이면 지금 저장된 최신 추천을 보여 준 것으로 본다(관리자 상세 화면).
+    """
+    if shown is None:
+        shown = latest_suggestions(cur, dataset_id)
+    ranks = {s["category"]: s.get("rank") for s in shown if isinstance(s, dict)}
+    entry = {
+        "at": datetime.now(timezone.utc).isoformat(),
+        "actor": actor, "role": role,
+        "previous": previous, "chosen": chosen,
+        "shown": [s.get("category") for s in shown if isinstance(s, dict)],
+        # 고른 값 각각이 추천 몇 위였나. 추천 밖이면 None
+        "chosen_ranks": [ranks.get(c) for c in chosen],
+    }
+    cur.execute(
+        """INSERT INTO meta_feature (dataset_id, scope, target, feature_name, value, method)
+           VALUES (%s, 'dataset', '', %s, %s::jsonb, 'human')
+           ON CONFLICT (dataset_id, scope, target, feature_name) DO UPDATE
+           SET value = meta_feature.value || EXCLUDED.value, computed_at = now()""",
+        (dataset_id, DECISION_FEATURE, json.dumps([entry], ensure_ascii=False)))
+    return entry

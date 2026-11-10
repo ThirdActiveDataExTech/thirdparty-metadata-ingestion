@@ -36,6 +36,9 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Body, HTTPException, Query
 
+from src.common import config
+from src.common.category_taxonomy import PRIVATE_FEATURES
+from src.common.error_kind import classify_error
 from src.database.db import get_conn
 
 logger = logging.getLogger(__name__)
@@ -570,6 +573,9 @@ def dataset_status(dataset_id: str):
                           rows_affected
                    FROM dcat_provenance WHERE dataset_id=%s
                    ORDER BY started_at DESC LIMIT 10""", (dataset_id,))
+    if reg:
+        reg[0]["last_error"] = config.mask_secrets(reg[0]["last_error"] or "") or None
+        reg[0]["cause"] = classify_error(reg[0]["last_error"]) if reg[0]["status"] == "error" else None
     return {"registry": reg[0] if reg else None, "runs": _rows(cur)}
 
 
@@ -585,8 +591,10 @@ def catalog_detail(dataset_id: str):
     if not rows:
         raise HTTPException(404, f"없는 데이터셋: {dataset_id}")
     out = _catalog_row(rows[0])
+    # 확정 이력(누가 골랐나)은 사용자 상세에 내지 않는다 — 관리자는 /features에서 본다
     cur.execute("SELECT feature_name, value FROM meta_feature "
-                "WHERE dataset_id=%s AND scope='dataset'", (dataset_id,))
+                "WHERE dataset_id=%s AND scope='dataset' AND feature_name <> ALL(%s)",
+                (dataset_id, PRIVATE_FEATURES))
     out["features"] = {n: _jsonb(v) for n, v in cur.fetchall()}
     cur.execute("""SELECT r.id, r.target_dataset_id AS dataset_id, t.title, t.source_type,
                           r.relation_type, r.relation_label, r.score, r.status, r.evidence

@@ -39,7 +39,8 @@ import anyio.to_thread
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse, RedirectResponse
 
-from src.api import console, manage, schemas, structured
+from src.api import console, manage, my, schemas, structured
+from src.common.category_taxonomy import PRIVATE_FEATURES
 from src.common.config import get_env
 from src.database.db import get_conn
 
@@ -78,6 +79,7 @@ app = FastAPI(
 # 삼키므로, 뒤에 오는 `…/trend`·`…/package`·`…/run`을 식별자의 일부로 읽는다
 # (main.py `/jsonld`가 그렇게 죽어 있었다 — tests/test_api_routing.py).
 app.include_router(manage.router)
+app.include_router(my.router)
 app.include_router(structured.router)
 app.include_router(console.router)
 
@@ -220,7 +222,8 @@ def get_dataset(dataset_id: str):
 
     cur.execute(
         "SELECT feature_name, value FROM meta_feature "
-        "WHERE dataset_id = %s AND scope = 'dataset'", (dataset_id,))
+        "WHERE dataset_id = %s AND scope = 'dataset' AND feature_name <> ALL(%s)",
+        (dataset_id, PRIVATE_FEATURES))
     features = {n: v for n, v in cur.fetchall()}
 
     cur.execute(
