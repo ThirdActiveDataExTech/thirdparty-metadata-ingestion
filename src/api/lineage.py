@@ -120,7 +120,7 @@ def build(cur, dataset_id: str, admin: bool) -> Dict[str, Any]:
         usage = cur.fetchall()
         views = sum(n for t, _, n in usage if t == "view")
         dl = {d: n for t, d, n in usage if t == "download"}
-        label = {"package": "신뢰 패키지", "jsonld": "JSON-LD", "hf": "허깅페이스 형식"}
+        from src.api.usage import DOWNLOAD_LABEL as label
         deliver.append({"label": "조회", "value": f"{views:,}회"})
         deliver.append({"label": "내려받기", "value": " · ".join(f"{label.get(d, d)} {n}" for d, n in dl.items()) or "없음"})
     except pg_errors.UndefinedTable:

@@ -542,16 +542,8 @@ def trend(dataset_id: str, user: Optional[User] = Depends(optional_user)):
 
 # ── 신뢰 패키지 (C5) ──────────────────────────────────────────────────────
 
-@router.get("/datasets/{dataset_id:path}/package")
-def package(dataset_id: str, background: BackgroundTasks, user: Optional[User] = Depends(optional_user),
-            x_usage_session: Optional[str] = Header(None)):
-    """아이템 CSV + JSON-LD를 서명된 zip으로 묶어 내려준다.
-
-    manifest에는 파일 체크섬·출처·기술통계와 함께 수집 이력·레퍼런스·데이터 점검 결과·복원 정보가
-    들어간다. 서명은 Ed25519(공개키 `/v1/packaging/public-key`로 누구나 검증)와 HMAC 중 서버에
-    설정된 것. 받는 쪽은 `scripts/package_dataset.py verify --pubkey`로 DB·네트워크 없이 검증한다.
-    서명 키가 하나도 없으면 만들지 않는다 — 서명 없는 패키지는 '신뢰 패키지'가 아니다.
-    """
+def _signing_keys():
+    """(HMAC 공유키, Ed25519 비밀키). 둘 다 없으면 503 — 서명 없는 패키지는 '신뢰 패키지'가 아니다."""
     from src.packaging import signing
     key = config.get_env("PACKAGE_SIGNING_KEY")
     try:
@@ -562,39 +554,143 @@ def package(dataset_id: str, background: BackgroundTasks, user: Optional[User] =
     if not key and not ed_key:
         raise HTTPException(503, "서버 서명 설정이 없어 패키지를 만들 수 없습니다. "
                                  "관리자에게 문의해 주세요")
-    from scripts import package_dataset as P
-    from src.packaging import builder
-    from src.storage import jsonld_export
-    cur = get_conn().cursor()
-    ensure_visible(cur, dataset_id, user)
+    return key or None, ed_key
+
+
+def _item_table(cur, dataset_id: str) -> Optional[str]:
     cur.execute("SELECT pg_meta_table FROM data_registry WHERE dataset_id=%s", (dataset_id,))
     row = cur.fetchone()
-    work = Path(tempfile.mkdtemp(prefix="pkg-"))
-    src = work / "src"
-    src.mkdir()
-    (src / "metadata.jsonld").write_text(
+    table = row[0] if row else None
+    return table if table and re.match(r"^[a-z][a-z0-9_]*$", table) else None
+
+
+def _write_items_csv(cur, table: str, dataset_id: str, fh) -> int:
+    """아이템 행을 CSV로 쓴다(엑셀이 한글을 깨지 않게 utf-8-sig). 쓴 행 수."""
+    cur.execute(f"SELECT * FROM {table} WHERE dataset_id=%s", (dataset_id,))
+    w = csv.writer(fh)
+    w.writerow([c[0] for c in cur.description])
+    n = 0
+    for r in cur.fetchall():
+        w.writerow(["" if v is None else v for v in r])
+        n += 1
+    return n
+
+
+def _write_dataset_files(cur, dataset_id: str, dest: Path) -> bool:
+    """metadata.jsonld + items.csv(아이템이 있으면)를 `dest`에 쓴다. items.csv를 썼으면 True."""
+    from src.storage import jsonld_export
+    dest.mkdir(parents=True, exist_ok=True)
+    (dest / "metadata.jsonld").write_text(
         json.dumps(jsonld_export.build_dataset_jsonld(dataset_id), ensure_ascii=False, indent=2, default=str),
         encoding="utf-8")
-    table = row[0] if row else None
-    if table and re.match(r"^[a-z][a-z0-9_]*$", table):
-        cur.execute(f"SELECT * FROM {table} WHERE dataset_id=%s", (dataset_id,))
-        names = [c[0] for c in cur.description]
-        with open(src / "items.csv", "w", encoding="utf-8-sig", newline="") as fh:
-            w = csv.writer(fh)
-            w.writerow(names)
-            for r in cur.fetchall():
-                w.writerow(["" if v is None else v for v in r])
+    table = _item_table(cur, dataset_id)
+    if not table:
+        return False
+    with open(dest / "items.csv", "w", encoding="utf-8-sig", newline="") as fh:
+        _write_items_csv(cur, table, dataset_id, fh)
+    return True
+
+
+@router.get("/datasets/{dataset_id:path}/package")
+def package(dataset_id: str, background: BackgroundTasks, user: Optional[User] = Depends(optional_user),
+            x_usage_session: Optional[str] = Header(None)):
+    """아이템 CSV + JSON-LD를 서명된 zip으로 묶어 내려준다.
+
+    manifest에는 파일 체크섬·출처·기술통계와 함께 수집 이력·레퍼런스·데이터 점검 결과·복원 정보가
+    들어간다. 서명은 Ed25519(공개키 `/v1/packaging/public-key`로 누구나 검증)와 HMAC 중 서버에
+    설정된 것. 받는 쪽은 `scripts/package_dataset.py verify --pubkey`로 DB·네트워크 없이 검증한다.
+    서명 키가 하나도 없으면 만들지 않는다 — 서명 없는 패키지는 '신뢰 패키지'가 아니다.
+    """
+    key, ed_key = _signing_keys()
+    from scripts import package_dataset as P
+    from src.packaging import builder
+    cur = get_conn().cursor()
+    ensure_visible(cur, dataset_id, user)
+    work = Path(tempfile.mkdtemp(prefix="pkg-"))
+    src = work / "src"
+    has_items = _write_dataset_files(cur, dataset_id, src)
     source, features = P._context(dataset_id)
     ctx, expected = P.lineage_context(dataset_id)
-    if not (src / "items.csv").exists():
+    if not has_items:
         expected.pop("items.csv", None)
     safe = re.sub(r"[^\w.-]", "_", dataset_id)
     out = work / (safe + ".zip")
-    builder.build_package(dataset_id, src, out, source=source, features=features, key=key or None,
+    builder.build_package(dataset_id, src, out, source=source, features=features, key=key,
                           ed25519_key=ed_key, context=ctx, expected_rows=expected)
     background.add_task(lambda: __import__("shutil").rmtree(work, ignore_errors=True))
     from src.api import usage
     usage.record_server_event("download", dataset_id, user, x_usage_session, detail="package")
+    return FileResponse(out, media_type="application/zip", filename=out.name)
+
+
+@router.get("/datasets/{dataset_id:path}/items.csv")
+def items_csv(dataset_id: str, background: BackgroundTasks, user: Optional[User] = Depends(optional_user),
+              x_usage_session: Optional[str] = Header(None)):
+    """아이템 원본 행만 CSV로 내려받습니다(서명·체크섬이 필요하면 신뢰 패키지를 받으세요)."""
+    cur = get_conn().cursor()
+    ensure_visible(cur, dataset_id, user)
+    table = _item_table(cur, dataset_id)
+    if not table:
+        raise HTTPException(404, "이 데이터셋에는 아이템 행이 없습니다(메타데이터만 있습니다)")
+    work = Path(tempfile.mkdtemp(prefix="csv-"))
+    out = work / (re.sub(r"[^\w.-]", "_", dataset_id) + "_items.csv")
+    with open(out, "w", encoding="utf-8-sig", newline="") as fh:
+        _write_items_csv(cur, table, dataset_id, fh)
+    background.add_task(lambda: __import__("shutil").rmtree(work, ignore_errors=True))
+    from src.api import usage
+    usage.record_server_event("download", dataset_id, user, x_usage_session, detail="csv")
+    return FileResponse(out, media_type="text/csv; charset=utf-8", filename=out.name)
+
+
+#: 묶음 패키지에 넣을 수 있는 데이터셋 수
+BUNDLE_MAX_DATASETS = 20
+
+
+@router.post("/bundles/package")
+def bundle_package(background: BackgroundTasks, body: Dict[str, Any] = Body(...),
+                   user: Optional[User] = Depends(optional_user),
+                   x_usage_session: Optional[str] = Header(None)):
+    """여러 데이터셋을 **신뢰 패키지 하나**로 묶어 내려받습니다(데이터 합치기 결과).
+
+    body: {"dataset_ids": [...], "title": "묶음 이름(선택)"}. 데이터셋마다 `data/<ID>/`에 JSON-LD와 아이템 CSV.
+    볼 수 없는 데이터셋이 하나라도 있으면 거부합니다(무엇이 빠졌는지 모른 채 받지 않게).
+    """
+    import hashlib
+    ids = [str(x) for x in dict.fromkeys(body.get("dataset_ids") or []) if x]
+    if not ids:
+        raise HTTPException(400, "묶을 데이터셋을 1개 이상 보내 주세요")
+    if len(ids) > BUNDLE_MAX_DATASETS:
+        raise HTTPException(400, f"한 번에 {BUNDLE_MAX_DATASETS}개까지 묶을 수 있습니다")
+    title = str(body.get("title") or "데이터 묶음")[:200]
+    key, ed_key = _signing_keys()
+    from src.packaging import builder
+    cur = get_conn().cursor()
+    for ds in ids:
+        ensure_visible(cur, ds, user)
+    work = Path(tempfile.mkdtemp(prefix="bundle-"))
+    src = work / "src"
+    members, expected = [], {}
+    for ds in ids:
+        sub = re.sub(r"[^\w.-]", "_", ds)
+        if _write_dataset_files(cur, ds, src / sub):
+            cur.execute("SELECT item_count FROM data_registry WHERE dataset_id=%s", (ds,))
+            row = cur.fetchone()
+            if row and row[0] is not None:
+                expected[f"{sub}/items.csv"] = int(row[0])
+        cur.execute("SELECT title, publisher, license, source_type FROM dcat_dataset WHERE dataset_id=%s", (ds,))
+        t, pub, lic, st = cur.fetchone()
+        members.append({"dataset_id": ds, "title": t, "publisher": pub, "license": lic, "source_type": st,
+                        "path": f"data/{sub}/"})
+    bundle_id = "bundle:" + hashlib.sha256("\n".join(sorted(ids)).encode()).hexdigest()[:16]
+    out = work / (bundle_id.replace(":", "_") + ".zip")
+    builder.build_package(bundle_id, src, out, source={"title": title, "kind": "bundle", "datasets": members},
+                          key=key, ed25519_key=ed_key,
+                          context={"reference": {"bundle_of": len(ids), "created_by": "포털 데이터 합치기"}},
+                          expected_rows=expected)
+    background.add_task(lambda: __import__("shutil").rmtree(work, ignore_errors=True))
+    from src.api import usage
+    for ds in ids:
+        usage.record_server_event("download", ds, user, x_usage_session, detail="bundle")
     return FileResponse(out, media_type="application/zip", filename=out.name)
 
 

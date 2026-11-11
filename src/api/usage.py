@@ -45,7 +45,7 @@ TABLE = "dataset_usage_event"
 CLIENT_EVENTS = {"view"}
 #: 집계에 쓰는 이벤트 유형(열린 값 — 새 유형은 여기와 기록 지점에 추가)
 EVENT_TYPES = {"view", "download"}
-DOWNLOAD_DETAILS = {"package", "jsonld", "hf"}
+DOWNLOAD_DETAILS = {"package", "jsonld", "hf", "csv", "bundle"}
 DEDUP_MINUTES = 30
 #: 기록 출처 — portal: 화면이 보낸 조회 / server: 서버가 기록한 내려받기(사람 식별됨)
 #: / api: 서버가 기록했지만 누구인지 모르는 API 직접 호출(따로 집계)
@@ -262,7 +262,8 @@ def also_viewed(dataset_id: str, days: int = Query(CO_VIEW_DAYS, ge=7, le=365),
             "min_people": CO_VIEW_MIN_PEOPLE, "items": items}
 
 
-DOWNLOAD_LABEL = {"package": "신뢰 패키지", "jsonld": "JSON-LD", "hf": "허깅페이스 형식"}
+DOWNLOAD_LABEL = {"package": "신뢰 패키지", "jsonld": "JSON-LD", "hf": "허깅페이스 형식",
+                  "csv": "아이템 CSV", "bundle": "묶음 패키지"}
 
 
 @router.get("/console/usage/downloads", dependencies=[Depends(require_admin)])

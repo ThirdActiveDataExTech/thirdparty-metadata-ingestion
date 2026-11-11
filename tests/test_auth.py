@@ -153,6 +153,9 @@ PUBLIC_CONSOLE = {
     # 외부 반출(결정 7) — 공개 범위로 거른 뒤, 전체 공개 + 재배포 허용일 때만 내보낸다
     ("GET", "/v1/console/datasets/{dataset_id:path}/export/hf"),
     ("GET", "/v1/console/datasets/{dataset_id:path}/export/hf/check"),
+    # 아이템 CSV·묶음 패키지(2026-11-11) — 패키지와 같이 공개 범위로 거른다(묶음은 하나라도 못 보면 거부)
+    ("GET", "/v1/console/datasets/{dataset_id:path}/items.csv"),
+    ("POST", "/v1/console/bundles/package"),
 }
 
 

@@ -907,6 +907,9 @@
   사용자 `GET /v1/my/downloads`
 - ✅ **포털 패키지 검증 (2026-11-11)** — `POST /v1/packaging/verify`(로그인, 200MB): 받은 zip을 서버 공식 공개키로 검증해
   서명·출처·체크섬·복원 가능 여부·만든 쪽 점검 결과를 돌려준다. 파일은 바로 지운다
+- ✅ **묶음 신뢰 패키지·아이템 CSV (2026-11-11)** — `POST /v1/console/bundles/package`(최대 20개, `data/<ID>/`별 JSON-LD·CSV,
+  manifest `source.datasets`에 구성 목록, 하나라도 볼 수 없으면 거부), `GET /v1/console/datasets/{id}/items.csv`(utf-8-sig).
+  활용 기록 형식 `bundle`·`csv` 추가. 패키지 생성 코드를 `_write_dataset_files`로 공용화
 - 🟦 **목표선(남음)**: 버전 관리·`data_package` 테이블(DDL), 접근 권한 메타.
 - **구현**
   - `src/packaging/manifest.py` — 식별자·출처·생성일시·소유자·라이선스·기술통계(B1 재사용)·구성 파일 목록·체크섬
