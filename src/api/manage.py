@@ -695,7 +695,27 @@ def federation():
     cur = get_conn().cursor()
     cur.execute("""SELECT source, count(*) AS datasets, max(updated_at) AS last_update
                    FROM dcat_dataset WHERE dataset_origin='external' GROUP BY 1 ORDER BY 1""")
-    return {"portals": _rows(cur), "state": _run_state("federation:ckan")}
+    from src.federation import sdmx
+    return {"portals": _rows(cur), "state": _run_state("federation:ckan"),
+            "sdmx_state": _run_state("federation:sdmx"), "sdmx_portals": sorted(sdmx.PRESETS)}
+
+
+@router.post("/federation/sdmx/run", dependencies=[Depends(require_admin)])
+def run_federation_sdmx(portal: str = Query("oecd"), query: str = Query("", max_length=200),
+                        max_records: int = Query(20, ge=1, le=200)):
+    """SDMX 통계 포털(OECD·Eurostat·ECB)에서 통계표 메타데이터를 받아 와 검색에 합친다.
+
+    알려진 포털만 받는다 — 화면에서 임의 주소를 받으면 서버가 아무 곳에나 요청을 보내게 된다.
+    새로 들어오는 통계표는 기관 공개(ORG)로 들어간다. 받은 뒤 임베딩까지 해야 검색에 나온다.
+    """
+    from src.federation import sdmx
+    if portal not in sdmx.PRESETS:
+        raise HTTPException(400, f"알려진 SDMX 포털만 받을 수 있습니다: {', '.join(sorted(sdmx.PRESETS))}")
+    code = ("import sys,json;from src.federation import ckan,sdmx;from src.embedding import sync;"
+            "rows=sdmx.harvest(sys.argv[1],sys.argv[2],int(sys.argv[3]));"
+            "r=ckan.store(rows);print(json.dumps(r,ensure_ascii=False));"
+            "s=sync.sync('dcat_dataset');print('임베딩',json.dumps(s,ensure_ascii=False))")
+    return _spawn("federation:sdmx", [sys.executable, "-c", code, portal, query, str(max_records)])
 
 
 @router.post("/federation/ckan/run", dependencies=[Depends(require_admin)])
