@@ -25,7 +25,12 @@ def _get_model():
     if _model is None:
         from faster_whisper import WhisperModel
 
-        _model = WhisperModel("small", device="cpu", compute_type="int8", cpu_threads=6)
+        from src.common import cpu
+
+        # 6은 개발 PC 기준. 컨테이너에서는 CPU 상한(수집 파드 2코어)에 맞춘다 — 넘기면 서로
+        # 할당 시간을 빼앗아 느려진다(src/common/cpu.py). cpu_threads는 병렬도(속도) 설정이다.
+        _model = WhisperModel("small", device="cpu", compute_type="int8",
+                              cpu_threads=cpu.threads(6, env="WHISPER_THREADS"))
     return _model
 
 

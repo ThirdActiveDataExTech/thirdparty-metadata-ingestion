@@ -26,8 +26,10 @@
 낸다(그것도 `config.mask_secrets`를 거쳐서). `user_action`이 참이면 사용자가 직접 고쳐야 하는 것
 (예: 본인이 넣은 API 키)이고, 거짓이면 자동 재시도나 관리자 조치로 풀린다.
 
-⚠️ Pod 자체가 죽는 경우(OOMKilled)는 파이프라인이 오류를 남기기 전에 프로세스가 끝나므로
-DB에 기록이 없다. 그 경우는 `oom` 규칙이 아니라 "수집 지연"(예정 초과)으로 드러난다.
+Pod 자체가 죽는 경우(OOMKilled·시간 초과)는 파이프라인이 오류를 남기기 전에 프로세스가 끝난다.
+예전엔 DB에 흔적이 없어 "수집 지연"으로만 드러났다. 2026-11-11부터 스케줄러가 시작할 때 진행 표시를
+남기고, 다음 틱이 주인 없는 표시를 `interrupted` 오류로 바꾼다(scripts/scheduler_tick.py).
+DB만으로는 죽은 이유(메모리·시간·강제 종료)를 구분할 수 없어 관리자 조치에 확인 방법을 적는다.
 """
 
 import re
@@ -36,6 +38,12 @@ from typing import Dict, List, Optional, Tuple
 #: (코드, 패턴, 원인, 관리자 조치, 사용자 안내, 사용자가 고칠 일인가)
 _HTTP = r"(?:HTTP(?:Error)?\s*|status(?:_code)?\s*[=:]?\s*|Client Error:?\s*|Server Error:?\s*|\(|\b)"
 RULES: List[Tuple[str, str, str, str, str, bool]] = [
+    # scheduler_tick.INTERRUPTED_PREFIX — 문구를 바꾸면 여기도 같이 바꾼다(tests/test_error_kind.py가 잡는다)
+    ("interrupted", r"수집 프로세스가 끝나지 않고 중단되었습니다",
+     "실행 중단(메모리 부족 추정)",
+     "파드 종료 사유 확인(kubectl describe pod — OOMKilled면 CronJob memory limit 상향 또는 1회 처리 건수 축소, "
+     "DeadlineExceeded면 activeDeadlineSeconds 확인). 반복되면 재시도 간격이 1→6→24시간으로 늘어난다",
+     "처리 중 서버 자원이 부족해 수집이 중단되었습니다. 관리자가 확인하고 있으며 자동으로 다시 수집합니다", False),
     ("oom", r"OOMKilled|MemoryError|Cannot allocate memory",
      "메모리 부족", "CronJob memory limit 상향 또는 1회 처리 건수 축소",
      "처리 중 서버 자원이 부족했습니다. 관리자가 확인하고 있습니다", False),

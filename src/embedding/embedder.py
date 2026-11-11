@@ -17,7 +17,7 @@ import logging
 import threading
 from typing import List, Optional
 
-from src.common import config
+from src.common import config, cpu
 
 logger = logging.getLogger(__name__)
 
@@ -101,9 +101,17 @@ def get_model():
     if _model is None:
         with _lock:
             if _model is None:
+                import torch
                 from sentence_transformers import SentenceTransformer
 
-                logger.info("임베딩 모델 로딩: %s (device=%s)", MODEL_NAME, DEVICE)
+                # 컨테이너 CPU 상한에 스레드를 맞춘다 — 기본값(노드 코어 수)이면 2코어 파드에서
+                # 2배 느렸다(src/common/cpu.py). 벡터 값은 스레드 수와 무관하다.
+                if DEVICE == "cpu":
+                    n = cpu.threads(torch.get_num_threads(), env="EMBEDDING_THREADS")
+                    if n != torch.get_num_threads():
+                        torch.set_num_threads(n)
+                logger.info("임베딩 모델 로딩: %s (device=%s, threads=%d)",
+                            MODEL_NAME, DEVICE, torch.get_num_threads())
                 m = SentenceTransformer(MODEL_NAME, device=DEVICE)
                 m.max_seq_length = MAX_SEQ_LENGTH
                 self_check(m)

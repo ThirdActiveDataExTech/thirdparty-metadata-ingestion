@@ -44,3 +44,9 @@ def test_사용자용에는_원문이_없다():
 def test_사용자가_고칠_일은_키_문제뿐이다():
     assert for_user("401 Unauthorized")["user_action"] is True
     assert for_user("Read timed out")["user_action"] is False
+
+
+def test_스케줄러가_수거한_중단은_메모리_부족보다_먼저_잡는다():
+    # 문구에 '메모리 부족'이 있어도 '실행 중단'으로 — 죽은 이유는 DB만으로 단정할 수 없다
+    from scripts.scheduler_tick import INTERRUPTED_MSG
+    assert classify_error(INTERRUPTED_MSG)["kind"] == "interrupted"

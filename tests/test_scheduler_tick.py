@@ -13,38 +13,69 @@ tick_mod = importlib.import_module("scripts.scheduler_tick")
 
 
 class _FakeCursor:
+    """SQL 내용으로 응답을 고른다 — 틱이 던지는 질의 종류가 여럿이라(대상·진행 표시·수거)."""
+
     def __init__(self, conn):
         self.conn = conn
+        self._result = []
 
     def execute(self, sql, params=None):
-        self.conn.sql.append((sql, params))
+        c = self.conn
+        c.sql.append((sql, params))
         if "pg_try_advisory_lock" in sql:
-            self._result = [(self.conn.lock_grants.pop(0) if self.conn.lock_grants else True,)]
+            self._result = [(c.lock_grants.pop(0) if c.lock_grants else True,)]
         elif "pg_advisory_unlock" in sql:
-            self.conn.unlocked.append(params[1])
+            c.unlocked.append(params[1])
             self._result = [(True,)]
+        elif "data_registry r" in sql and sql.lstrip().startswith("SELECT"):
+            self._result = c.rows
+        elif "status = 'running' AND ended_at IS NULL" in sql:
+            self._result = c.markers
+        elif sql.startswith("INSERT INTO dcat_provenance"):
+            c.next_prov += 1
+            c.marked.append((params[0], c.next_prov))
+            self._result = [(c.next_prov,)]
+        elif "prov_id > %s" in sql:
+            self._result = [(1,)] if params[0] in c.pipeline_recorded else []
+        elif sql.startswith("SELECT count(*)"):
+            self._result = [(c.prior_interrupts,)]
         else:
-            self._result = self.conn.rows
+            self._result = []
 
     def fetchall(self):
         return self._result
 
     def fetchone(self):
-        return self._result[0]
+        return self._result[0] if self._result else None
 
     def close(self):
         pass
 
 
 class _FakeConn:
-    def __init__(self, rows=(), lock_grants=None):
+    def __init__(self, rows=(), lock_grants=None, markers=(), pipeline_recorded=(), prior_interrupts=0):
         self.rows = list(rows)
         self.lock_grants = list(lock_grants or [])
+        self.markers = list(markers)
+        self.pipeline_recorded = set(pipeline_recorded)
+        self.prior_interrupts = prior_interrupts
         self.sql = []
         self.unlocked = []
+        self.marked = []
+        self.next_prov = 1000
+        self.commits = 0
 
     def cursor(self):
         return _FakeCursor(self)
+
+    def commit(self):
+        self.commits += 1
+
+    def rollback(self):
+        pass
+
+    def writes(self, prefix):
+        return [(q, p) for q, p in self.sql if q.startswith(prefix)]
 
 
 from datetime import datetime, timedelta, timezone
@@ -53,7 +84,7 @@ NOW = datetime.now(timezone.utc)
 
 
 def _rows(n):
-    return [(f"urn:test:ds{i}", NOW - timedelta(days=i + 1), "active") for i in range(n)]
+    return [(f"urn:test:ds{i}", NOW - timedelta(days=i + 1), "active", None) for i in range(n)]
 
 
 @pytest.fixture
@@ -65,8 +96,8 @@ def harness(monkeypatch):
         if ds in state["fail"]:
             raise RuntimeError("수집 실패 시뮬레이션")
 
-    def _apply(rows=(), lock_grants=None, fail=()):
-        conn = _FakeConn(rows, lock_grants)
+    def _apply(rows=(), lock_grants=None, fail=(), **kw):
+        conn = _FakeConn(rows, lock_grants, **kw)
         state["fail"] = set(fail)
         monkeypatch.setattr(tick_mod, "get_conn", lambda: conn)
         monkeypatch.setattr(tick_mod, "run_dataset", _run)
@@ -86,18 +117,21 @@ class TestDueSelection:
         assert params[0] == list(tick_mod.RUNNABLE_STATUS)
         assert "paused" not in tick_mod.RUNNABLE_STATUS
 
-    def test_오래_밀린_것부터_집는다(self, harness):
+    def test_짧은_것부터_같으면_오래_밀린_것부터_집는다(self, harness):
+        # 블로그 1건(53분) 뒤에 수 초짜리 쇼핑 5건이 전부 밀렸다(2026-11-09 시험 가동)
         conn, _ = harness(rows=_rows(1))
         tick_mod.tick(10, 600, dry_run=True)
-        sql, _ = conn.sql[0]
-        assert "ORDER  BY next_collect_at" in sql
-        assert "next_collect_at <= now()" in sql
+        sql, params = conn.sql[0]
+        assert "ORDER  BY coalesce(est.sec, %s), r.next_collect_at" in sql
+        assert "r.next_collect_at <= now()" in sql
+        assert "p.status = 'success'" in sql and "LIMIT 5" in sql
+        assert params[1] == tick_mod.UNKNOWN_DURATION_SEC
 
     def test_상한을_질의에_건다(self, harness):
         conn, _ = harness(rows=_rows(1))
         tick_mod.tick(3, 600, dry_run=True)
         _, params = conn.sql[0]
-        assert params[1] == 3
+        assert params[2] == 3
 
     def test_대상이_없으면_조용히_끝난다(self, harness):
         harness(rows=[])
@@ -202,3 +236,86 @@ class TestNextCollectInterval:
         from src.database.dcat import parse_iso8601_duration_to_timedelta as f
         with pytest.raises(ValueError):
             f("PT1H")
+
+
+class TestRunMarker:
+    """진행 표시 — 파드가 죽어도 흔적이 남아야 한다(2026-11-11)."""
+
+    def test_실행_전에_진행_표시를_남기고_커밋한다(self, harness, monkeypatch):
+        conn, state = harness(rows=_rows(1), pipeline_recorded={"urn:test:ds0"})
+        seen = {}
+
+        def _run(ds, triggered_by=None):
+            seen["marked"] = list(conn.marked)
+            seen["commits"] = conn.commits
+
+        monkeypatch.setattr(tick_mod, "run_dataset", _run)
+        tick_mod.tick(10, 600)
+        assert seen["marked"] == [("urn:test:ds0", 1001)]
+        assert seen["commits"] >= 1        # 파이프라인이 돌기 전에 이미 DB에 있다
+        (ins, params), = conn.writes("INSERT INTO dcat_provenance")
+        assert "'running'" in ins and params[1] == tick_mod.MARKER_AGENT
+
+    def test_파이프라인이_기록을_남기면_표시를_지운다(self, harness):
+        # 계약(ADR-008): 실행당 dcat_provenance 1행
+        conn, _ = harness(rows=_rows(1), pipeline_recorded={"urn:test:ds0"})
+        tick_mod.tick(10, 600)
+        (q, p), = conn.writes("DELETE FROM dcat_provenance")
+        assert p == (1001,) and "status = 'running'" in q
+        assert not conn.writes("UPDATE dcat_provenance")
+
+    def test_파이프라인_진입_전_예외면_표시를_실패_기록으로_바꾼다(self, harness):
+        conn, _ = harness(rows=_rows(1), fail={"urn:test:ds0"})
+        tick_mod.tick(10, 600)
+        (q, p), = conn.writes("UPDATE dcat_provenance")
+        assert p[0] == "failure" and "수집 실패 시뮬레이션" in p[1] and p[2] == 1001
+        assert not conn.writes("DELETE FROM dcat_provenance")
+
+
+class TestReapInterrupted:
+    """주인 없는 진행 표시 = 끝나지 못하고 죽은 실행(OOMKilled 등)."""
+
+    MARKER = [(77, "urn:test:killed", NOW - timedelta(hours=2))]
+
+    def _registry_update(self, conn):
+        (q, p), = conn.writes("UPDATE data_registry")
+        return q, p
+
+    @pytest.mark.parametrize("prior,hours", [(0, 1), (1, 6), (2, 24), (9, 24)])
+    def test_실패로_바꾸고_반복될수록_재시도를_늦춘다(self, harness, prior, hours):
+        conn, _ = harness(rows=[], markers=self.MARKER, prior_interrupts=prior)
+        tick_mod.tick(10, 600)
+        (q, p), = conn.writes("UPDATE dcat_provenance")
+        assert "status = 'failure'" in q and p == (tick_mod.INTERRUPTED_MSG, 77)
+        rq, rp = self._registry_update(conn)
+        assert "status = 'error'" in rq and rp == (tick_mod.INTERRUPTED_MSG, hours, "urn:test:killed")
+        assert conn.unlocked == ["urn:test:killed"]
+
+    def test_사람이_멈춘_데이터셋은_상태를_건드리지_않는다(self, harness):
+        conn, _ = harness(rows=[], markers=self.MARKER)
+        tick_mod.tick(10, 600)
+        rq, _ = self._registry_update(conn)
+        assert "status <> 'paused'" in rq
+
+    def test_잠금이_잡혀_있으면_아직_실행_중이라_수거하지_않는다(self, harness):
+        conn, _ = harness(rows=[], markers=self.MARKER, lock_grants=[False])
+        tick_mod.tick(10, 600)
+        assert not conn.writes("UPDATE") and not conn.writes("DELETE")
+        assert conn.unlocked == []
+
+    def test_파이프라인_기록이_있으면_표시만_지운다(self, harness):
+        conn, _ = harness(rows=[], markers=self.MARKER, pipeline_recorded={"urn:test:killed"})
+        tick_mod.tick(10, 600)
+        (_, p), = conn.writes("DELETE FROM dcat_provenance")
+        assert p == (77,)
+        assert not conn.writes("UPDATE")
+
+    def test_dry_run은_수거하지_않는다(self, harness):
+        conn, _ = harness(rows=_rows(1), markers=self.MARKER)
+        tick_mod.tick(10, 600, dry_run=True)
+        assert not any("status = 'running' AND ended_at IS NULL" in q for q, _ in conn.sql)
+
+    def test_중단_오류는_원인_분류에서_실행_중단으로_보인다(self):
+        from src.common.error_kind import classify_error, for_user
+        assert classify_error(tick_mod.INTERRUPTED_MSG)["kind"] == "interrupted"
+        assert for_user(tick_mod.INTERRUPTED_MSG)["user_action"] is False
