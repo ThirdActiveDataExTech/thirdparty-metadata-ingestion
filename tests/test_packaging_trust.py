@@ -319,3 +319,45 @@ def test_zip이_아니면_안내하고_죽지_않는다(tmp_path):
     p.write_bytes(b"not a zip")
     r = V.verify_package(p)
     assert not r.ok and "zip 형식이 아니다" in r.problems[0]
+
+
+class TestDiff:
+    def _pkg(self, tmp_path, name, rows, key, runs, extra_file=False):
+        src = tmp_path / f"src_{name}"
+        src.mkdir()
+        (src / "items.csv").write_text("id,title\n" + "".join(f"{i},t{i}\n" for i in range(rows)), encoding="utf-8")
+        (src / "metadata.jsonld").write_text('{"@id":"urn:test:ds"}', encoding="utf-8")
+        if extra_file:
+            (src / "notes.txt").write_text("새 파일", encoding="utf-8")
+        out = tmp_path / f"{name}.zip"
+        builder.build_package("urn:test:ds", src, out, ed25519_key=key, version=name,
+                              context={"lineage": {"collection_runs": runs}, "reference": {"license": "CC-BY"}},
+                              expected_rows={"items.csv": rows})
+        return out
+
+    def test_버전_사이_변경을_짚는다(self, tmp_path, no_hmac):
+        from src.packaging import diff as D
+        k = _key()
+        r1 = [{"started_at": "2026-11-01", "agent": "a", "status": "success"}]
+        r2 = r1 + [{"started_at": "2026-11-10", "agent": "a", "status": "success"}]
+        old = self._pkg(tmp_path, "v1", 3, k, r1)
+        new = self._pkg(tmp_path, "v2", 5, k, r2, extra_file=True)
+        d = D.diff_packages(old, new, pubkey_pem=signing.public_pem(k.public_key()))
+        assert d["files"]["added"] == ["data/notes.txt"]
+        assert [c["path"] for c in d["files"]["changed"]] == ["data/items.csv"]
+        assert d["files"]["unchanged"] == 1
+        assert d["tables"][0]["rows_before"] == 3 and d["tables"][0]["rows_after"] == 5
+        assert len(d["new_collection_runs"]) == 1 and not d["identical_content"]
+
+    def test_검증_안_되는_패키지는_비교하지_않는다(self, tmp_path, no_hmac):
+        from src.packaging import diff as D
+        old = self._pkg(tmp_path, "v1", 3, _key(), [])
+        new = self._pkg(tmp_path, "v2", 3, _key(), [])
+        with pytest.raises(D.DiffError):
+            D.diff_packages(old, new, pubkey_pem=signing.public_pem(_key().public_key()))
+
+    def test_다른_데이터셋은_비교하지_않는다(self):
+        from src.packaging import diff as D
+        base = {"dataset_id": "a", "version": "1", "created_at": "x", "files": []}
+        with pytest.raises(D.DiffError):
+            D.diff_manifests(base, dict(base, dataset_id="b"))

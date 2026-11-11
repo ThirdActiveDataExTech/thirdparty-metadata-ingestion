@@ -886,7 +886,8 @@
     변조·순서 바꿈·절단 검출). 실패 시 결과 파일을 남기지 않는다. CLI 전용(포털은 HTTP라 비밀번호를 받지 않는다)
   - **manifest 1.1**: `signer`·`recovery`·`lineage`(최근 수집 20회, 오류 원문 제외)·`reference`(속성·출처·생성일·
     소유 구분)·`quality`(`quality.py` — CSV 행·열·빈 값 비율·고유값·중복 행, 등록 건수 대조. 값은 담지 않음). 1.0도 검증
-  - CLI `package_dataset.py keygen|build [--encrypt]|verify [--pubkey]|repair|decrypt`. 테스트 35건(`tests/test_packaging_trust.py`)
+  - CLI `package_dataset.py keygen|build [--encrypt]|verify [--pubkey]|repair|decrypt|diff`. 테스트 38건(`tests/test_packaging_trust.py`)
+  - **버전 비교** `diff.py` — 같은 데이터셋 두 패키지(둘 다 검증 통과)의 파일 추가·삭제·변경, 표 행·열 변화, 점검 결과 변화, 새 수집 실행, 레퍼런스 변경(4차년도 "수정 사항 파악")
   - ⏳ **서버 키는 사람이 생성**: `k8s/secrets/package-signing-secret.yaml.template` 절차 → console-api가 optional로 읽는다
 - 🟦 **목표선(남음)**: 버전 관리·`data_package` 테이블(DDL), 접근 권한 메타.
 - **구현**

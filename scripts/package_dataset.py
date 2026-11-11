@@ -17,6 +17,7 @@
     PYTHONPATH=. python scripts/package_dataset.py verify <패키지.zip> [--pubkey 공개키.pem]
     PYTHONPATH=. python scripts/package_dataset.py repair <손상된.zip> --out <복원.zip>
     PYTHONPATH=. python scripts/package_dataset.py decrypt <패키지.zip.enc> --out <패키지.zip>
+    PYTHONPATH=. python scripts/package_dataset.py diff <이전.zip> <새.zip> [--pubkey]   # 버전 사이 변경 사항
 
 암호화 비밀번호는 환경변수 PACKAGE_PASSPHRASE 또는 입력 프롬프트로 받는다(명령줄 인자로 받지 않는다 —
 셸 기록·프로세스 목록에 남는다).
@@ -208,6 +209,34 @@ def cmd_decrypt(args) -> int:
     return 0
 
 
+def cmd_diff(args) -> int:
+    from src.packaging import diff as D
+    pub = Path(args.pubkey).read_bytes() if args.pubkey else None
+    try:
+        d = D.diff_packages(Path(args.old), Path(args.new), pubkey_pem=pub)
+    except D.DiffError as e:
+        print(f"❌ {e}")
+        return 1
+    f = d["files"]
+    print(f"\n{d['dataset_id']}: {d['version_before']} → {d['version_after']}")
+    print(f"  파일   : 추가 {len(f['added'])} · 삭제 {len(f['removed'])} · 변경 {len(f['changed'])} · 같음 {f['unchanged']}")
+    for c in f["changed"]:
+        print(f"    ~ {c['path']} ({c['bytes_before']:,} → {c['bytes_after']:,}바이트)")
+    for t in d["tables"]:
+        if t["rows_before"] != t["rows_after"] or t["columns_added"] or t["columns_removed"]:
+            print(f"  표     : {t['path']} 행 {t['rows_before']} → {t['rows_after']}"
+                  + (f" · 열 추가 {t['columns_added']}" if t["columns_added"] else "")
+                  + (f" · 열 삭제 {t['columns_removed']}" if t["columns_removed"] else ""))
+    for c in d["check_changes"]:
+        print(f"  점검   : {c['check']} ({c['target']}) {c['before']} → {c['after']}")
+    print(f"  새 수집 실행: {len(d['new_collection_runs'])}회")
+    for k, v in d["reference_changes"].items():
+        print(f"  {k}: {v['before']} → {v['after']}")
+    if d["identical_content"]:
+        print("  → 데이터 내용은 같습니다")
+    return 0
+
+
 def cmd_keygen(args) -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -255,6 +284,12 @@ def main() -> int:
     d.add_argument("package")
     d.add_argument("--out", required=True)
     d.set_defaults(func=cmd_decrypt)
+
+    df = sub.add_parser("diff", help="같은 데이터셋 두 패키지의 변경 사항(둘 다 검증 통과해야)")
+    df.add_argument("old")
+    df.add_argument("new")
+    df.add_argument("--pubkey")
+    df.set_defaults(func=cmd_diff)
 
     k = sub.add_parser("keygen", help="Ed25519 서명 키 쌍을 만든다(사람이 한 번)")
     k.add_argument("--out", required=True, help="키 파일을 쓸 디렉터리")
