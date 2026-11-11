@@ -77,7 +77,9 @@ CREATE INDEX idx_meta_blog_vec_meta ON meta_blog_vec (meta_id);
 -- ⚠️ 빌드 전 maintenance_work_mem을 올릴 것. 서버 기본 64MB에서는 약 17,700행부터
 --    그래프가 메모리를 넘겨 느린 디스크 경로로 전환된다(실측: 276행/초 → 77행/초).
 --    1GB로 올리면 484행/초. 자세한 측정은 docs/database/vec_schema_unification_proposal.md §7.4
--- CREATE INDEX ON meta_blog_vec USING hnsw (embedding vector_cosine_ops);
+-- 2026-11-11 적용(sql/migration_2026_11_10_vec_hnsw.sql). 근사 검색 — 상위 30건 일치율 0.98~0.99
+CREATE INDEX idx_meta_blog_vec_hnsw ON meta_blog_vec USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 200);
 
 -- 키워드 채널 색인. 벡터 쪽 HNSW와 달리 이 규모에서 비용이 작아 바로 건다.
 CREATE INDEX idx_meta_blog_vec_tsv ON meta_blog_vec USING gin (tsv);

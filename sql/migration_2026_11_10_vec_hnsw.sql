@@ -1,5 +1,16 @@
 -- ============================================================================
--- 벡터 채널 HNSW 색인 (콘텐츠 검색 지연 해소) — **제안, 미적용**
+-- 벡터 채널 HNSW 색인 (콘텐츠 검색 지연 해소) — ✅ **2026-11-11 적용**
+--
+-- 적용 기록 (2026-11-11, 사용자 승인):
+--   · 먼저 DB 파드 자원 상향(512Mi·0.5코어 → 3Gi·2코어, shared_buffers 128MB → 512MB, /dev/shm 1Gi,
+--     k8s/deployments/postgres174-statefulset.yaml). 기존 512Mi로는 아래 2GB 설정에서 OOM 위험.
+--   · **CONCURRENTLY 없이** 만들었다 — API 연결이 트랜잭션을 연 채 쉬고 있어(idle in transaction)
+--     CONCURRENTLY는 그 트랜잭션을 기다리며 멈출 수 있다. 수집 CronJob이 정지 중이라 쓰기 잠금은 무해.
+--   · maintenance_work_mem 1536MB, max_parallel_maintenance_workers 0.
+--   · 결과: news 3분 07초(312MB) · blog 12분 39초(966MB) · video 22초(53MB), 모두 indisvalid=t.
+--   · 콘텐츠 검색(포털 경유): blog 18~31초 → 0.2~0.4초, news 6~12초 → 0.1~0.3초 (첫 질의는 디스크 읽기로 수 초).
+--   · 평가셋 회귀(video): hybrid_idf recall@1 0.9667 / mrr 0.9778 / ndcg@10 0.9833 — ADR-010 기준선과 동일.
+--   · ⚠️ 색인을 만든 뒤 **API를 재시작해야** 기존 트랜잭션이 새 색인을 쓴다(배포 console-api 재시작함).
 --
 -- 배경 : 2026-11-10 콘텐츠 검색(/v1/console/search/items, q=반도체, limit 30) 실측
 --          blog 31.5초 · news 11.7초 · video 4.3초
