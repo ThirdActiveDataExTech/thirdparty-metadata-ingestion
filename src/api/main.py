@@ -36,10 +36,10 @@ from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional
 
 import anyio.to_thread
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.responses import JSONResponse, RedirectResponse
 
-from src.api import auth, console, manage, my, schemas, structured
+from src.api import auth, console, manage, my, schemas, structured, usage
 from src.api.access import ensure_visible, item_dataset_map, visible_clause, visible_ids
 from src.api.auth import User, optional_user
 from src.api.db_scope import ReleaseDbRoute
@@ -88,6 +88,7 @@ app.include_router(auth.router)
 app.include_router(manage.router)
 app.include_router(my.router)
 app.include_router(structured.router)
+app.include_router(usage.router)
 app.include_router(console.router)
 
 
@@ -191,7 +192,8 @@ def list_datasets(
 # 2026-11-04 포털을 붙이다 발견했다 — 그 전까지 이 엔드포인트는 한 번도 닿은 적이 없고,
 # 상세 응답의 `downloads.jsonld`는 죽은 링크였다.
 @app.get("/v1/datasets/{dataset_id:path}/jsonld", tags=["카탈로그"])
-def get_jsonld(dataset_id: str, user: Optional[User] = Depends(optional_user)):
+def get_jsonld(dataset_id: str, user: Optional[User] = Depends(optional_user),
+               x_usage_session: Optional[str] = Header(None)):
     """DCAT JSON-LD. 오브젝트 스토리지에 내보낸 것과 같은 형식이다."""
     ensure_visible(get_conn().cursor(), dataset_id, user)
     # `except AttributeError`로 501을 내던 분기를 걷어냈다. 그게 존재하지 않는 함수를
@@ -202,6 +204,7 @@ def get_jsonld(dataset_id: str, user: Optional[User] = Depends(optional_user)):
     except Exception as e:                        # noqa: BLE001
         logger.warning("JSON-LD 생성 실패 %s: %s", dataset_id, e)
         raise HTTPException(500, "JSON-LD를 생성하지 못했습니다")
+    usage.record_server_event("download", dataset_id, user, x_usage_session, detail="jsonld")
     return JSONResponse(doc, media_type="application/ld+json")
 
 

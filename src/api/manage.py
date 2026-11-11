@@ -48,7 +48,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import requests
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, Header, HTTPException, Query
 from fastapi.responses import FileResponse
 
 from src.api.access import ensure_visible
@@ -543,7 +543,8 @@ def trend(dataset_id: str, user: Optional[User] = Depends(optional_user)):
 # ── 신뢰 패키지 (C5) ──────────────────────────────────────────────────────
 
 @router.get("/datasets/{dataset_id:path}/package")
-def package(dataset_id: str, background: BackgroundTasks, user: Optional[User] = Depends(optional_user)):
+def package(dataset_id: str, background: BackgroundTasks, user: Optional[User] = Depends(optional_user),
+            x_usage_session: Optional[str] = Header(None)):
     """아이템 CSV + JSON-LD를 서명된 zip으로 묶어 내려준다(manifest + SHA-256 + HMAC).
 
     받는 쪽은 `scripts/package_dataset.py verify`로 DB·네트워크 없이 검증한다.
@@ -581,6 +582,8 @@ def package(dataset_id: str, background: BackgroundTasks, user: Optional[User] =
     out = work / (safe + ".zip")
     builder.build_package(dataset_id, src, out, source=source, features=features, key=key)
     background.add_task(lambda: __import__("shutil").rmtree(work, ignore_errors=True))
+    from src.api import usage
+    usage.record_server_event("download", dataset_id, user, x_usage_session, detail="package")
     return FileResponse(out, media_type="application/zip", filename=out.name)
 
 
