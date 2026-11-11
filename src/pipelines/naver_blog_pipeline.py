@@ -21,6 +21,7 @@ from src.database import meta_blog
 from src.database.db import get_conn
 from src.embedding import sync as embedding_sync
 from src.storage import jsonld_export, raw_export
+from src.pipelines import _drift
 
 AGENT = "naver_blog_collector"
 logger = logging.getLogger(__name__)
@@ -127,6 +128,7 @@ def run(dataset_id: str, triggered_by: str) -> None:
     keywords = dataset["subjects"] if isinstance(dataset["subjects"], list) else json.loads(dataset["subjects"])
     started_at = datetime.now(timezone.utc)
 
+    _drift.begin()  # 수집기가 받는 원본 표본을 모은다(드리프트 감지용)
     try:
         existing = meta_blog.get_existing_posts(dataset_id)
         remote_urls = set()
@@ -195,6 +197,9 @@ def run(dataset_id: str, triggered_by: str) -> None:
             next_collect_at=ended_at + dcat.parse_iso8601_duration_to_timedelta(dataset["accrual_periodicity"]),
             last_error=None,
         )
+
+        # 원천 스키마 드리프트 감지(C4) — 레지스트리 갱신(커밋) 뒤에. 실패해도 수집은 성공이다
+        _drift.check(dataset_id, "blog")
 
         try:
             s3_raw_prefix, s3_jsonld_prefix = jsonld_export.export_dataset(dataset_id)

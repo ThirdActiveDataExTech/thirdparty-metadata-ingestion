@@ -17,6 +17,7 @@ from urllib.parse import urlparse
 import requests
 from bs4 import BeautifulSoup
 
+from src.collectors import raw_sample
 from src.common.retry import RetryableError, with_retry
 
 SEARCH_API_URL = "https://openapi.naver.com/v1/search/blog.json"
@@ -93,6 +94,7 @@ def search_all(
         if not data or not data.get("items"):
             break
         items.extend(data["items"])
+        raw_sample.record_many(data["items"])  # 드리프트 감지용 원본 표본(src/pipelines/_drift.py)
         if len(data["items"]) < display:
             break
         time.sleep(0.2)

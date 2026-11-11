@@ -13,6 +13,8 @@ from typing import Any, Dict, List
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+from src.collectors import raw_sample
+
 from src.common import config
 
 from src.common.retry import RetryableError, with_retry
@@ -151,6 +153,7 @@ def get_video_details(service, video_ids: List[str], filter_shorts: bool = True)
             )
         )
         for item in resp.get("items", []):
+            raw_sample.record(item)  # 드리프트 감지용 원본 표본(src/pipelines/_drift.py)
             video = _normalize_video(item)
             if filter_shorts and is_short(video["duration"]):
                 continue

@@ -15,6 +15,7 @@ from typing import Dict, List, Optional, Tuple
 
 import requests
 
+from src.collectors import raw_sample
 from src.common.retry import RetryableError, with_retry
 
 API_URL = "https://openapi.naver.com/v1/datalab/shopping/categories"
@@ -55,6 +56,7 @@ def fetch_insight(
         return resp.json()
 
     result = with_retry(_execute)
+    raw_sample.record(result)  # 드리프트 감지용 원본 표본(src/pipelines/_drift.py) — 응답 1건 = 표본 1건
     time.sleep(REQUEST_DELAY_SECONDS)
     return result
 
