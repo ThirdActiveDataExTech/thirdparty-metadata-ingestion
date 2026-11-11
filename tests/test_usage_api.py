@@ -257,3 +257,10 @@ def test_함께_본_데이터_테이블이_없으면_available_false(db):
 def test_볼_수_없는_데이터셋은_404(db):
     db(visible=False)
     assert TestClient(app).get(f"/v1/usage/also-viewed/{URN}").status_code == 404
+
+
+def test_내려받기_내역은_관리자만_내_내역은_로그인만(db):
+    db()
+    c = TestClient(app)
+    assert c.get("/v1/console/usage/downloads").status_code == 401
+    assert c.get("/v1/my/downloads").status_code == 401

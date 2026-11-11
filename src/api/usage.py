@@ -30,7 +30,7 @@ from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query
 from psycopg2 import errors as pg_errors
 
 from src.api.access import ensure_visible, visible_clause
-from src.api.auth import User, optional_user, require_admin
+from src.api.auth import User, current_user, optional_user, require_admin
 from src.api.db_scope import ReleaseDbRoute
 from src.database.db import get_conn
 
@@ -260,6 +260,47 @@ def also_viewed(dataset_id: str, days: int = Query(CO_VIEW_DAYS, ge=7, le=365),
         return _unavailable({"dataset_id": dataset_id, "items": []})
     return {"available": True, "dataset_id": dataset_id, "days": days,
             "min_people": CO_VIEW_MIN_PEOPLE, "items": items}
+
+
+DOWNLOAD_LABEL = {"package": "신뢰 패키지", "jsonld": "JSON-LD", "hf": "허깅페이스 형식"}
+
+
+@router.get("/console/usage/downloads", dependencies=[Depends(require_admin)])
+def downloads(days: int = Query(30, ge=1, le=365), dataset_id: Optional[str] = Query(None),
+              limit: int = Query(200, ge=1, le=1000)):
+    """관리자용 내려받기 내역(건별) — 언제·무엇을·어떤 형식으로·누가(로그인 계정 / 비로그인 / API 직접 호출).
+
+    비로그인은 세션 해시만 있어 사람을 특정할 수 없다 — '비로그인'으로만 보여 준다.
+    """
+    rows = _query(
+        f"""SELECT e.occurred_at, e.dataset_id, d.title, e.detail, e.origin, e.user_id
+            FROM {TABLE} e LEFT JOIN dcat_dataset d ON d.dataset_id = e.dataset_id
+            WHERE e.event_type = 'download' AND e.occurred_at > now() - make_interval(days => %(days)s)
+              AND (%(ds)s::text IS NULL OR e.dataset_id = %(ds)s)
+            ORDER BY e.occurred_at DESC LIMIT %(lim)s""",
+        {"days": days, "ds": dataset_id, "lim": limit})
+    if rows is None:
+        return _unavailable({"days": days, "items": []})
+    items = [{"at": t.isoformat(), "dataset_id": i, "title": ttl, "format": DOWNLOAD_LABEL.get(x or "", x),
+              "who": (f"로그인 {u}" if u else "API 직접 호출" if o == ORIGIN_API else "비로그인")}
+             for t, i, ttl, x, o, u in rows]
+    return {"available": True, "days": days, "items": items}
+
+
+@router.get("/my/downloads")
+def my_downloads(days: int = Query(90, ge=1, le=365), user: User = Depends(current_user)):
+    """내가(로그인 계정) 내려받은 내역."""
+    rows = _query(
+        f"""SELECT e.occurred_at, e.dataset_id, d.title, e.detail
+            FROM {TABLE} e LEFT JOIN dcat_dataset d ON d.dataset_id = e.dataset_id
+            WHERE e.event_type = 'download' AND e.user_id = %(u)s
+              AND e.occurred_at > now() - make_interval(days => %(days)s)
+            ORDER BY e.occurred_at DESC LIMIT 200""", {"u": user.id, "days": days})
+    if rows is None:
+        return _unavailable({"days": days, "items": []})
+    return {"available": True, "days": days,
+            "items": [{"at": t.isoformat(), "dataset_id": i, "title": ttl, "format": DOWNLOAD_LABEL.get(x or "", x)}
+                      for t, i, ttl, x in rows]}
 
 
 @router.get("/console/usage/summary", dependencies=[Depends(require_admin)])

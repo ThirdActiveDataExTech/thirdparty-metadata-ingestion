@@ -900,6 +900,11 @@
   - CLI `package_dataset.py keygen|build [--encrypt]|verify [--pubkey]|repair|decrypt|diff`. 테스트 38건(`tests/test_packaging_trust.py`)
   - **버전 비교** `diff.py` — 같은 데이터셋 두 패키지(둘 다 검증 통과)의 파일 추가·삭제·변경, 표 행·열 변화, 점검 결과 변화, 새 수집 실행, 레퍼런스 변경(4차년도 "수정 사항 파악")
   - ⏳ **서버 키는 사람이 생성**: `k8s/secrets/package-signing-secret.yaml.template` 절차 → console-api가 optional로 읽는다
+- ✅ **리니지·내려받기 내역 (2026-11-11)** — 새로 기록하지 않고 이미 쌓이는 기록을 모은다.
+  `GET /v1/datasets/{id}/lineage`(`src/api/lineage.py`): 원천 → 수집(실행 횟수·성공/실패·실행 주체: 정기/수동/현장 번들,
+  형식 변화 감지) → 저장(아이템 수, 관리자만 테이블·저장 위치) → 가공(청크·AI 요약·특징·관계) → 제공(조회·형식별 내려받기),
+  최근 실행 10회(오류 원문 제외). 내려받기 내역: 관리자 `GET /v1/console/usage/downloads`(누가: 로그인 계정/비로그인/API),
+  사용자 `GET /v1/my/downloads`
 - 🟦 **목표선(남음)**: 버전 관리·`data_package` 테이블(DDL), 접근 권한 메타.
 - **구현**
   - `src/packaging/manifest.py` — 식별자·출처·생성일시·소유자·라이선스·기술통계(B1 재사용)·구성 파일 목록·체크섬
