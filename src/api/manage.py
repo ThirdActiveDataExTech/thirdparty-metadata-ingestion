@@ -56,10 +56,11 @@ from src.api.auth import User, optional_user, require_admin
 from src.common import config
 from src.common.category_taxonomy import MAX_PER_DATASET, is_valid
 from src.database.db import get_conn
+from src.api.db_scope import ReleaseDbRoute
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/v1/console", tags=["포털 관리"])
+router = APIRouter(prefix="/v1/console", tags=["포털 관리"], route_class=ReleaseDbRoute)
 
 REPO = Path(__file__).resolve().parents[2]
 

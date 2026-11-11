@@ -46,10 +46,11 @@ from src.common import config
 from src.common.category_taxonomy import PRIVATE_FEATURES
 from src.common.error_kind import classify_error
 from src.database.db import get_conn
+from src.api.db_scope import ReleaseDbRoute
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/v1/console", tags=["내부 콘솔"])
+router = APIRouter(prefix="/v1/console", tags=["내부 콘솔"], route_class=ReleaseDbRoute)
 
 #: 평가셋 라벨링 대상. C1 완료 판정이 여기 막혀 있다(대기 #1).
 #: `LABEL_POOL_PATH`로 바꿀 수 있다 — 클러스터에서 영구 볼륨에 둘 때 쓴다(아래 `_pool_storage`).

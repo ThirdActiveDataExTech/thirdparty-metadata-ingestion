@@ -45,10 +45,11 @@ import yaml
 from fastapi import APIRouter, Body, Depends, Header, HTTPException
 
 from src.common import config
+from src.api.db_scope import ReleaseDbRoute
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/v1/auth", tags=["로그인 (시제품)"])
+router = APIRouter(prefix="/v1/auth", tags=["로그인 (시제품)"], route_class=ReleaseDbRoute)
 
 REPO = Path(__file__).resolve().parents[2]
 TOKEN_TTL_SEC = 8 * 3600

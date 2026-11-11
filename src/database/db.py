@@ -28,6 +28,7 @@
 - Airflow가 한 프로세스 안에서 태스크를 스레드로 동시 실행해도 같은 이유로 안전하다.
 """
 
+import logging
 import threading
 
 import psycopg2
@@ -35,6 +36,7 @@ import psycopg2.extensions
 from src.common import config
 
 _local = threading.local()
+log = logging.getLogger(__name__)
 
 
 class _ReusableConnection:
@@ -66,11 +68,21 @@ def _connect():
 
 
 def _is_alive(conn) -> bool:
+    """살아 있는지 `SELECT 1`로 확인한다. 확인 때문에 트랜잭션을 새로 열어 두지 않는다.
+
+    autocommit이 아니라 `SELECT 1`도 트랜잭션을 연다. 예전엔 그대로 둬서, 이후 아무도
+    커밋·롤백하지 않으면 커넥션이 `idle in transaction`으로 남았다(2026-11-11 실측 —
+    새 색인을 못 보고, VACUUM·`CREATE INDEX CONCURRENTLY`를 막는다). 확인 전에 쉬고
+    있던(IDLE) 커넥션만 되돌린다 — 진행 중 트랜잭션은 바깥 호출부의 것이다.
+    """
     try:
+        was_idle = conn.get_transaction_status() == psycopg2.extensions.TRANSACTION_STATUS_IDLE
         cur = conn.cursor()
         cur.execute("SELECT 1")
         cur.fetchone()
         cur.close()
+        if was_idle and conn.get_transaction_status() != psycopg2.extensions.TRANSACTION_STATUS_IDLE:
+            conn.rollback()
         return True
     except Exception:
         return False
@@ -102,3 +114,39 @@ def get_conn():
                 pass
         conn = _local.conn = _connect()
     return _ReusableConnection(conn)
+
+
+def release_thread_conn(where: str = "") -> bool:
+    """이 스레드의 커넥션에 열린 트랜잭션이 남아 있으면 롤백해 닫는다.
+
+    API는 요청(엔드포인트) 하나가 끝날 때마다 **같은 작업 스레드에서** 이걸 부른다
+    (`src/api/db_scope.py`). 읽기만 한 요청은 트랜잭션을 연 채 끝나는데, 다음 요청이
+    올 때까지 `idle in transaction`으로 남아 새 색인을 못 보고 VACUUM을 막았다.
+    쓰기 경로는 엔드포인트 안에서 직접 commit하므로 여기 올 때는 이미 IDLE이다.
+
+    커밋하지 않은 쓰기가 남아 있으면 버그다 — 경고를 남기고 되돌린다(예전엔 같은
+    스레드의 다음 요청 commit에 섞여 확정될 수 있었다). 그런 경우 True를 돌려준다.
+    """
+    conn = getattr(_local, "conn", None)
+    if conn is None or conn.closed:
+        return False
+    try:
+        status = conn.get_transaction_status()
+        if status == psycopg2.extensions.TRANSACTION_STATUS_IDLE:
+            return False
+        dirty = False
+        if status == psycopg2.extensions.TRANSACTION_STATUS_INTRANS:
+            cur = conn.cursor()
+            cur.execute("SELECT txid_current_if_assigned()")   # 쓰기를 했으면 xid가 붙어 있다
+            dirty = cur.fetchone()[0] is not None
+            cur.close()
+        conn.rollback()
+        if dirty:
+            log.warning("커밋하지 않은 쓰기를 되돌렸습니다 (%s) — 호출부에서 commit이 빠졌습니다", where or "?")
+        return dirty
+    except Exception:                                  # noqa: BLE001 — 끊긴 커넥션은 다음 get_conn이 다시 연다
+        try:
+            conn.rollback()
+        except Exception:                              # noqa: BLE001
+            pass
+        return False

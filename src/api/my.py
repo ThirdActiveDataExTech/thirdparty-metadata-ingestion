@@ -36,8 +36,9 @@ from src.api.auth import User, current_user as _current_user
 from src.common.category_taxonomy import DECISION_FEATURE
 from src.common.error_kind import for_user
 from src.database.db import get_conn
+from src.api.db_scope import ReleaseDbRoute
 
-router = APIRouter(prefix="/v1/my", tags=["내 데이터 (사용자)"])
+router = APIRouter(prefix="/v1/my", tags=["내 데이터 (사용자)"], route_class=ReleaseDbRoute)
 
 #: 원천 약관상 외부 반출(HF·외부 LLM 내보내기)이 안 되는 원천(결정 7).
 #: 지금 사용자가 등록할 수 있는 원천은 전부 여기에 든다.

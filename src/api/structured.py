@@ -35,8 +35,9 @@ from src.api.auth import require_admin
 from src.common import config
 from src.common.error_kind import classify_error
 from src.database.db import get_conn
+from src.api.db_scope import ReleaseDbRoute
 
-router = APIRouter(prefix="/v1/console", tags=["정형 업로드·오류"])
+router = APIRouter(prefix="/v1/console", tags=["정형 업로드·오류"], route_class=ReleaseDbRoute)
 
 #: 업로드 한 건 상한. 원본 파일을 메모리로 받으므로 무한정 받지 않는다.
 MAX_TOTAL_BYTES = 500 * 1024 * 1024

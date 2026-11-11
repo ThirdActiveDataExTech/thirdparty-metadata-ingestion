@@ -42,6 +42,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from src.api import auth, console, manage, my, schemas, structured
 from src.api.access import ensure_visible, item_dataset_map, visible_clause, visible_ids
 from src.api.auth import User, optional_user
+from src.api.db_scope import ReleaseDbRoute
 from src.common.category_taxonomy import PRIVATE_FEATURES
 from src.common.config import get_env
 from src.database.db import get_conn
@@ -71,6 +72,9 @@ app = FastAPI(
         "상위로 올렸는지 확인할 수 있습니다."
     ),
 )
+# 요청이 끝나면 그 요청이 연 DB 트랜잭션을 닫는다(src/api/db_scope.py). 아래 @app.get 라우트용 —
+# 하위 라우터들은 각자 APIRouter(route_class=ReleaseDbRoute)로 만든다.
+app.router.route_class = ReleaseDbRoute
 
 # ── 포털·관리자 페이지용 API (/v1/console/…) ─────────────────────────────────
 # 이름은 예전 내부 콘솔에서 왔다. 콘솔 화면(src/api/static)은 2026-11-09 지웠고
