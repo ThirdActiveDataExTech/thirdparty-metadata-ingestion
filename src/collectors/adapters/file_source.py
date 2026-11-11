@@ -7,7 +7,8 @@ API가 없는 현장은 데이터가 **파일**(CSV·JSON·JSONL 내보내기)�
     kind: file
     source: site_export
     path: /data/export/*.csv          # glob. 상대 경로는 스펙 파일 기준
-    format: csv                        # csv | json | jsonl (생략하면 확장자로)
+    format: csv                        # csv | json | jsonl | xlsx (생략하면 확장자로)
+    sheet: Sheet1                      # xlsx일 때 시트 이름(생략하면 첫 시트). 첫 행이 머리글
     items_path: items                  # json일 때 배열 위치(생략하면 최상위 배열)
     encoding: utf-8-sig
     fields: {id: 번호, title: 제목}
@@ -31,7 +32,16 @@ from src.collectors.base import BaseCollector, CollectorError, RemovalPolicy
 
 logger = logging.getLogger(__name__)
 
-FORMATS = ("csv", "json", "jsonl")
+FORMATS = ("csv", "json", "jsonl", "xlsx")
+
+
+def _cell(v: Any) -> Any:
+    """엑셀 셀 값 — 날짜는 ISO 문자열(시각이 자정이면 날짜만, 엑셀 날짜 셀은 시각 없이 저장된다)."""
+    if hasattr(v, "isoformat"):
+        if hasattr(v, "hour") and (v.hour, v.minute, v.second, v.microsecond) == (0, 0, 0, 0):
+            return v.date().isoformat()
+        return v.isoformat()
+    return v
 
 
 class FileCollector(BaseCollector):
@@ -77,8 +87,32 @@ class FileCollector(BaseCollector):
             raise CollectorError(f"{self.source}: {path.name}의 형식을 알 수 없다(format을 지정하라)")
         return fmt
 
+    def _read_xlsx(self, path: Path) -> Iterator[Dict[str, Any]]:
+        """엑셀 — 첫 행을 머리글로. 빈 행은 건너뛴다. 날짜는 ISO 문자열, 나머지 값은 그대로."""
+        from openpyxl import load_workbook
+        wb = load_workbook(path, read_only=True, data_only=True)   # 수식은 계산된 값으로
+        try:
+            sheet = self.spec.get("sheet")
+            ws = wb[sheet] if sheet else wb.worksheets[0]
+            rows = ws.iter_rows(values_only=True)
+            header = next(rows, None)
+            if not header:
+                return
+            names = [str(h).strip() if h is not None else f"col{i + 1}" for i, h in enumerate(header)]
+            for row in rows:
+                if row is None or all(v is None or str(v).strip() == "" for v in row):
+                    continue
+                yield {n: _cell(v) for n, v in zip(names, row)}
+        except KeyError as e:
+            raise CollectorError(f"{path.name}: 시트를 찾지 못했다({self.spec.get('sheet')})") from e
+        finally:
+            wb.close()
+
     def _read(self, path: Path) -> Iterator[Dict[str, Any]]:
         fmt = self._format_of(path)
+        if fmt == "xlsx":
+            yield from self._read_xlsx(path)
+            return
         with open(path, encoding=self._encoding, newline="" if fmt == "csv" else None) as fh:
             if fmt == "csv":
                 yield from csv.DictReader(fh)

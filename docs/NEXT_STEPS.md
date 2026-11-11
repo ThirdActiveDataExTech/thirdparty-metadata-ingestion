@@ -607,7 +607,12 @@
   - 실측: 네이버 뉴스 20건을 에이전트 모드로 번들링 → 실 DB 대상 반입 dry-run(서명 확인·드리프트 first_seen·적재 20건 예정)
   - 테스트 23건(`tests/test_agent_bundle.py` — 미등록 키·변조·재반입·경로 장난·데이터셋 바꿔치기·행 수 불일치 거부)
   - ⏳ 포털 관리자 화면(번들 올리기)은 아직 — API·CLI까지
-- 🟦 **목표선**: 기존 5종 전부 어댑터 이관 + 엑셀 어댑터 + 증분 커서 공통화.
+- ✅ **어댑터 이관·엑셀 (2026-11-11)** — REST 어댑터에 `method: post`·`body`·`explode`(중첩 배열 펼치기), 파일 어댑터에 xlsx(openpyxl, 시트 지정).
+  스펙 `configs/sources/naver_blog.yaml`·`naver_shopping_insight.yaml` 추가. **실제 원천 대조**(`scripts/verify_adapter_migration.py`):
+  블로그 '홈트레이닝' 300/300 링크·제목 일치, 쇼핑인사이트 패션의류 31일 31/31 값 일치. 뉴스(11-04, 300/300)·유튜브 검색(cursor)은 앞서 확인.
+  ⚠️ **운영 파이프라인은 그대로 둔다** — 블로그 본문 스크래핑·공감 수, 영상 자막·STT, 데이터랩 배치(카테고리 3개씩 앵커 스케일링)는
+  검색 API 밖의 단계라 어댑터만으로 대체되지 않는다. 손 수집기 → 선언형 파이프라인 전환은 그 단계들을 postprocess로 옮긴 뒤
+- 🟦 **목표선(남음)**: 수집 단계 전환(위 후처리 이관) + 증분 커서 공통화.
 - **구현**
   - `src/collectors/base.py` — `fetch(cursor) -> list[raw]`, `normalize(raw) -> dict`, `detect_removed(ids) -> list`
   - `src/collectors/adapters/rest_json.py` — 엔드포인트·페이징·필드매핑을 스펙에서 읽어 동작

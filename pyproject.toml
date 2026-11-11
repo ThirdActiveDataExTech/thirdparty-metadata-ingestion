@@ -24,6 +24,7 @@ dependencies = [
     "pyarrow",                  # 허깅페이스 형식 내보내기 Parquet — src/export/hf.py (결정 7)
     "defusedxml",               # 외부 SDMX-ML(XML) 안전 파싱 — src/federation/sdmx.py
     "cryptography",             # 신뢰 패키지 Ed25519 서명·AES-GCM 암호화 — src/packaging/
+    "openpyxl",                 # 엑셀(xlsx) 파일 수집 어댑터 — src/collectors/adapters/file_source.py
 ]
 
 [project.optional-dependencies]

@@ -1,0 +1,35 @@
+# 네이버 데이터랩 쇼핑인사이트(분야별 클릭 추이) — POST + 중첩 배열 어댑터 스펙 (A1 목표선 이관, 2026-11-11)
+#
+# 기존 손 수집기 `src/collectors/naver_shopping_collector.py`의 fetch_insight + parse_response와
+# **같은 값({카테고리: {기간: 비율}})**을 내는지로 검증한다.
+# 응답 `results[].data[]`를 `explode: data`로 (카테고리 × 기간) 한 줄씩 펼친다.
+# 기간·카테고리·성별·연령은 파이프라인이 질의(query)로 넣는다 — 본문(body)에 합쳐진다.
+
+source: naver_shopping_insight
+endpoint: https://openapi.naver.com/v1/datalab/shopping/categories
+method: post
+
+# Content-Type은 적지 않는다 — JSON 본문이면 requests가 붙인다(auth.headers에는 환경변수 참조만 둔다)
+auth:
+  headers:
+    X-Naver-Client-Id: {env: NAVER_CLIENT_ID}
+    X-Naver-Client-Secret: {env: NAVER_CLIENT_SECRET}
+
+body:
+  timeUnit: date
+
+paging:
+  mode: none
+
+items_path: results
+explode: data
+
+fields:
+  category: _parent.title
+  period: period
+  ratio: ratio
+
+# (카테고리, 기간)이 한 행의 식별자다 — 별도 id가 없어 정규화 뒤 조합한다
+clean_text: false
+removal_policy: unsupported
+rate_limit_sec: 0.5

@@ -36,6 +36,15 @@ Secret만, 코드·문서 평문 금지").
 
 **멈추는 조건을 전부 건다** — 빈 결과, 요청한 것보다 적게 온 마지막 쪽,
 `max_pages`, 원천이 정한 상한(`max_offset`). 하나라도 빠지면 무한 루프가 된다.
+
+## POST 원천과 중첩 배열 (2026-11-11, 기존 수집기 이관용)
+
+    method: post          # 기본 get
+    body: {timeUnit: date, category: [...]}   # POST 본문(JSON). 질의(query)는 본문에 합친다
+    explode: data         # 항목 안의 배열을 펼쳐 원소마다 한 항목으로(부모 필드는 `_parent.`로 접근)
+
+네이버 데이터랩처럼 `results[].data[]` 모양이면 `items_path: results` + `explode: data`로
+(카테고리 × 기간) 한 줄씩 흘려보낸다.
 """
 
 import html
@@ -130,6 +139,10 @@ class RestJsonCollector(BaseCollector):
         # 기본으로 켠다. 검색 API의 강조 태그는 예외가 아니라 기본값에 가깝고,
         # 꺼야 하는 쪽(마크업이 의미를 갖는 원천)이 스펙에 명시하는 편이 안전하다
         self._clean_text: bool = bool(spec.get("clean_text", True))
+        self._method: str = str(spec.get("method", "get")).lower()
+        if self._method not in ("get", "post"):
+            raise CollectorError(f"{self.source}: method는 get|post")
+        self._explode: Optional[str] = spec.get("explode")
 
     # ── 생성 ────────────────────────────────────────────────────────
     @classmethod
@@ -157,8 +170,17 @@ class RestJsonCollector(BaseCollector):
 
     def _get(self, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         def _execute():
-            resp = requests.get(self.endpoint, headers=self._headers(),
-                                params=params, timeout=DEFAULT_TIMEOUT)
+            if self._method == "post":
+                # POST: 스펙 body + 질의(params)를 JSON 본문으로. 인증 params는 주소에 둔다
+                auth_params = {k: _resolve(v, f"{self.source}.auth.params.{k}")
+                               for k, v in ((self.spec.get("auth") or {}).get("params") or {}).items()}
+                body = {**(self.spec.get("body") or {}),
+                        **{k: v for k, v in params.items() if k not in auth_params}}
+                resp = requests.post(self.endpoint, headers=self._headers(), params=auth_params or None,
+                                     json=body, timeout=DEFAULT_TIMEOUT)
+            else:
+                resp = requests.get(self.endpoint, headers=self._headers(),
+                                    params=params, timeout=DEFAULT_TIMEOUT)
             if resp.status_code >= 500:
                 # 5xx는 원천 쪽 일시 장애다 — 재시도 대상
                 raise RetryableError(f"HTTP {resp.status_code}")
@@ -213,8 +235,9 @@ class RestJsonCollector(BaseCollector):
             if not items:
                 break
             for raw in items:
-                seen += 1
-                yield raw
+                for out in self._explode_item(raw):
+                    seen += 1
+                    yield out
 
             if len(items) < size:
                 break                           # 마지막 쪽
@@ -227,6 +250,17 @@ class RestJsonCollector(BaseCollector):
             time.sleep(self._rate_limit)
 
         logger.info("%s: %d건 수집", self.source, seen)
+
+    def _explode_item(self, raw: Any) -> Iterator[Dict[str, Any]]:
+        """`explode`가 있으면 항목 안의 배열을 원소마다 펼친다. 부모 필드는 `_parent`에 둔다."""
+        if not self._explode or not isinstance(raw, dict):
+            yield raw
+            return
+        children = raw.get(self._explode) or []
+        parent = {k: v for k, v in raw.items() if k != self._explode}
+        for child in children:
+            if isinstance(child, dict):
+                yield {**child, "_parent": parent}
 
     # ── 정규화 ──────────────────────────────────────────────────────
     def normalize(self, raw: Dict[str, Any]) -> Dict[str, Any]:

@@ -1,0 +1,44 @@
+# 네이버 블로그 검색 API — REST/JSON 어댑터 스펙 (A1 목표선 이관, 2026-11-11)
+#
+# 기존 손 수집기 `src/collectors/naver_blog_collector.py`의 검색 단계(search_all)와 **같은 결과를 내는지**로
+# 검증한다(tests/test_adapter_migration.py, 실제 대조는 scripts/verify_adapter_migration.py).
+# 본문 스크래핑·공감 수 조회는 검색 API 밖의 단계라 어댑터 범위가 아니다 — 파이프라인 후처리로 남는다.
+#
+# ⚠️ 자격증명은 **이름만** 적는다.
+
+source: naver_blog
+endpoint: https://openapi.naver.com/v1/search/blog.json
+
+auth:
+  headers:
+    X-Naver-Client-Id: {env: NAVER_CLIENT_ID}
+    X-Naver-Client-Secret: {env: NAVER_CLIENT_SECRET}
+
+params:
+  sort: date
+
+paging:
+  mode: offset
+  page_param: start
+  size_param: display
+  size: 100
+  start_at: 1
+  max_pages: 3
+  max_offset: 1000
+
+items_path: items
+
+fields:
+  id: link
+  post_url: link
+  title: title
+  description: description
+  blogger_name: bloggername
+  blogger_link: bloggerlink
+  posted_date: postdate
+
+id_field: link
+rate_limit_sec: 0.2
+
+# 검색 결과 부재만으로 삭제 판정 금지(뉴스와 같은 이유 — sort=date 슬라이딩 윈도우)
+removal_policy: verify_each
