@@ -11,6 +11,7 @@ import zipfile
 import pytest
 from fastapi.testclient import TestClient
 
+import src.api.main  # noqa: F401 — 설정 읽기를 가짜로 바꾸는 픽스처보다 먼저 API를 올려 둔다
 from src.packaging import builder, envelope, manifest as M, quality, recovery, signing, verify as V
 
 
@@ -361,3 +362,52 @@ class TestDiff:
         base = {"dataset_id": "a", "version": "1", "created_at": "x", "files": []}
         with pytest.raises(D.DiffError):
             D.diff_manifests(base, dict(base, dataset_id="b"))
+
+
+class TestVerifyApi:
+    def _client(self, monkeypatch, priv=None):
+        from fastapi.testclient import TestClient
+        from src.api import auth
+        from src.api.main import app
+        if priv:
+            monkeypatch.setenv(signing.PRIVATE_KEY_ENV, priv.decode())
+        else:
+            monkeypatch.delenv(signing.PRIVATE_KEY_ENV, raising=False)
+        app.dependency_overrides[auth.current_user] = lambda: auth.User(id="u", name="u", role="user", org="A", org_name="기관 A")
+        return TestClient(app), app, auth
+
+    def test_공식_키로_만든_패키지는_출처까지_통과(self, tmp_path, no_hmac, monkeypatch):
+        priv, _ = signing.generate()
+        key = signing.load_private_key(priv.decode())
+        out = tmp_path / "p.zip"
+        builder.build_package("urn:test:ds", _src(tmp_path), out, ed25519_key=key)
+        c, app, auth = self._client(monkeypatch, priv)
+        try:
+            r = c.post("/v1/packaging/verify", files={"file": ("p.zip", out.read_bytes(), "application/zip")}).json()
+        finally:
+            app.dependency_overrides.pop(auth.current_user, None)
+        assert r["ok"] and r["signer_trusted"] and r["manifest"]["dataset_id"] == "urn:test:ds"
+
+    def test_다른_키로_만든_패키지는_출처_불일치(self, tmp_path, no_hmac, monkeypatch):
+        priv, _ = signing.generate()
+        out = tmp_path / "p.zip"
+        builder.build_package("urn:test:ds", _src(tmp_path), out, ed25519_key=_key())
+        c, app, auth = self._client(monkeypatch, priv)
+        try:
+            r = c.post("/v1/packaging/verify", files={"file": ("p.zip", out.read_bytes(), "application/zip")}).json()
+        finally:
+            app.dependency_overrides.pop(auth.current_user, None)
+        assert not r["ok"] and r["signatures"]["ed25519"] == "fail"
+
+    def test_zip이_아니면_안내(self, monkeypatch):
+        c, app, auth = self._client(monkeypatch)
+        try:
+            r = c.post("/v1/packaging/verify", files={"file": ("x.zip.enc", b"MPKGENC1xxxx", "application/octet-stream")}).json()
+        finally:
+            app.dependency_overrides.pop(auth.current_user, None)
+        assert not r["ok"] and "decrypt" in r["problems"][0] and r["server_key_configured"] is False
+
+    def test_로그인이_필요하다(self):
+        from fastapi.testclient import TestClient
+        from src.api.main import app
+        assert TestClient(app).post("/v1/packaging/verify", files={"file": ("p.zip", b"x")}).status_code == 401

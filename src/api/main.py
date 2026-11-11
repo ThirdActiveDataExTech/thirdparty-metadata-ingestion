@@ -36,12 +36,12 @@ from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional
 
 import anyio.to_thread
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from src.api import auth, console, lineage, manage, modules, my, schemas, structured, usage
 from src.api.access import ensure_visible, item_dataset_map, visible_clause, visible_ids
-from src.api.auth import User, optional_user
+from src.api.auth import current_user, optional_user, User
 from src.api.db_scope import ReleaseDbRoute
 from src.common.category_taxonomy import PRIVATE_FEATURES
 from src.common.config import get_env
@@ -154,6 +154,54 @@ def packaging_public_key():
     pub = key.public_key()
     return {"algorithm": signing.ALGORITHM, "fingerprint": signing.fingerprint(pub),
             "public_key_pem": signing.public_pem(pub).decode("ascii")}
+
+
+#: 포털 검증에 올릴 수 있는 패키지 크기 상한
+VERIFY_MAX_BYTES = 200 * 1024 * 1024
+
+
+@app.post("/v1/packaging/verify", tags=["패키지"])
+async def packaging_verify(file: UploadFile = File(..., description="받은 신뢰 패키지(zip)"),
+                           user: User = Depends(current_user)):
+    """받은 신뢰 패키지를 이 포털의 **공식 공개키**로 검증합니다(로그인 필요).
+
+    서명(출처), 파일 체크섬(무결성), 손상 블록 복원 가능 여부, 만든 쪽의 점검 결과를 알려 줍니다.
+    파일은 검증 뒤 바로 지웁니다. 암호화 패키지(*.zip.enc)는 먼저 복호화해야 합니다.
+    """
+    import tempfile
+    from pathlib import Path
+
+    from src.packaging import signing, verify as V
+
+    try:
+        key = signing.private_key_from_env()
+    except signing.SigningError:
+        key = None
+    pub = signing.public_pem(key.public_key()) if key else None
+    with tempfile.TemporaryDirectory(prefix="verify-") as tmp:
+        path = Path(tmp) / "package.zip"
+        size = 0
+        with open(path, "wb") as fh:
+            while chunk := await file.read(1024 * 1024):
+                size += len(chunk)
+                if size > VERIFY_MAX_BYTES:
+                    raise HTTPException(413, f"{VERIFY_MAX_BYTES // 1024 // 1024}MB까지 검증할 수 있습니다")
+                fh.write(chunk)
+        r = V.verify_package(path, pubkey_pem=pub)
+    m = r.manifest or {}
+    q = m.get("quality") or {}
+    return {
+        "ok": r.ok, "signature_ok": r.signature_ok, "files_ok": r.files_ok,
+        "signatures": r.signatures,
+        "signer_trusted": r.signer_trusted, "signer_fingerprint": r.signer_fingerprint,
+        "server_key_configured": pub is not None,
+        "problems": r.problems[:20], "repairable": r.repairable, "unrepairable": r.unrepairable,
+        "manifest": {k: m.get(k) for k in ("dataset_id", "version", "created_at", "manifest_version",
+                                           "file_count", "total_bytes")} if m else None,
+        "source_title": (m.get("source") or {}).get("title"),
+        "quality": {"passed": q.get("passed"), "failed": q.get("failed")} if q else None,
+        "collection_runs": len(((m.get("lineage") or {}).get("collection_runs")) or []),
+    }
 
 
 @app.get("/healthz", tags=["운영"])
