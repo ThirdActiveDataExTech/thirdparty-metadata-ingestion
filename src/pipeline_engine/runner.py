@@ -33,7 +33,7 @@ from typing import Any, Dict, List, Optional
 import yaml
 
 from src.collectors.adapters.file_source import adapter_from_file
-from src.pipeline_engine import drift, steps
+from src.pipeline_engine import autoheal, drift, steps
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +100,13 @@ def run(name_or_path: str, limit: Optional[int] = None,
                 result["steps"][step] = {"count": len(raws)}
                 if spec.get("drift", DRIFT_DEFAULT):
                     result["drift"] = _check_drift(dataset_id, raws, adapter, dry_run)
+                    # 원천 형식이 바뀌어 매핑이 깨졌으면 확실한 것만 고친다(C4 목표선, autoheal.py)
+                    healed = autoheal.heal(adapter, spec.get("auto_remap", "propose"), result["drift"])
+                    if healed:
+                        result["remap"] = healed
+                        logger.warning("[%s] 매핑 %s: %s", name_or_path,
+                                       "자동 변경" if healed["applied"] else "변경 제안",
+                                       healed["changes"] or healed["unresolved"])
             elif step == "normalize":
                 rows = steps.normalize(adapter, raws)
                 result["steps"][step] = {"count": len(rows)}
