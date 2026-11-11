@@ -40,7 +40,7 @@ CREATE TABLE dataset_usage_event (
     -- 브라우저 세션 식별자의 SHA-256 앞 32자 | 원문은 저장하지 않는다 · 중복 집계 방지
 
     origin        TEXT NOT NULL DEFAULT 'portal'
-    -- 기록 경로 | portal(화면이 보냄) · server(API가 직접 기록, 예: 내려받기)
+    -- 기록 경로 | portal(화면이 보냄) · server(API가 직접 기록, 사람 식별됨) · api(로그인·세션 없는 API 직접 호출 — 중복 제거 없이 따로 집계)
 );
 
 CREATE INDEX idx_dataset_usage_event_dataset ON dataset_usage_event (dataset_id, occurred_at DESC);

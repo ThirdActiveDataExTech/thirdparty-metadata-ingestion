@@ -179,3 +179,56 @@ def test_JSON_LD_내려받기를_기록한다(db, monkeypatch):
     assert r.status_code == 200
     (p,) = _inserts(conn)
     assert p["t"] == "download" and p["x"] == "jsonld" and p["o"] == "server"
+
+
+# ── API 직접 호출(2026-11-11 결정 A안): 따로 기록하고 화면 수치에서는 뺀다 ──
+
+def test_누구인지_모르는_서버_내려받기는_api로_따로_남긴다(db):
+    conn = db()
+    usage.record_server_event("download", URN, None, None, detail="package")
+    (p,) = _inserts(conn)
+    assert p["o"] == "api" and p["u"] is None and p["s"] is None
+    assert conn.commits == 1
+
+
+def test_세션이_있으면_server로_남긴다(db):
+    conn = db()
+    usage.record_server_event("download", URN, None, SID, detail="hf")
+    (p,) = _inserts(conn)
+    assert p["o"] == "server" and p["s"] == usage.session_hash(SID)
+
+
+def test_세션_형식이_이상하면_api로_본다(db):
+    conn = db()
+    usage.record_server_event("download", URN, None, "bad!", detail="jsonld")
+    (p,) = _inserts(conn)
+    assert p["o"] == "api"
+
+
+def _selects(conn):
+    return [s for s, _ in conn.cur.sql if s.startswith("SELECT") and usage.TABLE in s]
+
+
+def test_인기_데이터와_상세_활용수는_api_호출을_빼고_센다(db):
+    conn = db()
+    TestClient(app).get("/v1/usage/popular")
+    TestClient(app).get(f"/v1/usage/datasets/{URN}")
+    sqls = _selects(conn)
+    assert len(sqls) == 3
+    assert all("origin <> 'api'" in s for s in sqls)
+
+
+def test_관리자_요약은_api_호출을_따로_보여_준다(db, monkeypatch):
+    conn = db()
+    app.dependency_overrides[auth.require_admin] = lambda: None
+    try:
+        r = TestClient(app).get("/v1/console/usage/summary")
+    finally:
+        app.dependency_overrides.pop(auth.require_admin, None)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["api"] == {"events": 0, "datasets": 0, "by_detail": []}
+    sqls = _selects(conn)
+    counted = [s for s in sqls if "origin <> 'api'" in s]
+    api_only = [s for s in sqls if "origin = 'api'" in s]
+    assert len(counted) == 4 and len(api_only) == 2

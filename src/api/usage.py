@@ -12,6 +12,11 @@
 세션 식별자(`X-Usage-Session` 헤더)의 해시만 남긴다. 같은 사람(로그인 ID 또는 세션)이 같은
 대상에 같은 이벤트를 30분 안에 다시 보내면 한 번으로 친다.
 
+API 직접 호출(2026-11-11 결정 A안): 로그인·세션 정보 없이 포털 밖에서 API로 내려받으면 누구인지
+알 수 없어 중복을 걸러낼 수 없다. 이런 건은 `origin='api'`로 호출마다 1건씩 남기되, 화면에
+보이는 활용 수(인기 데이터·상세 활용 수·관리자 요약의 사람 기준 수치)에서는 빼고 관리자 요약의
+`api` 항목에만 따로 보여 준다. OpenAPI 활용 실적(호출 건수)으로 쓸 수 있다.
+
 기록은 본 기능을 막지 않는다. 테이블이 아직 없거나(마이그레이션 전) DB 쓰기가 실패해도
 내려받기는 그대로 성공하고, 집계 API는 `available: false`로 빈 결과를 준다.
 """
@@ -42,6 +47,11 @@ CLIENT_EVENTS = {"view"}
 EVENT_TYPES = {"view", "download"}
 DOWNLOAD_DETAILS = {"package", "jsonld", "hf"}
 DEDUP_MINUTES = 30
+#: 기록 출처 — portal: 화면이 보낸 조회 / server: 서버가 기록한 내려받기(사람 식별됨)
+#: / api: 서버가 기록했지만 누구인지 모르는 API 직접 호출(따로 집계)
+ORIGIN_PORTAL, ORIGIN_SERVER, ORIGIN_API = "portal", "server", "api"
+#: 화면에 보이는 활용 수에 넣는 기록만 고르는 조건
+_COUNTED = f"origin <> '{ORIGIN_API}'"
 _SESSION_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
 _MAX_ITEM_ID = 300
 
@@ -77,13 +87,17 @@ def record_server_event(event_type: str, dataset_id: str, user: Optional[User],
                         session_raw: Optional[str] = None, detail: Optional[str] = None) -> None:
     """서버가 직접 남기는 기록(내려받기 등). **실패해도 예외를 내지 않는다** — 본 기능이 우선이다.
 
+    로그인·세션 둘 다 없으면 API 직접 호출로 보고 `origin='api'`로 남긴다(중복 제거 없음, 따로 집계).
+
     호출 전에 같은 스레드 커넥션에 커밋하지 않은 쓰기가 없어야 한다(여기서 commit한다).
     지금 호출부(패키지·JSON-LD 내려받기)는 읽기만 한다.
     """
     conn = get_conn()
     try:
         cur = conn.cursor()
-        _insert(cur, event_type, dataset_id, user, session_hash(session_raw), None, detail, "server")
+        sess = session_hash(session_raw)
+        origin = ORIGIN_SERVER if (user is not None or sess is not None) else ORIGIN_API
+        _insert(cur, event_type, dataset_id, user, sess, None, detail, origin)
         conn.commit()
     except Exception as e:                                   # noqa: BLE001
         try:
@@ -116,7 +130,7 @@ def post_event(body: Dict[str, Any] = Body(...),
     cur = conn.cursor()
     ensure_visible(cur, dataset_id, user)
     try:
-        recorded = _insert(cur, event_type, dataset_id, user, sess, item_id, None, "portal")
+        recorded = _insert(cur, event_type, dataset_id, user, sess, item_id, None, ORIGIN_PORTAL)
         conn.commit()
     except pg_errors.UndefinedTable:
         conn.rollback()
@@ -149,6 +163,7 @@ def popular(days: int = Query(30, ge=1, le=365), limit: int = Query(10, ge=1, le
     """많이 본(또는 많이 내려받은) 데이터셋. 볼 수 있는 데이터셋만 나옵니다.
 
     `users`는 서로 다른 사람 수(로그인 ID 또는 브라우저 세션 기준)입니다.
+    누구인지 모르는 API 직접 호출은 넣지 않습니다.
     """
     if event_type not in EVENT_TYPES:
         raise HTTPException(400, f"이벤트 유형은 {sorted(EVENT_TYPES)} 중 하나여야 합니다")
@@ -158,7 +173,7 @@ def popular(days: int = Query(30, ge=1, le=365), limit: int = Query(10, ge=1, le
                    count(*) AS events, count(DISTINCT coalesce(e.user_id, e.session_hash)) AS users
             FROM {TABLE} e JOIN dcat_dataset d ON d.dataset_id = e.dataset_id
             WHERE e.event_type = %(t)s AND e.occurred_at > now() - make_interval(days => %(days)s)
-              AND {cond}
+              AND e.{_COUNTED} AND {cond}
             GROUP BY d.dataset_id, d.title, d.source_type, d.publisher
             ORDER BY users DESC, events DESC, d.dataset_id
             LIMIT %(limit)s""",
@@ -173,12 +188,15 @@ def popular(days: int = Query(30, ge=1, le=365), limit: int = Query(10, ge=1, le
 @router.get("/usage/datasets/{dataset_id:path}")
 def dataset_usage(dataset_id: str, days: int = Query(30, ge=1, le=365),
                   user: Optional[User] = Depends(optional_user)):
-    """한 데이터셋의 활용 현황 — 전체·최근 기간 조회·내려받기 수와 일별 추이."""
+    """한 데이터셋의 활용 현황 — 전체·최근 기간 조회·내려받기 수와 일별 추이.
+
+    누구인지 모르는 API 직접 호출은 넣지 않습니다.
+    """
     ensure_visible(get_conn().cursor(), dataset_id, user)
     totals = _query(
         f"""SELECT event_type, count(*),
                    count(*) FILTER (WHERE occurred_at > now() - make_interval(days => %(days)s))
-            FROM {TABLE} WHERE dataset_id = %(d)s GROUP BY event_type""",
+            FROM {TABLE} WHERE dataset_id = %(d)s AND {_COUNTED} GROUP BY event_type""",
         {"d": dataset_id, "days": days})
     if totals is None:
         return _unavailable({"dataset_id": dataset_id, "days": days,
@@ -187,6 +205,7 @@ def dataset_usage(dataset_id: str, days: int = Query(30, ge=1, le=365),
         f"""SELECT (occurred_at AT TIME ZONE 'Asia/Seoul')::date AS day, event_type, count(*)
             FROM {TABLE}
             WHERE dataset_id = %(d)s AND occurred_at > now() - make_interval(days => %(days)s)
+              AND {_COUNTED}
             GROUP BY 1, 2 ORDER BY 1""",
         {"d": dataset_id, "days": days}) or []
     return {
@@ -199,29 +218,39 @@ def dataset_usage(dataset_id: str, days: int = Query(30, ge=1, le=365),
 
 @router.get("/console/usage/summary", dependencies=[Depends(require_admin)])
 def summary(days: int = Query(30, ge=1, le=365)):
-    """관리자용 활용 현황 — 유형별 합계, 일별 추이, 상위 데이터셋, 로그인·비로그인 비율."""
+    """관리자용 활용 현황 — 유형별 합계, 일별 추이, 상위 데이터셋, 로그인·비로그인 비율.
+
+    위 수치는 사람이 식별된 기록만 셉니다. 누구인지 모르는 API 직접 호출은 `api`에 따로
+    호출 건수(중복 제거 없음)로 보여 줍니다.
+    """
     p = {"days": days}
+    w = f"occurred_at > now() - make_interval(days => %(days)s) AND {_COUNTED}"
     by_type = _query(
         f"""SELECT event_type, coalesce(detail, ''), count(*),
                    count(DISTINCT coalesce(user_id, session_hash))
-            FROM {TABLE} WHERE occurred_at > now() - make_interval(days => %(days)s)
+            FROM {TABLE} WHERE {w}
             GROUP BY 1, 2 ORDER BY 1, 2""", p)
     if by_type is None:
-        return _unavailable({"days": days, "by_type": [], "daily": [], "top": [], "visitors": {}})
+        return _unavailable({"days": days, "by_type": [], "daily": [], "top": [], "visitors": {},
+                             "api": {"events": 0, "datasets": 0, "by_detail": []}})
     daily = _query(
         f"""SELECT (occurred_at AT TIME ZONE 'Asia/Seoul')::date, event_type, count(*)
-            FROM {TABLE} WHERE occurred_at > now() - make_interval(days => %(days)s)
+            FROM {TABLE} WHERE {w}
             GROUP BY 1, 2 ORDER BY 1""", p) or []
     top = _query(
         f"""SELECT e.dataset_id, d.title, d.visibility,
                    count(*) FILTER (WHERE e.event_type = 'view'),
                    count(*) FILTER (WHERE e.event_type = 'download')
             FROM {TABLE} e JOIN dcat_dataset d ON d.dataset_id = e.dataset_id
-            WHERE e.occurred_at > now() - make_interval(days => %(days)s)
+            WHERE e.occurred_at > now() - make_interval(days => %(days)s) AND e.{_COUNTED}
             GROUP BY 1, 2, 3 ORDER BY 4 DESC, 5 DESC, 1 LIMIT 20""", p) or []
     visitors = _query(
         f"""SELECT count(DISTINCT user_id), count(DISTINCT session_hash) FILTER (WHERE user_id IS NULL)
-            FROM {TABLE} WHERE occurred_at > now() - make_interval(days => %(days)s)""", p) or [(0, 0)]
+            FROM {TABLE} WHERE {w}""", p) or [(0, 0)]
+    api = _query(
+        f"""SELECT coalesce(detail, ''), count(*) FROM {TABLE}
+            WHERE occurred_at > now() - make_interval(days => %(days)s) AND origin = '{ORIGIN_API}'
+            GROUP BY 1 ORDER BY 2 DESC, 1""", p) or []
     return {
         "available": True, "days": days,
         "by_type": [{"event_type": t, "detail": x or None, "events": n, "users": u} for t, x, n, u in by_type],
@@ -229,4 +258,17 @@ def summary(days: int = Query(30, ge=1, le=365)):
         "top": [{"dataset_id": i, "title": t, "visibility": v, "views": a, "downloads": b}
                 for i, t, v, a, b in top],
         "visitors": {"logged_in": visitors[0][0], "anonymous_sessions": visitors[0][1]},
+        "api": {
+            "events": sum(n for _, n in api),
+            "datasets": _api_datasets(p),
+            "by_detail": [{"detail": x or None, "events": n} for x, n in api],
+        },
     }
+
+
+def _api_datasets(p: Dict[str, Any]) -> int:
+    """API 직접 호출로 내려받은 서로 다른 데이터셋 수(형식별로 나누면 겹쳐 세므로 따로 센다)."""
+    rows = _query(
+        f"""SELECT count(DISTINCT dataset_id) FROM {TABLE}
+            WHERE occurred_at > now() - make_interval(days => %(days)s) AND origin = '{ORIGIN_API}'""", p)
+    return rows[0][0] if rows else 0
