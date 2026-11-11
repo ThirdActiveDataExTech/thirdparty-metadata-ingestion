@@ -68,12 +68,20 @@ DEFAULT_SEEDS = 5
 #: 씨앗당 가져올 이웃 수.
 DEFAULT_NEIGHBOURS = 5
 
+#: 사용 이력 경로(2026-11-11, C2 목표선 "사용 이력 반영 추천") — 씨앗을 본 사람들이 함께 본 데이터셋.
+#: 관계(B3)와 같은 자리에 같은 감쇠로 들어간다. 사람 2명 이상이 함께 본 것만(usage.co_viewed).
+#: 관계 경로와 경로 순번을 함께 센다 — 둘 다 "씨앗에서 한 다리"이고, 따로 세면 같은 데이터셋이
+#: 두 갈래 등비급수를 받아 검색 기여를 넘을 수 있다.
+DEFAULT_CO_VIEWS = 3
+
 
 def discover(purpose: str, top_k: int = 10,
              seeds: int = DEFAULT_SEEDS,
              neighbours_per_seed: int = DEFAULT_NEIGHBOURS,
              rrf_k: int = DEFAULT_RRF_K,
-             hop_decay: float = HOP_DECAY) -> Dict[str, Any]:
+             hop_decay: float = HOP_DECAY,
+             co_views_per_seed: int = DEFAULT_CO_VIEWS,
+             user: Any = None) -> Dict[str, Any]:
     """자연어 목적으로 데이터셋 묶음을 만든다.
 
     반환: {"purpose", "seeds": [...], "bundle": [{dataset_id, title, score,
@@ -127,6 +135,25 @@ def discover(purpose: str, top_k: int = 10,
                 "path_index": path_count[ds],
             })
 
+    # 사용 이력 — 씨앗을 본 사람들이 함께 본 것(기록 테이블이 없거나 실패하면 건너뛴다)
+    if co_views_per_seed > 0:
+        try:
+            from src.api import usage
+            for seed in seed_info:
+                for hop, cv in enumerate(usage.co_viewed(seed["dataset_id"], user=user,
+                                                         limit=co_views_per_seed) or [], 1):
+                    ds = cv["dataset_id"]
+                    titles.setdefault(ds, cv["title"])
+                    path_count[ds] = path_count.get(ds, 0) + 1
+                    weight = hop_decay ** path_count[ds]
+                    scores[ds] = scores.get(ds, 0.0) + weight / (rrf_k + seed["rank"] + hop)
+                    paths.setdefault(ds, []).append({
+                        "how": "usage", "via": seed["dataset_id"], "via_title": seed["title"],
+                        "via_rank": seed["rank"], "people": cv["people"], "hop_rank": hop,
+                        "path_index": path_count[ds]})
+        except Exception as e:                    # noqa: BLE001
+            logger.warning("사용 이력 경로 건너뜀: %s", type(e).__name__)
+
     ordered = sorted(scores, key=lambda d: -scores[d])[:top_k]
     bundle = []
     for ds in ordered:
@@ -135,8 +162,9 @@ def discover(purpose: str, top_k: int = 10,
             "dataset_id": ds,
             "title": titles.get(ds, ds),
             "score": round(scores[ds], 6),
-            # 직접 검색과 관계 양쪽으로 왔으면 그 사실이 가장 강한 신호다
-            "reached_by": "both" if ways == {"search", "relation"} else ways.pop(),
+            # 직접 검색과 확장(관계·사용 이력) 양쪽으로 왔으면 그 사실이 가장 강한 신호다
+            "reached_by": ("both" if "search" in ways and len(ways) > 1
+                           else ways.pop() if len(ways) == 1 else "expanded"),
             "paths": paths[ds],
         })
     logger.info("목적 %r → 씨앗 %d · 묶음 %d", purpose, len(seed_info), len(bundle))
@@ -149,6 +177,8 @@ def explain(bundle_item: Dict[str, Any]) -> str:
     for p in bundle_item["paths"]:
         if p["how"] == "search":
             reasons.append(f"검색 {p['search_rank']}위")
+        elif p["how"] == "usage":
+            reasons.append(f"'{p['via_title'][:18]}'를 본 {p['people']}명이 함께 봄")
         else:
             via = p["via_title"][:18]
             kw = f" ({', '.join(p['shared_keywords'][:3])})" if p.get("shared_keywords") else ""

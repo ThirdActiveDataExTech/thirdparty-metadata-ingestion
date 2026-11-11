@@ -17,12 +17,16 @@ from src.search import discovery as D
 @pytest.fixture
 def fake(monkeypatch):
     """검색과 관계를 가짜로 바꾼다 — 모델도 DB도 올리지 않는다."""
-    def _apply(hits, neighbours):
+    def _apply(hits, neighbours, co_views=None):
         import src.search.hybrid as H
         import src.analysis.relations.store as S
+        from src.api import usage as U
         monkeypatch.setattr(H, "search", lambda q, s, top_k=10, **kw: hits[:top_k])
         monkeypatch.setattr(S, "neighbours",
                             lambda ds, limit=10, **kw: neighbours.get(ds, [])[:limit])
+        # 사용 이력(함께 본 데이터)도 가짜로 — 기본은 없음
+        monkeypatch.setattr(U, "co_viewed",
+                            lambda ds, user=None, limit=6, **kw: (co_views or {}).get(ds, [])[:limit])
     return _apply
 
 
@@ -137,3 +141,35 @@ class TestScoring:
 
     def test_한_다리_건넌_것은_할인된다(self):
         assert 0 < D.HOP_DECAY < 1
+
+
+class TestUsagePath:
+    """사용 이력 반영 추천(C2 목표선, 2026-11-11) — 씨앗을 본 사람들이 함께 본 데이터셋."""
+
+    def test_함께_본_데이터가_근거와_함께_들어온다(self, fake):
+        fake([_hit(1, 1)], {}, {"ds1": [{"dataset_id": "ds7", "title": "데이터셋7", "people": 3}]})
+        r = D.discover("목적", top_k=5)
+        item = next(b for b in r["bundle"] if b["dataset_id"] == "ds7")
+        assert item["reached_by"] == "usage"
+        assert item["paths"][0]["people"] == 3 and item["paths"][0]["via"] == "ds1"
+        assert "3명이 함께 봄" in D.explain(item)
+
+    def test_관계와_사용_이력은_경로_순번을_같이_센다(self, fake):
+        # 같은 데이터셋이 관계·이력 두 갈래로 와도 감쇠가 이어져 검색 1건 기여를 넘지 않는다
+        fake([_hit(1, 1)], {"ds1": [_nb("ds9")]}, {"ds1": [{"dataset_id": "ds9", "title": "데이터셋9", "people": 5}]})
+        r = D.discover("목적", top_k=5)
+        b = {x["dataset_id"]: x for x in r["bundle"]}
+        assert [p["path_index"] for p in b["ds9"]["paths"]] == [1, 2]
+        assert b["ds9"]["reached_by"] == "expanded"
+        assert b["ds9"]["score"] < b["ds1"]["score"]
+
+    def test_사용_이력을_끌_수_있다(self, fake):
+        fake([_hit(1, 1)], {}, {"ds1": [{"dataset_id": "ds7", "title": "t", "people": 3}]})
+        r = D.discover("목적", top_k=5, co_views_per_seed=0)
+        assert all(b["dataset_id"] != "ds7" for b in r["bundle"])
+
+    def test_사용_이력이_실패해도_묶음은_나온다(self, fake, monkeypatch):
+        fake([_hit(1, 1)], {"ds1": [_nb("ds2")]})
+        from src.api import usage as U
+        monkeypatch.setattr(U, "co_viewed", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("db")))
+        assert {b["dataset_id"] for b in D.discover("목적", top_k=5)["bundle"]} == {"ds1", "ds2"}

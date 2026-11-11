@@ -216,6 +216,52 @@ def dataset_usage(dataset_id: str, days: int = Query(30, ge=1, le=365),
     }
 
 
+#: '함께 본 데이터'로 보여 줄 최소 인원. 1명이면 그 사람의 조회 이력이 그대로 드러난다
+CO_VIEW_MIN_PEOPLE = 2
+CO_VIEW_DAYS = 90
+
+
+def co_viewed(dataset_id: str, user: Optional[User] = None, days: int = CO_VIEW_DAYS,
+              limit: int = 6, min_people: int = CO_VIEW_MIN_PEOPLE) -> Optional[List[Dict[str, Any]]]:
+    """이 데이터셋을 본 사람들이 함께 본 데이터셋 — [{dataset_id, title, people}]. 테이블이 없으면 None.
+
+    사람 = 로그인 ID 또는 브라우저 세션. API 직접 호출(누구인지 모름)은 넣지 않는다.
+    서로 다른 사람이 `min_people`명 이상일 때만 — 한 사람의 이력이 추천으로 드러나지 않게 한다.
+    """
+    cond, params = visible_clause(user, "d.")
+    sql = f"""WITH viewers AS (
+                SELECT DISTINCT coalesce(user_id, session_hash) AS who FROM {TABLE}
+                WHERE dataset_id = %(d)s AND event_type = 'view' AND {_COUNTED}
+                  AND occurred_at > now() - make_interval(days => %(days)s))
+              SELECT e.dataset_id, d.title, count(DISTINCT coalesce(e.user_id, e.session_hash)) AS people
+              FROM {TABLE} e
+              JOIN viewers v ON coalesce(e.user_id, e.session_hash) = v.who
+              JOIN dcat_dataset d ON d.dataset_id = e.dataset_id
+              WHERE e.dataset_id <> %(d)s AND e.event_type = 'view' AND e.{_COUNTED}
+                AND e.occurred_at > now() - make_interval(days => %(days)s) AND {cond}
+              GROUP BY e.dataset_id, d.title
+              HAVING count(DISTINCT coalesce(e.user_id, e.session_hash)) >= %(minp)s
+              ORDER BY people DESC, e.dataset_id
+              LIMIT %(lim)s"""
+    args = {**params, "d": dataset_id, "days": days, "minp": min_people, "lim": limit}
+    rows = _query(sql, args)
+    if rows is None:
+        return None
+    return [{"dataset_id": i, "title": t, "people": n} for i, t, n in rows]
+
+
+@router.get("/usage/also-viewed/{dataset_id:path}")
+def also_viewed(dataset_id: str, days: int = Query(CO_VIEW_DAYS, ge=7, le=365),
+                limit: int = Query(6, ge=1, le=20), user: Optional[User] = Depends(optional_user)):
+    """이 데이터셋을 본 사람들이 함께 본 데이터셋(서로 다른 사람 2명 이상일 때만). 볼 수 있는 것만 나옵니다."""
+    ensure_visible(get_conn().cursor(), dataset_id, user)
+    items = co_viewed(dataset_id, user, days, limit)
+    if items is None:
+        return _unavailable({"dataset_id": dataset_id, "items": []})
+    return {"available": True, "dataset_id": dataset_id, "days": days,
+            "min_people": CO_VIEW_MIN_PEOPLE, "items": items}
+
+
 @router.get("/console/usage/summary", dependencies=[Depends(require_admin)])
 def summary(days: int = Query(30, ge=1, le=365)):
     """관리자용 활용 현황 — 유형별 합계, 일별 추이, 상위 데이터셋, 로그인·비로그인 비율.

@@ -82,20 +82,21 @@ class Page(BaseModel):
 class BundlePath(BaseModel):
     """한 데이터셋에 **어떻게 도달했는지**. 근거가 없으면 묶음을 믿을 수 없다."""
 
-    how: str = Field(..., description="search(직접 검색) · relation(관계 확장)")
+    how: str = Field(..., description="search(직접 검색) · relation(관계 확장) · usage(함께 본 사람)")
     search_rank: Optional[int] = None
     via: Optional[str] = Field(None, description="어느 데이터셋을 통해 왔는가")
     via_title: Optional[str] = None
     relation_type: Optional[str] = None
     relation_score: Optional[float] = None
     shared_keywords: List[str] = []
+    people: Optional[int] = Field(None, description="usage 경로 — 씨앗과 함께 본 서로 다른 사람 수(2명 이상만)")
 
 
 class BundleItem(BaseModel):
     dataset_id: str
     title: str
     score: float
-    reached_by: str = Field(..., description="search · relation · both")
+    reached_by: str = Field(..., description="search · relation · usage · both(검색+확장) · expanded(관계+이력)")
     why: str = Field(..., description="사람이 읽을 한 줄 설명")
     paths: List[BundlePath] = []
 

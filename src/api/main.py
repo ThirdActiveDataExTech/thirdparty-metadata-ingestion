@@ -295,7 +295,7 @@ def discover(
     """
     from src.search import discovery as disc
 
-    r = disc.discover(purpose, top_k=limit * 2, seeds=seeds)
+    r = disc.discover(purpose, top_k=limit * 2, seeds=seeds, user=user)
     # 볼 수 없는 데이터셋은 씨앗·묶음에서 뺀다(넉넉히 받아 limit을 채운다).
     # 근거(paths)의 경유 데이터셋도 같다 — 보이는 항목이라도 숨은 데이터셋을 거쳐 왔다면
     # 그 경로는 지우고(제목이 새지 않게), 남는 경로가 없으면 항목째 뺀다.

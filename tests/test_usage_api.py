@@ -232,3 +232,28 @@ def test_관리자_요약은_api_호출을_따로_보여_준다(db, monkeypatch)
     counted = [s for s in sqls if "origin <> 'api'" in s]
     api_only = [s for s in sqls if "origin = 'api'" in s]
     assert len(counted) == 4 and len(api_only) == 2
+
+
+# ── 함께 본 데이터(C2 목표선, 2026-11-11) ──
+
+def test_함께_본_데이터는_2명_이상이고_API_호출을_뺀다(db):
+    conn = db(rows=[("urn:b", "B", 3)])
+    r = TestClient(app).get(f"/v1/usage/also-viewed/{URN}")
+    assert r.status_code == 200
+    assert r.json()["items"] == [{"dataset_id": "urn:b", "title": "B", "people": 3}]
+    sql, params = [x for x in conn.cur.sql if "viewers AS" in x[0]][0]
+    assert "HAVING count(DISTINCT coalesce(e.user_id, e.session_hash)) >= %(minp)s" in sql
+    assert params["minp"] == usage.CO_VIEW_MIN_PEOPLE >= 2
+    assert sql.count("origin <> 'api'") == 2
+    assert "d.visibility = 'PUBLIC'" in sql            # 비로그인 — 볼 수 있는 것만
+
+
+def test_함께_본_데이터_테이블이_없으면_available_false(db):
+    db(missing_table=True)
+    r = TestClient(app).get(f"/v1/usage/also-viewed/{URN}")
+    assert r.status_code == 200 and r.json()["available"] is False
+
+
+def test_볼_수_없는_데이터셋은_404(db):
+    db(visible=False)
+    assert TestClient(app).get(f"/v1/usage/also-viewed/{URN}").status_code == 404
