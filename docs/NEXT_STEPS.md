@@ -859,7 +859,19 @@
     데이터 변조/manifest 변조/몰래 파일 추가/파일 누락/서명 제거/모르는 형식/틀린 키
 - ⏸ **`data_package` 테이블은 만들지 않았다.** 최소선 완료 기준이 파일 수준이라
   없어도 성립한다. SeaweedFS `package/` 저장과 함께 C6(다운로드 API) 때 넣는다
-- 🟦 **목표선**: 공개키 서명(ed25519), 접근제어·권한 메타, 리니지 자동 수집, 버전 관리.
+- ✅ **신뢰 패키지 1.1 (2026-11-11)** — 계획서 3차년도 "디지털 서명·암호화·오류검출(복원)", 4차년도 "히스토리·리니지·레퍼런스·데이터 테스트 정보"
+  - **공개키 서명(Ed25519)** `src/packaging/signing.py` — 받는 쪽이 비밀 없이 검증. 패키지에 공개키도 넣지만
+    그것만으로는 **무결성**까지, 공식 공개키(`GET /v1/packaging/public-key`, `verify --pubkey`)로 맞아야 **출처 확인**.
+    키 바꿔치기 위조(자기 키로 재서명 + 지문 교체)는 공식 키로만 잡힌다는 것을 테스트로 고정. HMAC은 선택으로 유지
+  - **오류 검출·복원** `recovery.py` — 256KiB 블록 해시로 손상 위치를 찾고 8블록마다 XOR 패리티(약 12.5%)로
+    묶음당 1블록 복원. 실데이터 패키지에서 바이트 변조 → 검출 → `repair` → 원본과 동일 확인
+  - **암호화(선택)** `envelope.py` — 비밀번호 scrypt + AES-256-GCM 스트리밍(청크 순번·마지막 표시를 nonce에 넣어
+    변조·순서 바꿈·절단 검출). 실패 시 결과 파일을 남기지 않는다. CLI 전용(포털은 HTTP라 비밀번호를 받지 않는다)
+  - **manifest 1.1**: `signer`·`recovery`·`lineage`(최근 수집 20회, 오류 원문 제외)·`reference`(속성·출처·생성일·
+    소유 구분)·`quality`(`quality.py` — CSV 행·열·빈 값 비율·고유값·중복 행, 등록 건수 대조. 값은 담지 않음). 1.0도 검증
+  - CLI `package_dataset.py keygen|build [--encrypt]|verify [--pubkey]|repair|decrypt`. 테스트 35건(`tests/test_packaging_trust.py`)
+  - ⏳ **서버 키는 사람이 생성**: `k8s/secrets/package-signing-secret.yaml.template` 절차 → console-api가 optional로 읽는다
+- 🟦 **목표선(남음)**: 버전 관리·`data_package` 테이블(DDL), 접근 권한 메타.
 - **구현**
   - `src/packaging/manifest.py` — 식별자·출처·생성일시·소유자·라이선스·기술통계(B1 재사용)·구성 파일 목록·체크섬
   - `src/packaging/builder.py` / `verify.py`, CLI `scripts/package_dataset.py`

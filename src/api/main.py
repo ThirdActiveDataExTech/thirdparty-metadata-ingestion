@@ -135,6 +135,25 @@ def _rows(cur) -> List[Dict[str, Any]]:
     return [dict(zip(names, r)) for r in cur.fetchall()]
 
 
+@app.get("/v1/packaging/public-key", tags=["패키지"])
+def packaging_public_key():
+    """신뢰 패키지 서명 공개키(Ed25519)와 지문입니다.
+
+    받은 패키지를 `package_dataset.py verify --pubkey <이 키>`로 검증하면 서명이 이 서버에서
+    만들어졌는지까지 확인할 수 있습니다. 서버에 공개키 서명이 설정되지 않았으면 404입니다.
+    """
+    from src.packaging import signing
+    try:
+        key = signing.private_key_from_env()
+    except signing.SigningError:
+        key = None
+    if key is None:
+        raise HTTPException(404, "공개키 서명이 설정되지 않았습니다")
+    pub = key.public_key()
+    return {"algorithm": signing.ALGORITHM, "fingerprint": signing.fingerprint(pub),
+            "public_key_pem": signing.public_pem(pub).decode("ascii")}
+
+
 @app.get("/healthz", tags=["운영"])
 def healthz():
     """DB까지 닿는지 확인한다. 프로세스가 살아 있는 것만으로는 부족하다."""

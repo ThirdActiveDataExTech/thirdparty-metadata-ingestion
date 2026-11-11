@@ -5,7 +5,22 @@
 
 ## 신뢰의 사슬
 
-    manifest.sig  ──HMAC─→  manifest.json  ──SHA-256─→  데이터 파일들
+    manifest.ed25519.sig ─Ed25519─┐
+    manifest.sig  ──────HMAC──────┴→ manifest.json ──SHA-256─→ 데이터 파일들
+                                                   ──SHA-256─→ 복원 정보(recovery/)
+
+서명은 둘 중 하나 이상이면 된다. Ed25519는 공개키만으로 누구나 출처를 확인할 수 있고(2026-11-11 추가,
+`signing.py`), HMAC은 공유키를 가진 쪽만 확인한다(기존).
+
+## 1.1 형식에서 늘어난 것 (2026-11-11, 연구계획서 3·4차년도 패키징)
+
+- `signer` — 서명 방식과 공개키 지문
+- `recovery` — 블록 해시와 패리티 파일 목록(`recovery.py`, 손상 위치 검출·복원)
+- `lineage` — 수집 이력(언제·누가 트리거·결과·행 수). 오류 원문은 넣지 않는다
+- `reference` — 속성·출처·생성일·소유 기관 등 레퍼런스
+- `quality` — 담긴 파일의 점검 결과(`quality.py`)
+
+1.0 패키지도 그대로 검증한다.
 
 서명이 manifest를 보증하고, manifest가 파일 체크섬을 담는다. 파일 하나만
 바뀌어도 체크섬이 어긋나고, manifest를 고치면 서명이 깨진다.
@@ -36,7 +51,9 @@ from src.common import config
 
 #: manifest 형식 버전. 구조가 바뀌면 올린다 — 검증기가 모르는 형식을 만나면
 #: 조용히 통과시키는 대신 분명히 거부할 수 있어야 한다.
-MANIFEST_VERSION = "1.0"
+MANIFEST_VERSION = "1.1"
+#: 검증기가 받아들이는 형식. 1.0은 HMAC 서명·체크섬만 있다
+SUPPORTED_VERSIONS = ("1.0", "1.1")
 
 MANIFEST_NAME = "manifest.json"
 SIGNATURE_NAME = "manifest.sig"
@@ -98,12 +115,14 @@ def verify_signature(manifest: Dict[str, Any], signature: str,
 def build(dataset_id: str, files: List[Dict[str, Any]],
           source: Optional[Dict[str, Any]] = None,
           features: Optional[Dict[str, Any]] = None,
-          version: Optional[str] = None) -> Dict[str, Any]:
+          version: Optional[str] = None,
+          extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """manifest 본문을 만든다.
 
     files: [{"path": 패키지 내 경로, "sha256": ..., "bytes": ...}, ...]
     source: 출처(제목·발행처·라이선스·수집 기간 등) — 타 환경 추적용
     features: B1 기술통계(`meta_feature`) 일부 — 있으면 담고 없어도 된다
+    extra: 1.1 절(`signer`·`recovery`·`lineage`·`reference`·`quality`) 중 있는 것
     """
     if not files:
         raise ManifestError("빈 패키지는 만들지 않는다 — 담을 파일이 없다")
@@ -120,15 +139,20 @@ def build(dataset_id: str, files: List[Dict[str, Any]],
         "files": sorted(files, key=lambda f: f["path"]),
         "total_bytes": sum(f.get("bytes", 0) for f in files),
         "file_count": len(files),
+        **{k: v for k, v in (extra or {}).items() if k in EXTRA_SECTIONS and v is not None},
     }
+
+
+#: 1.1에서 manifest에 담을 수 있는 추가 절
+EXTRA_SECTIONS = ("signer", "recovery", "lineage", "reference", "quality")
 
 
 def validate(manifest: Dict[str, Any]) -> None:
     """형식이 규약을 지키는지. 틀리면 예외."""
-    if manifest.get("manifest_version") != MANIFEST_VERSION:
+    if manifest.get("manifest_version") not in SUPPORTED_VERSIONS:
         raise ManifestError(
             f"모르는 manifest 형식: {manifest.get('manifest_version')!r} "
-            f"(이 검증기는 {MANIFEST_VERSION})")
+            f"(이 검증기는 {', '.join(SUPPORTED_VERSIONS)})")
     for key in ("dataset_id", "version", "created_at", "files"):
         if not manifest.get(key):
             raise ManifestError(f"manifest에 {key}가 없다")

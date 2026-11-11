@@ -545,14 +545,21 @@ def trend(dataset_id: str, user: Optional[User] = Depends(optional_user)):
 @router.get("/datasets/{dataset_id:path}/package")
 def package(dataset_id: str, background: BackgroundTasks, user: Optional[User] = Depends(optional_user),
             x_usage_session: Optional[str] = Header(None)):
-    """아이템 CSV + JSON-LD를 서명된 zip으로 묶어 내려준다(manifest + SHA-256 + HMAC).
+    """아이템 CSV + JSON-LD를 서명된 zip으로 묶어 내려준다.
 
-    받는 쪽은 `scripts/package_dataset.py verify`로 DB·네트워크 없이 검증한다.
-    서명키(PACKAGE_SIGNING_KEY)가 서버에 없으면 만들지 않는다 — 서명 없는 패키지는
-    '신뢰 패키지'가 아니다.
+    manifest에는 파일 체크섬·출처·기술통계와 함께 수집 이력·레퍼런스·데이터 점검 결과·복원 정보가
+    들어간다. 서명은 Ed25519(공개키 `/v1/packaging/public-key`로 누구나 검증)와 HMAC 중 서버에
+    설정된 것. 받는 쪽은 `scripts/package_dataset.py verify --pubkey`로 DB·네트워크 없이 검증한다.
+    서명 키가 하나도 없으면 만들지 않는다 — 서명 없는 패키지는 '신뢰 패키지'가 아니다.
     """
+    from src.packaging import signing
     key = config.get_env("PACKAGE_SIGNING_KEY")
-    if not key:
+    try:
+        ed_key = signing.private_key_from_env()
+    except signing.SigningError:
+        logger.error("PACKAGE_SIGNING_ED25519_KEY 형식 오류 — Ed25519 서명 없이 진행")
+        ed_key = None
+    if not key and not ed_key:
         raise HTTPException(503, "서버 서명 설정이 없어 패키지를 만들 수 없습니다. "
                                  "관리자에게 문의해 주세요")
     from scripts import package_dataset as P
@@ -578,9 +585,13 @@ def package(dataset_id: str, background: BackgroundTasks, user: Optional[User] =
             for r in cur.fetchall():
                 w.writerow(["" if v is None else v for v in r])
     source, features = P._context(dataset_id)
+    ctx, expected = P.lineage_context(dataset_id)
+    if not (src / "items.csv").exists():
+        expected.pop("items.csv", None)
     safe = re.sub(r"[^\w.-]", "_", dataset_id)
     out = work / (safe + ".zip")
-    builder.build_package(dataset_id, src, out, source=source, features=features, key=key)
+    builder.build_package(dataset_id, src, out, source=source, features=features, key=key or None,
+                          ed25519_key=ed_key, context=ctx, expected_rows=expected)
     background.add_task(lambda: __import__("shutil").rmtree(work, ignore_errors=True))
     from src.api import usage
     usage.record_server_event("download", dataset_id, user, x_usage_session, detail="package")
