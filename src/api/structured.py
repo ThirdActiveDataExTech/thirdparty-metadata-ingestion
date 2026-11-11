@@ -169,6 +169,40 @@ def cancel_upload(draft_id: int):
     return {"draft_id": draft_id, "cancelled": True, "objects_removed": removed}
 
 
+# ── 격리 환경 수집 번들 반입 (A1 · 3차년도) ────────────────────────────────
+
+#: 번들 한 건 상한 — 정형 업로드와 같은 기준
+MAX_BUNDLE_BYTES = MAX_TOTAL_BYTES
+
+
+@router.post("/agent-bundles", dependencies=[Depends(require_admin)])
+async def ingest_agent_bundle(file: UploadFile = File(..., description="에이전트가 만든 수집 번들(zip)"),
+                              dry_run: bool = Form(False)):
+    """격리된 현장의 수집 에이전트가 만든 번들을 들입니다.
+
+    등록된 에이전트 공개키로 서명을 확인하고, 어디에 쓸지는 플랫폼의 파이프라인 설정을 따릅니다.
+    같은 번들은 두 번 들이지 않습니다. `dry_run`이면 확인만 하고 쓰지 않습니다.
+    """
+    import tempfile
+    from pathlib import Path
+
+    from src.agent import bundle as B
+
+    with tempfile.TemporaryDirectory(prefix="bundle-") as tmp:
+        path = Path(tmp) / "bundle.zip"
+        size = 0
+        with open(path, "wb") as fh:
+            while chunk := await file.read(1024 * 1024):
+                size += len(chunk)
+                if size > MAX_BUNDLE_BYTES:
+                    raise HTTPException(413, f"번들은 {MAX_BUNDLE_BYTES // 1024 // 1024}MB까지 받을 수 있습니다")
+                fh.write(chunk)
+        try:
+            return B.ingest_bundle(path, dry_run=dry_run)
+        except B.BundleError as e:
+            raise HTTPException(e.code, str(e))
+
+
 # ── 전 기관 수집 오류 ─────────────────────────────────────────────────────
 
 @router.get("/errors", dependencies=[Depends(require_admin)])

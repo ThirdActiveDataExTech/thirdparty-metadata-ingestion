@@ -144,7 +144,7 @@ def build(dataset_id: str, files: List[Dict[str, Any]],
 
 
 #: 1.1에서 manifest에 담을 수 있는 추가 절
-EXTRA_SECTIONS = ("signer", "recovery", "lineage", "reference", "quality")
+EXTRA_SECTIONS = ("signer", "recovery", "lineage", "reference", "quality", "bundle")
 
 
 def validate(manifest: Dict[str, Any]) -> None:

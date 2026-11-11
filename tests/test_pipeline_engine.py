@@ -89,7 +89,7 @@ class TestStepOrder:
         monkeypatch.setattr(steps, "normalize", lambda *a, **k: called.append("normalize") or [])
         monkeypatch.setattr(steps, "store", lambda *a, **k: called.append("store") or {})
         monkeypatch.setattr(steps, "postprocess", lambda *a, **k: called.append("postprocess") or {})
-        monkeypatch.setattr(runner.RestJsonCollector, "from_file", classmethod(lambda cls, p: object()))
+        monkeypatch.setattr(runner, "adapter_from_file", lambda p: object())
 
         p = tmp_path / "rev.yaml"
         p.write_text(yaml.dump({

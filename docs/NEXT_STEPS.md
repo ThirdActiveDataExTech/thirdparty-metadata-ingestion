@@ -594,7 +594,19 @@
     검색형 원천은 `verify_each`가 강제된다
   - 자격증명은 **환경변수 이름만** 스펙에 적는다. 평문이 들어가면 테스트가 파일·위치를
     짚어 잡는다
-- 🟦 **목표선**: 기존 5종 전부 어댑터 이관 + CSV/엑셀 어댑터 추가 + 증분 커서 공통화.
+- ✅ **격리 환경 수집 (2026-11-11)** — 계획서 3차년도 "agent 형태", "네트워크 격리·수집 프로세스 없는 환경"
+  - **파일 어댑터** `src/collectors/adapters/file_source.py`(`kind: file`) — 현장의 CSV·JSON·JSONL을 REST와 같은
+    스펙 형식(`fields`·`id_field`)으로 읽는다. 러너는 `adapter_from_file`로 종류를 고른다(기본 rest_json)
+  - **수집 번들** `src/agent/bundle.py`, CLI `scripts/agent_bundle.py collect|ingest`, 관리자 API
+    `POST /v1/console/agent-bundles`. 현장 에이전트가 collect·normalize만(DB·플랫폼 접속 없음) 돌려
+    신뢰 패키지(C5) 형식 + `bundle` 절로 만들고 **에이전트 키(Ed25519)로 서명** → 파일로 반출 →
+    플랫폼은 **등록된 공개키**(`configs/agents/*.pub.pem`)로 출처 확인 → 체크섬 → 재반입 거부(manifest SHA-256) →
+    **플랫폼 스펙**으로 적재·드리프트 판정·후처리 → `dcat_provenance`(agent `agent_bundle`, `triggered_by=agent:<키 이름>`)
+  - 번들은 파이프라인 **이름만** 갖는다(경로·테이블은 받지 않음 — 서명된 번들로 아무 테이블에 쓰는 것을 막는다)
+  - 실측: 네이버 뉴스 20건을 에이전트 모드로 번들링 → 실 DB 대상 반입 dry-run(서명 확인·드리프트 first_seen·적재 20건 예정)
+  - 테스트 23건(`tests/test_agent_bundle.py` — 미등록 키·변조·재반입·경로 장난·데이터셋 바꿔치기·행 수 불일치 거부)
+  - ⏳ 포털 관리자 화면(번들 올리기)은 아직 — API·CLI까지
+- 🟦 **목표선**: 기존 5종 전부 어댑터 이관 + 엑셀 어댑터 + 증분 커서 공통화.
 - **구현**
   - `src/collectors/base.py` — `fetch(cursor) -> list[raw]`, `normalize(raw) -> dict`, `detect_removed(ids) -> list`
   - `src/collectors/adapters/rest_json.py` — 엔드포인트·페이징·필드매핑을 스펙에서 읽어 동작

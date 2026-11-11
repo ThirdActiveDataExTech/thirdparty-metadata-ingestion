@@ -32,7 +32,7 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-from src.collectors.adapters.rest_json import RestJsonCollector
+from src.collectors.adapters.file_source import adapter_from_file
 from src.pipeline_engine import drift, steps
 
 logger = logging.getLogger(__name__)
@@ -84,7 +84,7 @@ def run(name_or_path: str, limit: Optional[int] = None,
     # 스펙이 고른 단계를 **고정 순서로** 정렬한다. 스펙의 나열 순서를 믿지 않는다
     chosen = [s for s in STEP_ORDER if s in spec.get("steps", STEP_ORDER)]
 
-    adapter = RestJsonCollector.from_file(spec["source_spec"])
+    adapter = adapter_from_file(spec["source_spec"])      # kind: rest_json(기본) | file
     result: Dict[str, Any] = {"pipeline": name_or_path, "dataset_id": dataset_id,
                               "steps": {}, "ok": True}
     raws: List[Dict[str, Any]] = []
