@@ -1,0 +1,8 @@
+# 내장 추출 요약·키워드 — 네트워크·모델 없이 동작한다(A2 최소선 재사용, ADR-013).
+# 다른 모듈이 막히거나 실패할 때의 대체(fallback) 대상이다. 원문에 없는 내용을 만들지 않는다.
+name: builtin_extractive
+adapter: builtin_extractive
+network: internal
+enabled: true
+tasks: [summarize, keywords, describe]
+description: 내장 추출 요약·TF-IDF 키워드(대체용)

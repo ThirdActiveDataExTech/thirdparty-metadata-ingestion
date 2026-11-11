@@ -1,0 +1,15 @@
+# 사내 로컬 sLLM — OpenAI 호환 /v1/chat/completions (llama.cpp llama-server·vLLM·Ollama 등).
+# ADR-013: 외부 LLM API는 쓰지 않는다. 규격이 OpenAI 호환이라 정책이 바뀌어도 LLM_BASE_URL만 바꾼다.
+# 서버가 준비되면 LLM_BASE_URL을 설정하고 enabled: true로 바꾼다.
+name: local_sllm
+adapter: openai_compat
+endpoint: {env: LLM_BASE_URL}       # 예: http://llm.<내부 네임스페이스>.svc:8080 (값은 환경변수로)
+model: qwen3-4b-instruct-q4         # 모델 라이선스 Apache-2.0 확인 대상(ADR-013)
+auth: {header: Authorization, env: LLM_API_KEY, prefix: "Bearer "}   # 키가 없으면 헤더를 보내지 않는다
+network: internal
+enabled: false
+tasks: [summarize, keywords, describe, ask]
+timeout_sec: 120
+max_concurrency: 1                  # CPU 추론은 동시 요청이 늘면 전체가 느려진다
+fallback: builtin_extractive
+description: 사내 로컬 sLLM(OpenAI 호환)

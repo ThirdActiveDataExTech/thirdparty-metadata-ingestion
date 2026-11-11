@@ -927,8 +927,20 @@
 - **완료 기준**: 외부 포털 데이터셋이 내부 검색 결과에 함께 노출되고 OpenAPI로 호출 가능
 - **의존**: C1
 
-#### C7. 외부 모듈 연계 ((s)LLM) 〔4차 · 모비젠〕
-- 🟩 **최소선**: **OpenAI 호환 API 어댑터 1종** + 설정으로 모델 교체. 실패 시 degrade.
+#### C7. 외부 모듈 연계 ((s)LLM) 〔4차 · 모비젠〕 — 🟩 **최소선 완료 (2026-11-11)**
+- ✅ **어댑터 규격·관리·연계 실행** — `src/external/modules.py`(규격·실행), `service.py`(데이터셋 문맥·저장),
+  관리자 API `GET /v1/console/modules`·`POST /v1/console/modules/{이름}/run`, 등록 `configs/modules/*.yaml`
+  - 어댑터 3종: `openai_compat`(사내 로컬 sLLM — llama-server·vLLM·Ollama), `http_json`(기존 시스템 연계),
+    `builtin_extractive`(내장 추출 요약·명사 TF-IDF 키워드, 네트워크 없음)
+  - 작업: summarize·keywords·describe·ask. 모듈별 동시 실행 상한(세마포어, ADR-013 CPU 추론)
+  - **정책**: `network: external`은 `EXTERNAL_MODULES_ALLOW_EXTERNAL=true` 없이는 차단(ADR-013),
+    허용해도 약관상 반출 불가 데이터(결정 7)는 외부망 모듈로 보내지 않는다
+  - **degrade**: 비활성·주소 없음·HTTP 오류·연결 실패 → `fallback`(내장) 결과 + `degraded_reason`. 대체 결과는 저장하지 않음
+  - 저장(`save`): `meta_feature`에 `external_<작업>`(method `external:<모듈>`)
+  - 관리 화면 응답에 주소·키 값을 내지 않는다(설정 여부만). 주소에 계정 정보를 넣으면 거부
+  - 실측: 실데이터(HBM 뉴스)에 `local_sllm`(비활성) 요청 → 내장 모듈로 대체·사유 표시. 테스트 24건(가짜 OpenAI 호환 HTTP 서버로 규격 확인)
+  - ⏳ 사내 sLLM 서버가 생기면 `LLM_BASE_URL` 설정 + `enabled: true`. 포털 관리 화면은 아직
+- 🟩 **최소선(원안)**: **OpenAI 호환 API 어댑터 1종** + 설정으로 모델 교체. 실패 시 degrade.
 - 🟦 **목표선**: 로컬 sLLM 어댑터, 비용·레이트리밋 제어, 기존 외부 시스템 연계 규격.
 - **구현**: `src/llm/base.py`(`generate(prompt, **opts)`), `src/llm/adapters/openai_compat.py`, `configs/models/*.yaml`. **직접 호출 금지, 전부 어댑터 경유.**
 - **완료 기준**: 설정 변경만으로 모델 교체, 장애 시 부분 성공으로 degrade

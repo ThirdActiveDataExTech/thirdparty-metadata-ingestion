@@ -39,7 +39,7 @@ import anyio.to_thread
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.responses import JSONResponse, RedirectResponse
 
-from src.api import auth, console, manage, my, schemas, structured, usage
+from src.api import auth, console, manage, modules, my, schemas, structured, usage
 from src.api.access import ensure_visible, item_dataset_map, visible_clause, visible_ids
 from src.api.auth import User, optional_user
 from src.api.db_scope import ReleaseDbRoute
@@ -89,6 +89,7 @@ app.include_router(manage.router)
 app.include_router(my.router)
 app.include_router(structured.router)
 app.include_router(usage.router)
+app.include_router(modules.router)
 app.include_router(console.router)
 
 

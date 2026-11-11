@@ -1,0 +1,13 @@
+# 기존 시스템 연계 예 — 데이터셋 메타데이터를 JSON으로 보내고 JSON 결과를 받는다(분석 도구·사내 서비스).
+# 요청 본문: {"task": ..., "question": ..., "dataset": {title, description, keywords, publisher, source_type, samples}}
+# 응답: JSON 객체(예: {"text": "...", "keywords": [...]})
+name: analysis_tool
+adapter: http_json
+endpoint: {env: ANALYSIS_TOOL_URL}
+network: internal
+enabled: false
+tasks: [summarize, keywords, describe]
+timeout_sec: 60
+max_concurrency: 2
+fallback: builtin_extractive
+description: 기존 분석 시스템 연계(HTTP JSON)
