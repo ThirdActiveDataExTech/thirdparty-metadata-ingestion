@@ -924,7 +924,11 @@
     공개 범위는 **새 행에만**)
   - 실측(dry-run): OECD 1,553 데이터플로 → "household income" 10건, Eurostat(XML) "unemployment" 5건
   - ⚠️ OECD는 공개 데이터플로 전부에 `NonProductionDataflow=true`를 붙인다 — 그걸로 거르면 0건(거르지 않음)
-  - 테스트 14건(`tests/test_federation_sdmx.py`). ⏳ **실 DB 적재·임베딩은 승인 후**(공유 DB 쓰기)
+  - 테스트 14건(`tests/test_federation_sdmx.py`)
+  - **역할 정리 (2026-11-11 사용자 결정)**: SDMX 통계표 **수집·적재는 와이즈넛**이 한다. 우리가 따로 받으면 같은 통계표가
+    다른 ID로 중복된다 → **우리 쪽 SDMX 적재는 하지 않는다**(코드는 예비로 유지, 포털은 "와이즈넛 연계 예정" 안내만).
+    모비젠 몫(계획서 "SDMX 통합 탐색")은 와이즈넛이 적재한 통계표가 **우리 통합 검색에 함께 나오게** 하는 것.
+    KOSIS 전용 어댑터도 만들지 않음. ⏳ 와이즈넛과 맞출 것: 적재 위치(`dcat_dataset` 여부)·`source`/ID 표기·원천 주소
 - 🟦 **목표선**: 인증·쿼터, SDMX 차원(dimension) 단위 탐색, 사용 통계.
 - **구현**
   - `src/api/main.py` (FastAPI) — `GET /v1/datasets`, `/v1/datasets/{id}`, `/v1/search`, `/v1/datasets/{id}/download`
