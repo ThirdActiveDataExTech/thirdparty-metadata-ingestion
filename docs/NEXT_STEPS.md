@@ -909,7 +909,17 @@
   - 실측에서 걸린 것 둘: 포털 **429를 하드 실패로 처리**해 0건이 됐던 것(재시도 대상으로
     교정), `language`/`spatial` 기본값이 `'ko'`/`'KR'`이라 **캐나다 데이터가 한국어·한국
     소재로 기록될 뻔한 것**(포털 값 우선 + 소재는 NULL)
-- 🟦 **목표선**: SDMX 등 다중 포털 연합 검색, 인증·쿼터, 사용 통계.
+- ✅ **SDMX 연합 탐색 (2026-11-11 코드)** — 계획서 3차년도 "SDMX 통계작성기구 간 통계자료 통합 탐색"
+  - `src/federation/sdmx.py` — SDMX 2.1 REST 데이터플로(통계표) 목록을 **SDMX-JSON(OECD)·SDMX-ML XML(Eurostat)**
+    둘 다 읽는다(JSON을 주지 않으면 XML로 다시 청함). XML은 defusedxml(엔티티 확장 공격 차단).
+    포털 프리셋 oecd·eurostat·ecb + `--endpoint`로 임의 포털. 메타데이터만 — `access_url`=SDMX 데이터 질의 주소,
+    `landing_page`=포털 탐색 화면. HTML 설명 정리. 라이선스는 약관 이름만(허용 목록 밖 → 외부 반출 거부)
+  - `scripts/harvest_external.py --sdmx oecd --query … [--visibility]` → `ckan.store` 공용 적재(access_url 추가,
+    공개 범위는 **새 행에만**)
+  - 실측(dry-run): OECD 1,553 데이터플로 → "household income" 10건, Eurostat(XML) "unemployment" 5건
+  - ⚠️ OECD는 공개 데이터플로 전부에 `NonProductionDataflow=true`를 붙인다 — 그걸로 거르면 0건(거르지 않음)
+  - 테스트 14건(`tests/test_federation_sdmx.py`). ⏳ **실 DB 적재·임베딩은 승인 후**(공유 DB 쓰기)
+- 🟦 **목표선**: 인증·쿼터, SDMX 차원(dimension) 단위 탐색, 사용 통계.
 - **구현**
   - `src/api/main.py` (FastAPI) — `GET /v1/datasets`, `/v1/datasets/{id}`, `/v1/search`, `/v1/datasets/{id}/download`
   - `src/federation/ckan.py` — CKAN `package_search` → DCAT 매핑 → `dcat_dataset`에 `origin='external'`로 적재

@@ -164,7 +164,7 @@ def harvest(portal: str, query: str = "*:*", max_records: int = 100) -> List[Dic
     return out
 
 
-def store(rows: List[Dict[str, Any]], dry_run: bool = False) -> Dict[str, int]:
+def store(rows: List[Dict[str, Any]], dry_run: bool = False, visibility: str = "ORG") -> Dict[str, int]:
     """DCAT 행을 `dcat_dataset`에 upsert한다.
 
     ⚠️ **`data_registry`에는 넣지 않는다.** 그 테이블은 수집 스케줄을 담는데
@@ -172,7 +172,11 @@ def store(rows: List[Dict[str, Any]], dry_run: bool = False) -> Dict[str, int]:
     실패만 쌓인다(§머리말).
 
     같은 포털의 같은 id는 같은 `dataset_id`가 되므로 다시 들여오면 갱신된다.
+    SDMX(`sdmx.py`)도 같은 모양으로 넘겨 여기서 적재한다(`access_url`은 있으면 쓴다).
+    visibility: **새로 들어오는 행에만** 적용한다 — 이미 있는 행의 공개 범위는 사람이 정한 값을 지킨다.
     """
+    if visibility not in ("PUBLIC", "ORG", "PRIVATE"):
+        raise ValueError(f"공개 범위 값이 올바르지 않다: {visibility}")
     import json
 
     from psycopg2.extras import execute_values
@@ -193,18 +197,20 @@ def store(rows: List[Dict[str, Any]], dry_run: bool = False) -> Dict[str, int]:
          json.dumps(r["keywords"], ensure_ascii=False),
          r["license"], r["landing_page"],
          json.dumps(r["external_ids"], ensure_ascii=False),
-         r["accrual_periodicity"], r["language"], r["spatial"], "ORG", r["party"])
+         r["accrual_periodicity"], r["language"], r["spatial"], visibility, r["party"],
+         r.get("access_url"))
         for r in rows
     ]
     execute_values(
         cur,
         "INSERT INTO dcat_dataset (dataset_id, title, description, publisher, "
         "  source_type, source, dataset_origin, keywords, license, landing_page, "
-        "  external_ids, accrual_periodicity, language, spatial, visibility, party) VALUES %s "
+        "  external_ids, accrual_periodicity, language, spatial, visibility, party, access_url) VALUES %s "
         "ON CONFLICT (dataset_id) DO UPDATE SET "
         "  title = EXCLUDED.title, description = EXCLUDED.description, "
         "  publisher = EXCLUDED.publisher, keywords = EXCLUDED.keywords, "
         "  license = EXCLUDED.license, landing_page = EXCLUDED.landing_page, "
+        "  access_url = COALESCE(EXCLUDED.access_url, dcat_dataset.access_url), "
         "  party = COALESCE(dcat_dataset.party, EXCLUDED.party), "
         "  updated_at = now()",
         payload, page_size=200, fetch=False)

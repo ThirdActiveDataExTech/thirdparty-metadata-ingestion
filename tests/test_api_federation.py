@@ -162,5 +162,5 @@ class TestStoreContract:
         # INSERT 컬럼에 party가 빠지면 to_dcat이 채워도 DB엔 NULL로 들어간다
         import inspect
         src = inspect.getsource(ckan.store)
-        assert "visibility, party)" in src
+        assert "visibility, party, access_url)" in src
         assert "COALESCE(dcat_dataset.party, EXCLUDED.party)" in src
