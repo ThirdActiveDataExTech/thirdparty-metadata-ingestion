@@ -21,6 +21,7 @@ dependencies = [
     "fastapi",                  # 카탈로그 OpenAPI — C6
     "uvicorn[standard]",        # ASGI 서버
     "python-multipart>=0.0.20", # 포털 정형 1st party 업로드(multipart) — src/api/structured.py
+    "pyarrow",                  # 허깅페이스 형식 내보내기 Parquet — src/export/hf.py (결정 7)
 ]
 
 [project.optional-dependencies]
