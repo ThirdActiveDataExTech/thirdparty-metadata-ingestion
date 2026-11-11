@@ -150,6 +150,9 @@ PUBLIC_CONSOLE = {
     ("GET", "/v1/console/datasets/{dataset_id:path}/status"),
     ("GET", "/v1/console/datasets/{dataset_id:path}/trend"),
     ("GET", "/v1/console/datasets/{dataset_id:path}/package"),
+    # 외부 반출(결정 7) — 공개 범위로 거른 뒤, 전체 공개 + 재배포 허용일 때만 내보낸다
+    ("GET", "/v1/console/datasets/{dataset_id:path}/export/hf"),
+    ("GET", "/v1/console/datasets/{dataset_id:path}/export/hf/check"),
 }
 
 

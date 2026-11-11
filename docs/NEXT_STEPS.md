@@ -971,6 +971,10 @@
        **`PUBLIC` 이면서 원천 라이선스가 재배포를 허용**하는 데이터만. 안 되면 버튼을 막고 사유 표시. 로컬 sLLM은 제한 없음.
        원천 약관: 네이버 "외부 배포·상업적 재판매 금지" ❌ · YouTube "제3자 제공 시 Google 사전 승인" ❌ · CKAN OGL-Canada ✅.
        HF는 허브 업로드 없이 **HF 형식(Parquet + 데이터셋 카드 README) 내려받기**까지
+       ✅ **구현 (2026-11-11)** — 판정 규칙 한 곳 `src/export/policy.py`(모르는 라이선스는 불가, 허용 목록은 약관 근거 주석),
+       생성 `src/export/hf.py`(README 카드 YAML 머리말 + `data/metadata.parquet` + 아이템 있으면 `data/items.parquet`
+       + JSON-LD, 벡터·바이너리 제외, 값은 문자열), API `GET /v1/console/datasets/{id}/export/hf[/check]`(불가면 403 + 사유).
+       포털 상세 "허깅페이스 형식" 버튼 → 가능 여부·사유·재배포 조건 안내. 지금 반출 가능한 것은 캐나다 연합 30건(메타데이터만)
     - ✅ **공개 범위 배정 적용(2026-11-06, 백업 후 UPDATE)** — PUBLIC 40 = 외부 연합 30 + 비정형 유형별 아이템 상위 2건씩 10
       ('내가 보는 …' 개인 데이터셋 제외), ORG 15. `updated_at`은 건드리지 않음.
       API 기본 노출은 아직 PUBLIC+ORG(인증 붙는 D1에서 PUBLIC만으로 좁힘)

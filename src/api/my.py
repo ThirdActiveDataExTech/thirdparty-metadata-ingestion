@@ -40,15 +40,8 @@ from src.api.db_scope import ReleaseDbRoute
 
 router = APIRouter(prefix="/v1/my", tags=["내 데이터 (사용자)"], route_class=ReleaseDbRoute)
 
-#: 원천 약관상 외부 반출(HF·외부 LLM 내보내기)이 안 되는 원천(결정 7).
-#: 지금 사용자가 등록할 수 있는 원천은 전부 여기에 든다.
-NO_EXPORT = {
-    "video": "YouTube 약관상 제3자 제공은 Google 사전 승인이 필요합니다",
-    "news": "네이버 검색 API 약관상 외부 배포·상업적 재판매가 금지됩니다",
-    "blog": "네이버 검색 API 약관상 외부 배포·상업적 재판매가 금지됩니다",
-    "shopping_insight": "네이버 데이터랩 약관상 외부 배포·상업적 재판매가 금지됩니다",
-    "persona_insight": "네이버 데이터랩 약관상 외부 배포·상업적 재판매가 금지됩니다",
-}
+#: 원천 약관상 외부 반출이 안 되는 원천(결정 7) — 판정 규칙은 src/export/policy.py 한 곳.
+from src.export.policy import NO_EXPORT  # noqa: E402
 
 #: 예정이 이만큼 지나도 안 돌았으면 '지연'으로 보여 준다(관리자 오류 화면과 같은 기준)
 OVERDUE_HOURS = 1

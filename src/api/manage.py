@@ -587,6 +587,50 @@ def package(dataset_id: str, background: BackgroundTasks, user: Optional[User] =
     return FileResponse(out, media_type="application/zip", filename=out.name)
 
 
+# ── 외부 반출: 허깅페이스 형식 (결정 7) ─────────────────────────────────────
+
+def _export_check(cur, dataset_id: str, user: Optional[User]):
+    from src.export import policy
+    ensure_visible(cur, dataset_id, user)
+    cur.execute("SELECT source_type, visibility, license FROM dcat_dataset WHERE dataset_id=%s", (dataset_id,))
+    st, vis, lic = cur.fetchone()
+    return policy.eligibility(st, vis, lic)
+
+
+@router.get("/datasets/{dataset_id:path}/export/hf/check")
+def export_hf_check(dataset_id: str, user: Optional[User] = Depends(optional_user)):
+    """허깅페이스 형식으로 내보낼 수 있는지와, 안 되면 그 사유를 알려 줍니다.
+
+    전체 공개이면서 원천 라이선스가 재배포를 허용하는 데이터만 내보낼 수 있습니다(결정 7).
+    """
+    return _export_check(get_conn().cursor(), dataset_id, user).public()
+
+
+@router.get("/datasets/{dataset_id:path}/export/hf")
+def export_hf(dataset_id: str, background: BackgroundTasks, user: Optional[User] = Depends(optional_user),
+              x_usage_session: Optional[str] = Header(None)):
+    """허깅페이스 데이터셋 형식(Parquet + 데이터셋 카드) zip을 내려받습니다. 허브에는 올리지 않습니다."""
+    from src.export import hf
+    from src.storage import jsonld_export
+    conn = get_conn()
+    cur = conn.cursor()
+    elig = _export_check(cur, dataset_id, user)
+    if not elig.allowed:
+        raise HTTPException(403, "외부로 내보낼 수 없는 데이터입니다: " + " / ".join(elig.reasons))
+    work = Path(tempfile.mkdtemp(prefix="hf-"))
+    out = work / (re.sub(r"[^\w.-]", "_", dataset_id) + "_hf.zip")
+    try:
+        hf.build(conn, dataset_id, elig.license, out, jsonld_export.build_dataset_jsonld(dataset_id))
+    except Exception as e:                        # noqa: BLE001
+        __import__("shutil").rmtree(work, ignore_errors=True)
+        logger.warning("허깅페이스 형식 내보내기 실패 %s: %s", dataset_id, e)
+        raise HTTPException(500, "허깅페이스 형식 파일을 만들지 못했습니다")
+    background.add_task(lambda: __import__("shutil").rmtree(work, ignore_errors=True))
+    from src.api import usage
+    usage.record_server_event("download", dataset_id, user, x_usage_session, detail="hf")
+    return FileResponse(out, media_type="application/zip", filename=out.name)
+
+
 # ── 파이프라인 (C3) ───────────────────────────────────────────────────────
 
 @router.get("/pipelines", dependencies=[Depends(require_admin)])

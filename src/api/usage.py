@@ -6,7 +6,7 @@
 기록 경로
   - 조회(view): 포털이 상세 화면을 열 때 `POST /v1/usage/events`로 보낸다. 서버가 상세 API
     호출마다 세면 화면 재조회(react-query 등)까지 조회로 잡힌다.
-  - 내려받기(download): 서버가 직접 기록한다(`record_server_event`) — 패키지·JSON-LD.
+  - 내려받기(download): 서버가 직접 기록한다(`record_server_event`) — 패키지·JSON-LD·허깅페이스 형식.
 
 개인정보: IP·User-Agent·검색어는 저장하지 않는다. 비로그인 방문은 포털이 탭마다 만드는 임의
 세션 식별자(`X-Usage-Session` 헤더)의 해시만 남긴다. 같은 사람(로그인 ID 또는 세션)이 같은
@@ -40,7 +40,7 @@ TABLE = "dataset_usage_event"
 CLIENT_EVENTS = {"view"}
 #: 집계에 쓰는 이벤트 유형(열린 값 — 새 유형은 여기와 기록 지점에 추가)
 EVENT_TYPES = {"view", "download"}
-DOWNLOAD_DETAILS = {"package", "jsonld"}
+DOWNLOAD_DETAILS = {"package", "jsonld", "hf"}
 DEDUP_MINUTES = 30
 _SESSION_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
 _MAX_ITEM_ID = 300
