@@ -56,6 +56,7 @@ class SearchHit(BaseModel):
     rrf: Optional[float] = Field(None, description="두 채널 결합 점수")
     vec_rank: Optional[int] = Field(None, description="벡터 채널 순위. None이면 미검출")
     kw_rank: Optional[int] = Field(None, description="키워드 채널 순위. None이면 미검출")
+    title_rank: Optional[int] = Field(None, description="제목 채널 순위(title_weight>0일 때만)")
     ai_summary: Optional[str] = Field(None, description="추출 요약(A2). 영상만")
     ai_keywords: List[str] = []
 
@@ -66,6 +67,7 @@ class SearchResponse(BaseModel):
     tokens: List[str] = Field([], description="질의를 형태소로 끊은 결과(ADR-010)")
     rarest_token: Optional[Dict[str, Any]] = Field(
         None, description="최희귀어와 문서빈도. absent=true면 답이 없을 가능성이 높다(ADR-018)")
+    expansions: Dict[str, float] = Field({}, description="키워드 채널에 더한 동의어 토큰과 가중치")
     total: int
     hits: List[SearchHit] = []
 

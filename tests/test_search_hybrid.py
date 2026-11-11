@@ -7,7 +7,16 @@ SQL 템플릿의 자리표시자 오타, 알 수 없는 소스, 토크나이저 
 
 import pytest
 
-from src.search import hybrid, tokenize
+from src.search import hybrid, synonyms, tokenize
+
+
+@pytest.fixture(autouse=True)
+def _no_synonyms(monkeypatch, tmp_path):
+    """기존 테스트는 동의어 없이 본다 — 사전 내용이 바뀌어도 흔들리지 않게. 동의어는 test_search_synonyms.py"""
+    monkeypatch.setattr(synonyms, "PATH", tmp_path / "none.yaml")
+    synonyms.reset()
+    yield
+    synonyms.reset()
 
 
 class _FakeCursor:

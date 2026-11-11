@@ -36,7 +36,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from src.database.db import get_conn
 from src.embedding import embedder
-from src.search import tokenize
+from src.search import synonyms, tokenize
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +73,17 @@ DEFAULT_CANDIDATES = 200
 #: `idf_sum`은 BM25에서 term frequency 포화를 뺀 형태다(k1→0). 표준적이고,
 #: **known-item 점수에 맞춰 고른 값이 아니다** — 진단에서 바로 나온 처방이다.
 DEFAULT_SCORE_MODE = "idf_sum"
+
+#: 제목 채널 가중치(2026-11-11, C1 "필드 가중치"). 제목에 질의어가 들어 있는 원본에 RRF 점수를 더 준다.
+#: 0이면 채널을 끈다. **기본은 끈다** — 영상 평가셋(known-item 30, 2026-11-11):
+#:
+#:     제목 가중치 0    recall@1 0.967  MRR 0.978
+#:     제목 가중치 0.5  recall@1 0.767  MRR 0.861
+#:     제목 가중치 1.0  recall@1 0.633  MRR 0.735
+#:
+#: 같은 채널 영상들이 제목 낱말을 공유해, 제목 일치가 엉뚱한 영상을 올렸다. 조절 가능한 매개변수로만 둔다
+#: (API `title_weight`). 동의어 확장은 같은 평가셋에서 차이 없음(0.967 → 0.967) — 기본으로 켠다.
+DEFAULT_TITLE_WEIGHT = 0.0
 
 #: 벡터 채널이 **청크 단위로** 먼저 가져올 최근접 수 = `candidates` × 이 값.
 #:
@@ -263,10 +274,25 @@ kw AS (
 kw_rank AS (
     SELECT k, score, ROW_NUMBER() OVER (ORDER BY score DESC) AS rnk FROM kw
 ),
+ttl AS (
+    -- 제목 채널: 질의 토큰이 제목에 몇 개 들어 있나(원래 질의만, 동의어 제외). 가중치 0이면 0행
+    SELECT b.{bkey} AS k,
+           (SELECT count(*) FROM unnest(%(tpats)s::text[]) p
+            WHERE lower(b.{title_col}) LIKE p) AS score       -- 패턴의 와일드카드 문자는 파이썬에서 이스케이프한다
+    FROM   {base} b
+    WHERE  %(tw)s > 0 AND lower(b.{title_col}) LIKE ANY(%(tpats)s)
+    ORDER  BY score DESC, b.{bkey}
+    LIMIT  %(cand)s
+),
+ttl_rank AS (
+    SELECT k, score, ROW_NUMBER() OVER (ORDER BY score DESC, k) AS rnk FROM ttl
+),
 merged AS (
     SELECT k FROM vec_rank
     UNION
     SELECT k FROM kw_rank          -- 한쪽에만 잡힌 문서도 후보에 남긴다
+    UNION
+    SELECT k FROM ttl_rank
 )
 SELECT b.{bkey}                                           AS id,
        b.{title_col}                                      AS title,
@@ -275,11 +301,14 @@ SELECT b.{bkey}                                           AS id,
        vr.rnk                                             AS vec_rank,
        ROUND(kr.score::numeric, 4)                        AS kw_score,
        kr.rnk                                             AS kw_rank,
+       tr.rnk                                             AS title_rank,
        ROUND((COALESCE(1.0 / (%(rrf_k)s + vr.rnk), 0)
-            + COALESCE(1.0 / (%(rrf_k)s + kr.rnk), 0))::numeric, 6) AS rrf
+            + COALESCE(1.0 / (%(rrf_k)s + kr.rnk), 0)
+            + %(tw)s * COALESCE(1.0 / (%(rrf_k)s + tr.rnk), 0))::numeric, 6) AS rrf
 FROM   merged m
 LEFT   JOIN vec_rank vr ON vr.k = m.k
 LEFT   JOIN kw_rank  kr ON kr.k = m.k
+LEFT   JOIN ttl_rank tr ON tr.k = m.k
 JOIN   {base} b ON b.{bkey} = m.k
 ORDER  BY rrf DESC, vr.score DESC NULLS LAST
 LIMIT  %(top)s
@@ -289,7 +318,9 @@ LIMIT  %(top)s
 def search(query: str, source: str = "news", top_k: int = 10,
            rrf_k: int = DEFAULT_RRF_K,
            candidates: int = DEFAULT_CANDIDATES,
-           score_mode: str = DEFAULT_SCORE_MODE) -> List[Dict[str, Any]]:
+           score_mode: str = DEFAULT_SCORE_MODE,
+           expand_synonyms: bool = True,
+           title_weight: Optional[float] = None) -> List[Dict[str, Any]]:
     """질의 하나를 두 채널로 검색해 RRF로 합친 결과를 돌려준다.
 
     각 행은 두 채널의 점수·순위를 **그대로 달고 나온다**. 어느 채널이 그
@@ -310,22 +341,33 @@ def search(query: str, source: str = "news", top_k: int = 10,
     _assert_tokenizer(cur, vec)
 
     terms = tokenize.tokens(query)
-    tsq = tokenize.to_tsquery(query, mode="or")
+    # 동의어는 키워드 채널에만, 낮은 가중치로(ADR-013). 벡터 채널은 원래 질의 그대로
+    extra = synonyms.expand(terms, tokenize.tokens) if expand_synonyms else {}
+    kw_terms = list(dict.fromkeys(list(terms) + list(extra)))
+    tsq = " | ".join(kw_terms) if kw_terms else None     # tokens()를 거친 값만 — 연산자 문자가 없다
     if tsq is None:
         logger.info("질의에 내용어가 없어 벡터 채널만 사용한다: %r", query)
+    tw = DEFAULT_TITLE_WEIGHT if title_weight is None else float(title_weight)
+    # 한 글자 토큰(`차`·`위`)은 제목 부분 일치로 쓰면 아무 제목에나 걸린다 — 두 글자 이상만
+    tterms = [t for t in dict.fromkeys(terms) if len(t) >= 2]
+    tpats = ["%" + t.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%" for t in tterms]
 
     params: Dict[str, Any] = {
         "qvec": str(embedder.encode_query(query)),   # ← `query: ` 프리픽스가 붙는다
         "tsq": tsq, "cand": candidates, "rrf_k": rrf_k, "top": top_k,
         "chunk_cand": candidates * VEC_CHUNK_FACTOR,
+        "tw": tw if tterms else 0.0, "tpats": tpats or ["%"],
     }
     if score_mode == "idf_sum":
         # 토큰 순서를 고정해 두 배열이 짝을 이루게 한다 — 어긋나면 엉뚱한
         # 토큰에 엉뚱한 가중치가 붙고, 오류 없이 순위만 조용히 망가진다
-        idf = token_idf(cur, vec, terms)
-        ordered = [t for t in dict.fromkeys(terms) if t in idf]
+        # 원래 질의어와 동의어를 따로 센다 — 원래 질의어 결과는 최희귀어 판정(rarest_token_df)이 그대로 재사용한다
+        idf = dict(token_idf(cur, vec, terms))
+        if extra:
+            idf.update(token_idf(cur, vec, list(extra)))
+        ordered = [t for t in kw_terms if t in idf]
         params["terms"] = ordered
-        params["idfs"] = [idf[t] for t in ordered]
+        params["idfs"] = [idf[t] * extra.get(t, 1.0) for t in ordered]   # 동의어는 배율만큼 낮게
         if not ordered:
             params["terms"], params["idfs"] = [""], [0.0]
 
@@ -341,6 +383,11 @@ def search(query: str, source: str = "news", top_k: int = 10,
     rows = [dict(zip(names, r)) for r in cur.fetchall()]
     cur.close()
     return rows
+
+
+def expansions(query: str) -> Dict[str, float]:
+    """질의에 붙는 동의어 토큰과 가중치(설명용)."""
+    return synonyms.expand(tokenize.tokens(query), tokenize.tokens)
 
 
 def rarest_token_df(query: str, source: str = "news") -> Optional[Dict[str, Any]]:

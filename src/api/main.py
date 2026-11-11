@@ -326,12 +326,49 @@ def discover(
     )
 
 
+def _like(text: str) -> str:
+    """LIKE 패턴용 이스케이프(기본 이스케이프 문자 \\)."""
+    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+@app.get("/v1/search/suggest", tags=["검색"])
+def search_suggest(q: str = Query(..., min_length=1, max_length=50, description="입력 중인 검색어"),
+                   limit: int = Query(8, ge=1, le=20),
+                   user: Optional[User] = Depends(optional_user)):
+    """검색어 자동완성 — 볼 수 있는 데이터셋의 **제목·키워드**에서 고른다.
+
+    검색 기록을 쓰지 않는다(개인정보 안내: 검색어는 저장하지 않는다). 그래서 '인기 검색어'는 만들지 않았다.
+    앞부분이 일치하는 것을 먼저, 그다음 중간에 들어간 것을 보여 준다.
+    """
+    text = q.strip()
+    if not text:
+        return {"query": q, "items": []}
+    cond, params = visible_clause(user, "d.")
+    params = {**params, "pre": _like(text.lower()) + "%", "any": "%" + _like(text.lower()) + "%", "lim": limit}
+    cur = get_conn().cursor()
+    cur.execute(f"""SELECT d.dataset_id, d.title, (lower(d.title) LIKE %(pre)s) AS prefix
+                    FROM dcat_dataset d
+                    WHERE {cond} AND lower(d.title) LIKE %(any)s
+                    ORDER BY prefix DESC, length(d.title), d.title LIMIT %(lim)s""", params)
+    titles = [{"text": t, "kind": "dataset", "dataset_id": i} for i, t, _ in cur.fetchall()]
+    cur.execute(f"""SELECT kw, count(*) AS n, bool_or(lower(kw) LIKE %(pre)s) AS prefix
+                    FROM dcat_dataset d, jsonb_array_elements_text(coalesce(d.keywords, '[]'::jsonb)) AS kw
+                    WHERE {cond} AND lower(kw) LIKE %(any)s
+                    GROUP BY kw ORDER BY prefix DESC, n DESC, kw LIMIT %(lim)s""", params)
+    seen = {x["text"].lower() for x in titles}
+    keywords = [{"text": k, "kind": "keyword", "datasets": n} for k, n, _ in cur.fetchall() if k.lower() not in seen]
+    items = (keywords[: max(2, limit // 2)] + titles)[:limit] if titles else keywords[:limit]
+    return {"query": q, "items": items}
+
+
 @app.get("/v1/search", response_model=schemas.SearchResponse, tags=["검색"])
 def search(
     q: str = Query(..., min_length=1, description="자연어 질의"),
     source: str = Query("video", description="video · news · blog · dataset"),
     limit: int = Query(10, ge=1, le=50),
     explain: bool = Query(False, description="질의 토큰과 최희귀어 판정을 함께 돌려준다"),
+    synonyms: bool = Query(True, description="동의어를 키워드 채널에 더한다(configs/synonyms.yaml)"),
+    title_weight: float = Query(0.0, ge=0, le=2, description="제목 일치 채널 가중치(0=끔, 평가 근거는 hybrid.py)"),
     user: Optional[User] = Depends(optional_user),
 ):
     """하이브리드 검색 — 벡터 + 키워드를 RRF로 결합한다(ADR-010).
@@ -345,7 +382,7 @@ def search(
         raise HTTPException(400, f"지원하지 않는 검색 대상입니다: {source} "
                                  f"(가능한 값: {sorted(hybrid.SOURCES)})")
     try:
-        rows = hybrid.search(q, source, limit * 2)
+        rows = hybrid.search(q, source, limit * 2, expand_synonyms=synonyms, title_weight=title_weight)
     except tokenize.TokenizerMismatch as e:
         # 조용히 빈 결과를 주면 "결과가 없다"로 오해한다. 분명히 알린다
         logger.error("검색 색인·토크나이저 불일치: %s", e)
@@ -368,13 +405,14 @@ def search(
         schemas.SearchHit(
             id=str(r["id"]), title=r["title"], subtitle=r["subtitle"], source=source,
             rrf=float(r["rrf"]) if r["rrf"] is not None else None,
-            vec_rank=r["vec_rank"], kw_rank=r["kw_rank"],
+            vec_rank=r["vec_rank"], kw_rank=r["kw_rank"], title_rank=r.get("title_rank"),
             ai_summary=(ai.get(r["id"]) or {}).get("summary"),
             ai_keywords=(ai.get(r["id"]) or {}).get("keywords", []),
         )
         for r in rows
     ]
-    out = schemas.SearchResponse(query=q, source=source, total=len(hits), hits=hits)
+    out = schemas.SearchResponse(query=q, source=source, total=len(hits), hits=hits,
+                                 expansions=hybrid.expansions(q) if synonyms else {})
     if explain:
         out.tokens = tokenize.tokens(q)
         out.rarest_token = hybrid.rarest_token_df(q, source)
